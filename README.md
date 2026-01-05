@@ -49,13 +49,12 @@ cp .env.example .env
 # Edit .env with your configuration
 ```
 
-1. Start MongoDB (if running locally. For Docker use your docker-compose.yml configuration)
+4. Start MongoDB (if running locally. For Docker use your docker-compose.yml configuration)
 ```bash
 mongod
 # Or with Docker:
 docker-compose up
 ```
-
 
 5. Run the development server
 ```bash
