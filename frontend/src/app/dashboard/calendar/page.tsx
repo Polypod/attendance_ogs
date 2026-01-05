@@ -49,8 +49,9 @@ export default function CalendarPage() {
     <div>
       <h1 className="text-2xl font-bold mb-4">Calendar</h1>
       <div className="mb-4">
-        <label className="font-medium mr-2">Select date:</label>
+        <label htmlFor="date-select" className="font-medium mr-2">Select date:</label>
         <input
+          id="date-select"
           type="date"
           value={selectedDate}
           onChange={e => setSelectedDate(e.target.value)}
