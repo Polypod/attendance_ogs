@@ -154,10 +154,10 @@ src/
 ```
 
 ### Scripts
-- `npm run dev` - Start development server
-- `npm run build` - Build for production  
-- `npm start` - Start production server
-- `npm test` - Run tests
+- `pnpm run dev` - Start development server
+- `pnpm run build` - Build for production  
+- `pnpm start` - Start production server
+- `pnpm test` - Run tests
 
 ### Key Design Decisions
 
