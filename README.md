@@ -35,7 +35,7 @@ A comprehensive TypeScript-based attendance management system for karate schools
 1. Clone the repository
 ```bash
 git clone <repository-url>
-cd k<repository-name>
+cd <repository-name>
 ```
 
 2. Install dependencies
