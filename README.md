@@ -143,14 +143,14 @@ The system uses 4 main collections:
 ### Project Structure
 ```
 src/
-â”œâ”€â”€ controllers/     # Request handlers
-â”œâ”€â”€ models/         # Mongoose models
-â”œâ”€â”€ routes/         # Express routes
-â”œâ”€â”€ services/       # Business logic
-â”œâ”€â”€ middleware/     # Custom middleware
-â”œâ”€â”€ utils/          # Utility functions
-â”œâ”€â”€ types/          # TypeScript interfaces
-â””â”€â”€ index.ts        # App entry point
+ controllers/     # Request handlers
+ models/         # Mongoose models
+ routes/         # Express routes
+ services/       # Business logic
+ middleware/     # Custom middleware
+ utils/          # Utility functions
+ types/          # TypeScript interfaces
+ index.ts        # App entry point
 ```
 
 ### Scripts
