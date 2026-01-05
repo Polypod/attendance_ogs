@@ -73,16 +73,16 @@ export default function StudentsPage() {
       <h1 className="text-2xl font-bold mb-4">Students</h1>
       <form className="mb-6 flex flex-col gap-2 max-w-md" onSubmit={handleAddStudent}>
         <div>
-          <label className="block font-medium">Name</label>
-          <input className="border rounded px-2 py-1 w-full" value={name} onChange={e => setName(e.target.value)} required />
+          <label htmlFor="student-name" className="block font-medium">Name</label>
+          <input id="student-name" className="border rounded px-2 py-1 w-full" value={name} onChange={e => setName(e.target.value)} required />
         </div>
         <div>
-          <label className="block font-medium">Category</label>
-          <input className="border rounded px-2 py-1 w-full" value={category} onChange={e => setCategory(e.target.value)} />
+          <label htmlFor="student-category" className="block font-medium">Category</label>
+          <input id="student-category" className="border rounded px-2 py-1 w-full" value={category} onChange={e => setCategory(e.target.value)} />
         </div>
         <div>
-          <label className="block font-medium">Email</label>
-          <input className="border rounded px-2 py-1 w-full" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          <label htmlFor="student-email" className="block font-medium">Email</label>
+          <input id="student-email" className="border rounded px-2 py-1 w-full" type="email" value={email} onChange={e => setEmail(e.target.value)} />
         </div>
         <button className="bg-blue-600 text-white px-4 py-2 rounded mt-2" type="submit">Add Student</button>
       </form>
