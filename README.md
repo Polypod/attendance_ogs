@@ -52,10 +52,7 @@ cp .env.example .env
 1. Start MongoDB (if running locally. For Docker use your docker-compose.yml configuration)
 ```bash
 mongod
-```
-
-Or with Docker:
-```bash
+# Or with Docker:
 docker-compose up
 ```
 
