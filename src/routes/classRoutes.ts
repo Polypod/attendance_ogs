@@ -3,22 +3,34 @@ import { Router } from 'express';
 import { classController } from '@/controllers/ClassController';
 import { validateRequest } from '@/middleware/validation';
 import { createClassSchema, updateClassSchema } from '@/types/validation';
+import { authorize } from '@/middleware/auth';
+import { UserRoleEnum } from '@/types/interfaces';
 
 const router = Router();
 
-// Get all classes
+// Routes accessible to all authenticated users
 router.get('/', classController.getAllClasses);
-
-// Get class by ID
 router.get('/:id', classController.getClassById);
 
-// Create a new class
-router.post('/', validateRequest(createClassSchema), classController.createClass);
+// Admin-only routes for creating, updating, and deleting classes
+router.post(
+  '/',
+  authorize(UserRoleEnum.ADMIN),
+  validateRequest(createClassSchema),
+  classController.createClass
+);
 
-// Update a class
-router.put('/:id', validateRequest(updateClassSchema), classController.updateClass);
+router.put(
+  '/:id',
+  authorize(UserRoleEnum.ADMIN),
+  validateRequest(updateClassSchema),
+  classController.updateClass
+);
 
-// Delete a class
-router.delete('/:id', classController.deleteClass);
+router.delete(
+  '/:id',
+  authorize(UserRoleEnum.ADMIN),
+  classController.deleteClass
+);
 
 export { router as classRoutes };

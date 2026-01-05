@@ -3,22 +3,43 @@ import { Router } from 'express';
 import { studentController } from '@/controllers/StudentController';
 import { validateRequest } from '@/middleware/validation';
 import { createStudentSchema, updateStudentSchema } from '@/types/validation';
+import { authorize } from '@/middleware/auth';
+import { UserRoleEnum } from '@/types/interfaces';
 
 const router = Router();
 
-// Get all students
-router.get('/', studentController.getAllStudents);
+// Routes accessible to admins, instructors, and staff
+router.get(
+  '/',
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  studentController.getAllStudents
+);
 
-// Get students by category
-router.get('/category/:category', studentController.getStudentsByCategory);
+router.get(
+  '/category/:category',
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  studentController.getStudentsByCategory
+);
 
-// Create a new student
-router.post('/', validateRequest(createStudentSchema), studentController.createStudent);
+// Admin-only routes for creating, updating, and deleting students
+router.post(
+  '/',
+  authorize(UserRoleEnum.ADMIN),
+  validateRequest(createStudentSchema),
+  studentController.createStudent
+);
 
-// Update a student
-router.put('/:id', validateRequest(updateStudentSchema), studentController.updateStudent);
+router.put(
+  '/:id',
+  authorize(UserRoleEnum.ADMIN),
+  validateRequest(updateStudentSchema),
+  studentController.updateStudent
+);
 
-// Delete a student
-router.delete('/:id', studentController.deleteStudent);
+router.delete(
+  '/:id',
+  authorize(UserRoleEnum.ADMIN),
+  studentController.deleteStudent
+);
 
 export { router as studentRoutes };

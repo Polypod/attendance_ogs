@@ -7,8 +7,13 @@ import mongoose from 'mongoose';
 import { studentRoutes } from './routes/studentRoutes';
 import { classRoutes } from './routes/classRoutes';
 import { scheduleRoutes } from './routes/scheduleRoutes';
+import { attendanceRoutes } from './routes/attendanceRoutes';
+import { authRoutes } from './routes/authRoutes';
+import { userRoutes } from './routes/userRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { applyMiddleware } from './middleware/middleware';
+import { authenticate, authorize } from './middleware/auth';
+import { UserRoleEnum } from './types/interfaces';
 
 dotenv.config();
 
@@ -24,10 +29,17 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// API Routes
-app.use('/api/students', studentRoutes);
-app.use('/api/classes', classRoutes);
-app.use('/api/schedules', scheduleRoutes);
+// Public routes (no authentication required)
+app.use('/api/auth', authRoutes);
+
+// Admin-only routes
+app.use('/api/users', authenticate, authorize(UserRoleEnum.ADMIN), userRoutes);
+
+// Protected routes (authentication required)
+app.use('/api/students', authenticate, studentRoutes);
+app.use('/api/classes', authenticate, classRoutes);
+app.use('/api/schedules', authenticate, scheduleRoutes);
+app.use('/api/attendance', authenticate, attendanceRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {

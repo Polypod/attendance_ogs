@@ -1,16 +1,22 @@
 import Joi from 'joi';
-import { 
-  CreateStudentDto, 
-  UpdateStudentDto, 
-  CreateClassDto, 
-  UpdateClassDto, 
-  CreateClassScheduleDto, 
-  UpdateClassScheduleDto
+import {
+  CreateStudentDto,
+  UpdateStudentDto,
+  CreateClassDto,
+  UpdateClassDto,
+  CreateClassScheduleDto,
+  UpdateClassScheduleDto,
+  CreateUserDto,
+  UpdateUserDto,
+  LoginDto,
+  ChangePasswordDto
 } from './interfaces';
 
 const studentCategories = ['kids', 'youth', 'adult', 'advanced'] as const;
 const classStatuses = ['scheduled', 'cancelled', 'completed'] as const;
 const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+const userRoles = ['admin', 'instructor', 'staff', 'student'] as const;
+const userStatuses = ['active', 'inactive', 'suspended'] as const;
 
 // Student validation schemas
 export const createStudentSchema = Joi.object<CreateStudentDto>({
@@ -84,3 +90,48 @@ export const updateClassScheduleSchema = Joi.object<UpdateClassScheduleDto>({
   ),
   recurring: Joi.boolean()
 }).min(1);
+
+// Authentication validation schemas
+export const loginSchema = Joi.object<LoginDto>({
+  email: Joi.string().email().required(),
+  password: Joi.string().required()
+});
+
+export const createUserSchema = Joi.object<CreateUserDto>({
+  email: Joi.string().email().required(),
+  password: Joi.string().min(8).required().messages({
+    'string.min': 'Password must be at least 8 characters long'
+  }),
+  name: Joi.string().min(2).max(100).required(),
+  role: Joi.string().valid(...userRoles).required()
+});
+
+export const updateUserSchema = Joi.object<UpdateUserDto>({
+  name: Joi.string().min(2).max(100),
+  role: Joi.string().valid(...userRoles),
+  status: Joi.string().valid(...userStatuses),
+  password: Joi.string().min(8).messages({
+    'string.min': 'Password must be at least 8 characters long'
+  })
+}).min(1); // At least one field is required
+
+export const changePasswordSchema = Joi.object<ChangePasswordDto>({
+  currentPassword: Joi.string().required(),
+  newPassword: Joi.string().min(8).required().messages({
+    'string.min': 'New password must be at least 8 characters long'
+  })
+});
+
+export const refreshTokenSchema = Joi.object({
+  refreshToken: Joi.string().required()
+});
+
+export const updateStatusSchema = Joi.object({
+  status: Joi.string().valid(...userStatuses).required()
+});
+
+export const resetPasswordSchema = Joi.object({
+  newPassword: Joi.string().min(8).required().messages({
+    'string.min': 'New password must be at least 8 characters long'
+  })
+});

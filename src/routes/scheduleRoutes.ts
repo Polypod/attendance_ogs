@@ -2,38 +2,43 @@
 import { Router } from 'express';
 import { scheduleController } from '@/controllers/ScheduleController';
 import { validateRequest } from '@/middleware/validation';
-import { 
-  createClassScheduleSchema, 
-  updateClassScheduleSchema 
+import {
+  createClassScheduleSchema,
+  updateClassScheduleSchema
 } from '@/types/validation';
+import { authorize } from '@/middleware/auth';
+import { UserRoleEnum } from '@/types/interfaces';
 
 const router = Router();
 
-// Get all schedules with optional filtering by date range and class ID
+// Routes accessible to all authenticated users
 router.get('/', scheduleController.getAllSchedules);
-
-// Get schedule by ID
 router.get('/:id', scheduleController.getScheduleById);
 
 // Get schedule by date range (using query params)
 // Example: /api/schedules?startDate=2025-01-01&endDate=2025-12-31
 // Or with class ID: /api/schedules?classId=123
 
-// Create a new schedule
+// Admin and instructor routes for creating and updating schedules
 router.post(
-  '/', 
-  validateRequest(createClassScheduleSchema), 
+  '/',
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  validateRequest(createClassScheduleSchema),
   scheduleController.createSchedule
 );
 
-// Update a schedule
 router.put(
-  '/:id', 
-  validateRequest(updateClassScheduleSchema), 
+  '/:id',
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  validateRequest(updateClassScheduleSchema),
   scheduleController.updateSchedule
 );
 
-// Delete a schedule
-router.delete('/:id', scheduleController.deleteSchedule);
+// Admin-only route for deleting schedules
+router.delete(
+  '/:id',
+  authorize(UserRoleEnum.ADMIN),
+  scheduleController.deleteSchedule
+);
 
 export { router as scheduleRoutes };

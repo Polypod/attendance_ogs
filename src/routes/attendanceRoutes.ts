@@ -4,25 +4,29 @@
 // src/routes/attendanceRoutes.ts - Main attendance routes
 import { Router } from 'express';
 import { attendanceController } from '@/controllers/AttendanceController';
+import { authorize } from '@/middleware/auth';
+import { UserRoleEnum } from '@/types/interfaces';
 
 const router = Router();
 
-// Get today's classes (default view)
+// Routes accessible to all authenticated users
 router.get('/today', attendanceController.getTodaysClasses);
-
-// Get closest upcoming class
 router.get('/next-class', attendanceController.getNextClass);
-
-// Mark attendance for a class
-router.post('/mark', attendanceController.markAttendance);
-
-// Get attendance for specific class
 router.get('/class/:classScheduleId', attendanceController.getClassAttendance);
-
-// Search past classes
 router.get('/search', attendanceController.searchPastClasses);
 
-// Get attendance reports
-router.get('/reports/:dateRange', attendanceController.getAttendanceReports);
+// Routes for staff who can mark attendance
+router.post(
+  '/mark',
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  attendanceController.markAttendance
+);
+
+// Routes for admins and instructors who can view reports
+router.get(
+  '/reports/:dateRange',
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  attendanceController.getAttendanceReports
+);
 
 export { router as attendanceRoutes };

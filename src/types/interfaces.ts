@@ -37,16 +37,44 @@ export enum DayOfWeekEnum {
   SUNDAY = 'sunday'
 }
 
+export enum UserRoleEnum {
+  ADMIN = 'admin',
+  INSTRUCTOR = 'instructor',
+  STAFF = 'staff',
+  STUDENT = 'student'
+}
+
+export enum UserStatusEnum {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  SUSPENDED = 'suspended'
+}
+
 // Type aliases using enum values for better type safety
 export type StudentCategory = StudentCategoryEnum;
 export type AttendanceStatus = AttendanceStatusEnum;
 export type ClassStatus = ClassStatusEnum;
 export type StudentStatus = StudentStatusEnum;
 export type DayOfWeek = DayOfWeekEnum;
+export type UserRole = UserRoleEnum;
+export type UserStatus = UserStatusEnum;
 
 export interface EmergencyContact {
   name: string;
   phone: string;
+}
+
+export interface User {
+  _id?: string;
+  email: string;
+  name: string;
+  role: UserRoleEnum;
+  status: UserStatusEnum;
+  created_by: string;
+  last_login?: Date;
+  password_changed_at?: Date;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 export interface Student {
@@ -165,4 +193,36 @@ export interface AttendanceReport {
   absent_count: number;
   late_count: number;
   attendance_percentage: number;
+}
+
+// User management DTOs
+export interface CreateUserDto {
+  email: string;
+  password: string;
+  name: string;
+  role: UserRoleEnum;
+}
+
+export interface UpdateUserDto {
+  name?: string;
+  role?: UserRoleEnum;
+  status?: UserStatusEnum;
+  password?: string; // Only for password reset
+}
+
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export interface ChangePasswordDto {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  token: string;
+  refreshToken?: string;
+  user: Omit<User, 'password'>;
 }
