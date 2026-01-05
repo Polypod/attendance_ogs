@@ -63,6 +63,10 @@ pnpm run dev
 
 The API will be available at http://localhost:3000
 
+Test user:
+📧 Email: admin@karateattendance.com
+🔑 Password: ChangeMe123!
+
 ### Database Schema
 
 The system uses 4 main collections:
