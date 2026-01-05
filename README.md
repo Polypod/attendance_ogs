@@ -61,12 +61,13 @@ docker-compose up
 pnpm run dev
 ```
 
-The API will be available at http://localhost:3000
-The frontend will be available at http://localhost:3001
+The API will be available at http://localhost:3000.
+The frontend will be available at http://localhost:3001.
 To log in to the system, use the following credentials at
 http://localhost:3001/login:
 
 📧 Email: admin@karateattendance.com
+
 🔑 Password: ChangeMe123!
 
 ### Database Schema
@@ -95,7 +96,7 @@ The system uses 4 main collections:
 - Notes and timestamps
 - Teacher who recorded attendance
 
--- Note: mongoDB on docker mapped to port 27018 to not interfere with already running mongoDB instance (default is 2017)
+-- Note: mongoDB on docker mapped to port 27018 to not interfere with already running mongoDB instance (default is 27017)
 
 ## Usage
 
