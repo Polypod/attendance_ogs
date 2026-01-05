@@ -49,7 +49,7 @@ cp .env.example .env
 # Edit .env with your configuration
 ```
 
-4. Start MongoDB (if running locally)
+4. Start MongoDB (if running locally/docker)
 ```bash
 mongod
 ```
@@ -86,6 +86,8 @@ The system uses 4 main collections:
 - Category-specific tracking
 - Notes and timestamps
 - Teacher who recorded attendance
+
+-- Note: mongoDB on docker mapped to port 27018 to not interfere with already running mongoDB instance (default is 2017)
 
 ## Usage
 
