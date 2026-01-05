@@ -60,7 +60,7 @@ export class AttendanceController {
       
       const attendance = await this.attendanceService.getClassAttendance(
         classScheduleId,
-        category as string | undefined
+        category as any
       );
       
       res.json({ success: true, data: attendance });
@@ -81,7 +81,7 @@ export class AttendanceController {
       const classes = await this.attendanceService.searchPastClasses({
         date: date ? new Date(date as string) : undefined,
         instructor: instructor as string | undefined,
-        category: category as string | undefined
+        category: category as any
       });
       
       res.json({ success: true, data: classes });

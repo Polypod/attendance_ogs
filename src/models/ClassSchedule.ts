@@ -15,13 +15,13 @@ const classScheduleSchema = new Schema<IClassScheduleDocument>({
     ref: 'Class', 
     required: [true, 'Class reference is required']
   },
-  date: { 
-    type: Date, 
+  date: {
+    type: Date,
     required: [true, 'Class date is required'],
     validate: {
-      validator: function(this: IClassScheduleDocument, value: Date) {
+      validator: function(value: Date) {
         // Ensure date is not in the past for new documents
-        if (this.isNew) {
+        if ((this as any).isNew) {
           return value >= new Date(new Date().setHours(0, 0, 0, 0));
         }
         return true;
@@ -34,23 +34,24 @@ const classScheduleSchema = new Schema<IClassScheduleDocument>({
     required: [true, 'Start time is required'],
     match: [/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Please enter a valid time in HH:MM format']
   },
-  end_time: { 
-    type: String, 
+  end_time: {
+    type: String,
     required: [true, 'End time is required'],
     match: [/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Please enter a valid time in HH:MM format'],
     validate: {
-      validator: function(this: IClassScheduleDocument, value: string) {
+      validator: function(value: string) {
         // Ensure end time is after start time
-        if (this.start_time && value) {
-          const [startHour, startMinute] = this.start_time.split(':').map(Number);
+        const doc = this as any;
+        if (doc.start_time && value) {
+          const [startHour, startMinute] = doc.start_time.split(':').map(Number);
           const [endHour, endMinute] = value.split(':').map(Number);
-          
+
           const startDate = new Date();
           startDate.setHours(startHour, startMinute, 0, 0);
-          
+
           const endDate = new Date();
           endDate.setHours(endHour, endMinute, 0, 0);
-          
+
           return endDate > startDate;
         }
         return true;
@@ -97,16 +98,11 @@ classScheduleSchema.index({ start_time: 1 });
 classScheduleSchema.index({ date: 1, start_time: 1 });
 
 // Middleware to validate class existence
-classScheduleSchema.pre('save', async function(next) {
-  try {
-    const ClassModel = model('Class');
-    const classExists = await ClassModel.exists({ _id: this.class_id });
-    if (!classExists) {
-      throw new Error('Referenced class does not exist');
-    }
-    next();
-  } catch (error) {
-    next(error as Error);
+classScheduleSchema.pre('save', async function() {
+  const ClassModel = model('Class');
+  const classExists = await ClassModel.exists({ _id: this.class_id });
+  if (!classExists) {
+    throw new Error('Referenced class does not exist');
   }
 });
 

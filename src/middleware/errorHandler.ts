@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { MongoError } from 'mongodb';
-import { Error as MongooseError } from 'mongoose';
+import { Error as MongooseError, mongo } from 'mongoose';
 
 interface AppError extends Error {
   statusCode?: number;
@@ -41,7 +40,7 @@ export const errorHandler = (
   }
 
   // 2. Mongoose duplicate key
-  if ((err as MongoError).code === 11000) {
+  if ((err as mongo.MongoError).code === 11000) {
     const value = err.message.match(/(["'])(\\.|.)*?\1/)?.[0];
     const message = `Duplicate field value: ${value}. Please use another value!`;
     error = new Error(message);
