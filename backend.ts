@@ -1,9 +1,21 @@
 
 // Express.js TypeScript Backend for Karate Attendance System
 
-
   
+  import express from 'express';
+  import mongoose from 'mongoose';
+  import cors from 'cors';
+  import { studentRoutes } from './src/routes/studentRoutes';
+  import { classRoutes } from './src/routes/classRoutes';
+  import { attendanceRoutes } from './src/routes/attendanceRoutes';
+  import { scheduleRoutes } from './src/routes/scheduleRoutes';
   
+  const app = express();
+  const PORT = process.env.PORT || 3000;
+  
+  // Middleware
+  app.use(cors());
+  app.use(express.json());
   // Routes
   app.use('/api/students', studentRoutes);
   app.use('/api/classes', classRoutes);
