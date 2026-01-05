@@ -71,9 +71,9 @@ const userSchema = new Schema<IUserDocument>({
 
 
 // Pre-save middleware to hash password
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function() {
   // Only hash the password if it has been modified (or is new)
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password')) return;
 
   try {
     // Hash the password with bcrypt (10 rounds)
@@ -84,10 +84,8 @@ userSchema.pre('save', async function(next) {
     if (!this.isNew) {
       this.password_changed_at = new Date();
     }
-
-    next();
   } catch (error) {
-    next(error as Error);
+    throw error;
   }
 });
 
