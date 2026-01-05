@@ -17,7 +17,7 @@ const handler = NextAuth({
 
         try {
           // Call backend login endpoint
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -58,19 +58,19 @@ const handler = NextAuth({
       // Initial sign in
       if (user) {
         token.id = user.id;
-        token.role = user.role;
-        token.accessToken = user.accessToken;
-        token.refreshToken = user.refreshToken;
+        token.role = (user as any).role;
+        token.accessToken = (user as any).accessToken;
+        token.refreshToken = (user as any).refreshToken;
       }
       return token;
     },
     async session({ session, token }) {
       // Add custom fields to session
       if (token) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-        session.accessToken = token.accessToken;
-        session.refreshToken = token.refreshToken;
+        (session.user as any).id = token.id;
+        (session.user as any).role = token.role;
+        (session as any).accessToken = token.accessToken;
+        (session as any).refreshToken = token.refreshToken;
       }
       return session;
     }
