@@ -68,10 +68,7 @@ const userSchema = new Schema<IUserDocument>({
   versionKey: false
 });
 
-// Indexes for frequently queried fields
-userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ role: 1 });
-userSchema.index({ status: 1 });
+
 
 // Pre-save middleware to hash password
 userSchema.pre('save', async function(next) {

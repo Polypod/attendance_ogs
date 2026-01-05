@@ -65,8 +65,6 @@ app.use(errorHandler);
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/karate-attendance';
 const MONGODB_OPTIONS = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
   serverSelectionTimeoutMS: 5000,
 } as mongoose.ConnectOptions;
 

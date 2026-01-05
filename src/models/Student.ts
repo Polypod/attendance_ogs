@@ -79,9 +79,6 @@ const studentSchema = new Schema<IStudentDocument>({
   versionKey: false
 });
 
-// Add index for frequently queried fields
-studentSchema.index({ email: 1 }, { unique: true });
-studentSchema.index({ status: 1 });
-studentSchema.index({ categories: 1 });
+
 
 export const StudentModel = model<IStudentDocument>('Student', studentSchema);
