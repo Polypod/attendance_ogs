@@ -49,7 +49,7 @@ cp .env.example .env
 # Edit .env with your configuration
 ```
 
-4. Start MongoDB (if running locally/docker)
+4. Start MongoDB (if running locally. For Docker use docker-compose up after edits to your docker-compose.yml configuration)
 ```bash
 mongod
 ```
