@@ -7,21 +7,21 @@ A comprehensive TypeScript-based attendance management system for karate schools
 
 ### Core Functionality
 - âœ… Student management with multiple categories (kids, youth, adult, advanced)
-- âœ… Class scheduling and management  
-- âœ… Real-time attendance tracking
-- âœ… Teacher-friendly interface optimized for tablets
-- âœ… Automatic detection of next upcoming class
-- âœ… Historical attendance editing
-- âœ… Comprehensive reporting
+-  Class scheduling and management  
+-  Real-time attendance tracking
+-  Teacher-friendly interface optimized for tablets
+-  Automatic detection of next upcoming class
+-  Historical attendance editing
+-  Comprehensive reporting
 
 ### Technical Features
-- âœ… TypeScript for type safety
-- âœ… MongoDB with Mongoose ODM
-- âœ… Express.js REST API
-- âœ… Responsive web interface
-- âœ… Data validation with Joi
-- âœ… Calendar integration with FullCalendar
-- âœ… Time-based logic for class management
+-  TypeScript for type safety
+-  MongoDB with Mongoose ODM
+-  Express.js REST API
+-  Responsive web interface
+-  Data validation with Joi
+-  Calendar integration with FullCalendar
+-  Time-based logic for class management
 
 ## Quick Start
 
