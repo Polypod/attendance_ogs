@@ -1,9 +1,9 @@
-// frontend/src/middleware.ts - Route protection middleware
+// frontend/src/proxy.ts - Route protection proxy
 import { withAuth } from "next-auth/middleware";
 
 export default withAuth(
-  function middleware(req) {
-    // Middleware logic here if needed
+  function proxy(req) {
+    // Proxy logic here if needed
   },
   {
     callbacks: {
