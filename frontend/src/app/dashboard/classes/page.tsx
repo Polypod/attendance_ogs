@@ -81,24 +81,24 @@ export default function ClassesPage() {
       <h1 className="text-2xl font-bold mb-4">Classes</h1>
       <form className="mb-6 flex flex-col gap-2 max-w-md" onSubmit={handleAddClass}>
         <div>
-          <label className="block font-medium">Name</label>
-          <input className="border rounded px-2 py-1 w-full" value={name} onChange={e => setName(e.target.value)} required />
+          <label htmlFor="class-name" className="block font-medium">Name</label>
+          <input id="class-name" className="border rounded px-2 py-1 w-full" value={name} onChange={e => setName(e.target.value)} required />
         </div>
         <div>
-          <label className="block font-medium">Category (comma separated)</label>
-          <input className="border rounded px-2 py-1 w-full" value={category} onChange={e => setCategory(e.target.value)} />
+          <label htmlFor="class-category" className="block font-medium">Category (comma separated)</label>
+          <input id="class-category" className="border rounded px-2 py-1 w-full" value={category} onChange={e => setCategory(e.target.value)} />
         </div>
         <div>
-          <label className="block font-medium">Instructor</label>
-          <input className="border rounded px-2 py-1 w-full" value={instructor} onChange={e => setInstructor(e.target.value)} />
+          <label htmlFor="class-instructor" className="block font-medium">Instructor</label>
+          <input id="class-instructor" className="border rounded px-2 py-1 w-full" value={instructor} onChange={e => setInstructor(e.target.value)} />
         </div>
         <div>
-          <label className="block font-medium">Start Time</label>
-          <input className="border rounded px-2 py-1 w-full" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
+          <label htmlFor="class-start-time" className="block font-medium">Start Time</label>
+          <input id="class-start-time" className="border rounded px-2 py-1 w-full" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
         </div>
         <div>
-          <label className="block font-medium">End Time</label>
-          <input className="border rounded px-2 py-1 w-full" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
+          <label htmlFor="class-end-time" className="block font-medium">End Time</label>
+          <input id="class-end-time" className="border rounded px-2 py-1 w-full" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
         </div>
         <button className="bg-blue-600 text-white px-4 py-2 rounded mt-2" type="submit">Add Class</button>
       </form>
