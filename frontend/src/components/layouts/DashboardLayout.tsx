@@ -6,19 +6,30 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Menu } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { signOut } from "next-auth/react";
 
 const navLinks = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/attendance", label: "Take Attendance" },
-  { href: "/past-classes", label: "Past Classes" },
-  { href: "/students", label: "Students" },
-  { href: "/classes", label: "Classes" },
-  { href: "/reports", label: "Reports" },
+  { href: "/dashboard", label: "Dashboard", roles: ["admin", "instructor", "staff", "student"] },
+  { href: "/dashboard/students", label: "Students", roles: ["admin", "instructor", "staff"] },
+  { href: "/dashboard/classes", label: "Classes", roles: ["admin", "instructor", "staff", "student"] },
+  { href: "/dashboard/calendar", label: "Calendar", roles: ["admin", "instructor", "staff", "student"] },
+  { href: "/dashboard/users", label: "Users", roles: ["admin"] },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { user, isAdmin, isInstructor, isStaff, isStudent } = useAuth();
+
+  // Filter nav links based on user role
+  const filteredNavLinks = navLinks.filter(link =>
+    user && link.roles.includes(user.role)
+  );
+
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/login" });
+  };
 
   return (
     <div className="flex min-h-screen bg-muted">
@@ -28,7 +39,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <span className="font-bold text-xl tracking-tight">Karate Attendance</span>
         </div>
         <nav className="flex-1 flex flex-col gap-2">
-          {navLinks.map((link) => (
+          {filteredNavLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -42,11 +53,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="mt-auto flex items-center gap-3">
-          <Avatar>
-            <span className="sr-only">User avatar</span>
-          </Avatar>
-          <span className="text-sm font-medium">Teacher</span>
+        <div className="mt-auto border-t border-border pt-4 space-y-2">
+          <div className="flex items-center gap-3 px-3">
+            <Avatar>
+              <span className="text-xs">{user?.name?.[0]?.toUpperCase() || "U"}</span>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user?.name || "User"}</p>
+              <p className="text-xs text-muted-foreground capitalize">{user?.role || "Role"}</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="w-full justify-start"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
         </div>
       </aside>
 
@@ -63,7 +88,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <span className="font-bold text-xl tracking-tight">Karate Attendance</span>
             </div>
             <nav className="flex flex-col gap-2 px-4">
-              {navLinks.map((link) => (
+              {filteredNavLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -77,12 +102,32 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </Link>
               ))}
             </nav>
+            <div className="mt-auto border-t border-border pt-4 px-4 space-y-2">
+              <div className="flex items-center gap-3">
+                <Avatar>
+                  <span className="text-xs">{user?.name?.[0]?.toUpperCase() || "U"}</span>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{user?.name || "User"}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{user?.role || "Role"}</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="w-full justify-start"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </SheetContent>
         </Sheet>
         <span className="ml-2 font-bold text-lg">Karate Attendance</span>
         <div className="ml-auto flex items-center gap-2">
           <Avatar>
-            <span className="sr-only">User avatar</span>
+            <span className="text-xs">{user?.name?.[0]?.toUpperCase() || "U"}</span>
           </Avatar>
         </div>
       </div>
