@@ -62,8 +62,10 @@ pnpm run dev
 ```
 
 The API will be available at http://localhost:3000
+The frontend will be available at http://localhost:3001
+To log in to the system, use the following credentials at
+http://localhost:3001/login:
 
-Test user:
 📧 Email: admin@karateattendance.com
 🔑 Password: ChangeMe123!
 
