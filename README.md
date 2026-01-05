@@ -6,7 +6,7 @@ A comprehensive TypeScript-based attendance management system for karate schools
 ## Features
 
 ### Core Functionality
-- âœ… Student management with multiple categories (kids, youth, adult, advanced)
+-  Student management with multiple categories (kids, youth, adult, advanced)
 -  Class scheduling and management  
 -  Real-time attendance tracking
 -  Teacher-friendly interface optimized for tablets
