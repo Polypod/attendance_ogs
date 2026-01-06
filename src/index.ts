@@ -10,10 +10,12 @@ import { scheduleRoutes } from './routes/scheduleRoutes';
 import { attendanceRoutes } from './routes/attendanceRoutes';
 import { authRoutes } from './routes/authRoutes';
 import { userRoutes } from './routes/userRoutes';
+import { configRoutes } from './routes/configRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { applyMiddleware } from './middleware/middleware';
 import { authenticate, authorize } from './middleware/auth';
 import { UserRoleEnum } from './types/interfaces';
+import { ConfigService } from './services/ConfigService';
 
 dotenv.config();
 
@@ -31,6 +33,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Public routes (no authentication required)
 app.use('/api/auth', authRoutes);
+app.use('/api/config', configRoutes);
 
 // Admin-only routes
 app.use('/api/users', authenticate, authorize(UserRoleEnum.ADMIN), userRoutes);
@@ -74,10 +77,18 @@ const MONGODB_OPTIONS = {
 } as mongoose.ConnectOptions;
 
 mongoose.connect(MONGODB_URI, MONGODB_OPTIONS)
-  .then(() => {
+  .then(async () => {
     console.log('✅ Connected to MongoDB');
-    
-    // Start the server only after successful DB connection
+
+    // Initialize ConfigService after database connection
+    try {
+      await ConfigService.initialize();
+    } catch (error: any) {
+      console.error('❌ Failed to initialize configuration:', error.message);
+      process.exit(1); // Critical: cannot run without config
+    }
+
+    // Start the server only after successful DB connection AND config load
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });

@@ -1,10 +1,11 @@
 import { Types } from 'mongoose';
-import { 
-  StudentCategoryEnum, 
+import {
+  StudentCategoryEnum,
   AttendanceStatusEnum,
   StudentCategory,
   AttendanceStatus
 } from '../types/interfaces';
+import { ConfigService } from '../services/ConfigService';
 
 export class ValidationError extends Error {
   constructor(message: string) {
@@ -21,8 +22,9 @@ export const validateObjectId = (id: string, fieldName: string = 'ID'): void => 
 };
 
 export const validateStudentCategory = (category: string): void => {
-  const validCategories: string[] = Object.values(StudentCategoryEnum);
-  if (!validCategories.includes(category)) {
+  const configService = ConfigService.getInstance();
+  if (!configService.isValidCategory(category)) {
+    const validCategories = configService.getCategoryValues();
     throw new ValidationError(
       `Invalid student category: ${category}. Must be one of: ${validCategories.join(', ')}`
     );

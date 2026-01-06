@@ -1,6 +1,7 @@
 // src/models/Class.ts - Class Mongoose model
 import { Schema, model, Document, Types } from 'mongoose';
 import { Class, StudentCategory } from '../types/interfaces';
+import { ConfigService } from '../services/ConfigService';
 
 interface IClassDocument extends Omit<Class, '_id'>, Document {
   _id: Types.ObjectId;
@@ -22,14 +23,18 @@ const classSchema = new Schema<IClassDocument>({
   },
   categories: [{
     type: String,
-    enum: {
-      values: ['kids', 'youth', 'adult', 'advanced'],
-      message: 'Invalid class category. Must be one of: kids, youth, adult, advanced'
-    },
     required: [true, 'At least one category is required'],
     validate: {
-      validator: (value: StudentCategory[]) => value.length > 0,
-      message: 'At least one category is required'
+      validator: function(this: any, values: string[]) {
+        if (!values || values.length === 0) return false;
+        const configService = ConfigService.getInstance();
+        return values.every(val => configService.isValidCategory(val));
+      },
+      message: function() {
+        const configService = ConfigService.getInstance();
+        const validCategories = configService.getCategoryValues().join(', ');
+        return `Invalid class category. Must be one of: ${validCategories}`;
+      }
     }
   }],
   instructor: { 
