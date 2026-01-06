@@ -1,6 +1,7 @@
 // src/models/Student.ts - Student Mongoose model
 import { Schema, model, Document, Types } from 'mongoose';
 import { Student, StudentCategory, StudentStatus, StudentStatusEnum } from '../types/interfaces';
+import { ConfigService } from '../services/ConfigService';
 
 interface IStudentDocument extends Omit<Student, '_id'>, Document {
   _id: Types.ObjectId;
@@ -37,19 +38,34 @@ const studentSchema = new Schema<IStudentDocument>({
   },
   categories: [{
     type: String,
-    enum: {
-      values: ['kids', 'youth', 'adult', 'advanced'],
-      message: 'Invalid student category. Must be one of: kids, youth, adult, advanced'
-    },
     required: [true, 'At least one category is required'],
     validate: {
-      validator: (value: StudentCategory[]) => value.length > 0,
-      message: 'At least one category is required'
+      validator: function(this: any, values: string[]) {
+        if (!values || values.length === 0) return false;
+        const configService = ConfigService.getInstance();
+        return values.every(val => configService.isValidCategory(val));
+      },
+      message: function() {
+        const configService = ConfigService.getInstance();
+        const validCategories = configService.getCategoryValues().join(', ');
+        return `Invalid student category. Must be one of: ${validCategories}`;
+      }
     }
   }],
-  belt_level: { 
-    type: String, 
-    required: [true, 'Belt level is required'] 
+  belt_level: {
+    type: String,
+    required: [true, 'Belt level is required'],
+    validate: {
+      validator: function(value: string) {
+        const configService = ConfigService.getInstance();
+        return configService.isValidBeltLevel(value);
+      },
+      message: function() {
+        const configService = ConfigService.getInstance();
+        const validBeltLevels = configService.getBeltLevelValues().join(', ');
+        return `Invalid belt level. Must be one of: ${validBeltLevels}`;
+      }
+    }
   },
   registration_date: { 
     type: Date, 

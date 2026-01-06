@@ -1,12 +1,13 @@
 // src/models/Attendance.ts - Attendance model
 import { Schema, model, Document, Types, Model } from 'mongoose';
-import { 
-  Attendance, 
-  AttendanceStatus, 
-  StudentCategory, 
-  AttendanceStatusEnum, 
-  StudentCategoryEnum 
+import {
+  Attendance,
+  AttendanceStatus,
+  StudentCategory,
+  AttendanceStatusEnum,
+  StudentCategoryEnum
 } from '../types/interfaces';
+import { ConfigService } from '../services/ConfigService';
 
 // Interface for the document (instance methods)
 export interface IAttendanceDocument extends Omit<Attendance, '_id' | 'student_id' | 'class_schedule_id'>, Document {
@@ -50,11 +51,17 @@ const attendanceSchema = new Schema<IAttendanceDocument>(
     },
     category: {
       type: String,
-      enum: Object.values(StudentCategoryEnum),
       required: [true, 'Category is required'],
       validate: {
-        validator: (value: string) => Object.values(StudentCategoryEnum).includes(value as any),
-        message: `Category must be one of: ${Object.values(StudentCategoryEnum).join(', ')}`
+        validator: function(value: string) {
+          const configService = ConfigService.getInstance();
+          return configService.isValidCategory(value);
+        },
+        message: function() {
+          const configService = ConfigService.getInstance();
+          const validCategories = configService.getCategoryValues().join(', ');
+          return `Category must be one of: ${validCategories}`;
+        }
       }
     },
     notes: { 

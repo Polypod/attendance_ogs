@@ -1,0 +1,81 @@
+# System configuration for karate school attendance management
+# Edit this file to manage categories and belt levels
+# Changes require application restart to take effect
+
+version: "1.0"
+
+# Student and class categories
+# These define the different skill/age levels for classes and students
+categories:
+  - value: "kids"
+    label: "Kids"
+    description: "Children's classes (ages 5-10)"
+    order: 1
+
+  - value: "youth"
+    label: "Youth"
+    description: "Youth classes (ages 11-17)"
+    order: 2
+
+  - value: "adult"
+    label: "Adult"
+    description: "Adult classes (ages 18+)"
+    order: 3
+
+  - value: "advanced"
+    label: "Advanced"
+    description: "Advanced training for all ages"
+    order: 4
+
+# Belt level progression
+# Defines the ranking system for students
+belt_levels:
+  - value: "white"
+    label: "White Belt"
+    rank: 1
+    color: "#FFFFFF"
+
+  - value: "yellow"
+    label: "Yellow Belt"
+    rank: 2
+    color: "#FFD700"
+
+  - value: "orange"
+    label: "Orange Belt"
+    rank: 3
+    color: "#FFA500"
+
+  - value: "green"
+    label: "Green Belt"
+    rank: 4
+    color: "#00FF00"
+
+  - value: "blue"
+    label: "Blue Belt"
+    rank: 5
+    color: "#0000FF"
+
+  - value: "purple"
+    label: "Purple Belt"
+    rank: 6
+    color: "#800080"
+
+  - value: "brown"
+    label: "Brown Belt"
+    rank: 7
+    color: "#8B4513"
+
+  - value: "black_1st"
+    label: "Black Belt (1st Dan)"
+    rank: 8
+    color: "#000000"
+
+  - value: "black_2nd"
+    label: "Black Belt (2nd Dan)"
+    rank: 9
+    color: "#000000"
+
+  - value: "black_3rd"
+    label: "Black Belt (3rd Dan)"
+    rank: 10
+    color: "#000000"

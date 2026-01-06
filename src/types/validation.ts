@@ -11,8 +11,7 @@ import {
   LoginDto,
   ChangePasswordDto
 } from './interfaces';
-
-const studentCategories = ['kids', 'youth', 'adult', 'advanced'] as const;
+import { ConfigService } from '../services/ConfigService';
 const classStatuses = ['scheduled', 'cancelled', 'completed'] as const;
 const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 const userRoles = ['admin', 'instructor', 'staff', 'student'] as const;
@@ -23,9 +22,23 @@ export const createStudentSchema = Joi.object<CreateStudentDto>({
   name: Joi.string().required().min(2).max(100),
   email: Joi.string().email().required(),
   categories: Joi.array().items(
-    Joi.string().valid(...studentCategories)
+    Joi.string().custom((value, helpers) => {
+      const configService = ConfigService.getInstance();
+      if (!configService.isValidCategory(value)) {
+        const validCategories = configService.getCategoryValues().join(', ');
+        return helpers.error('any.invalid', { message: `Invalid category. Must be one of: ${validCategories}` });
+      }
+      return value;
+    })
   ).min(1).required(),
-  belt_level: Joi.string().required(),
+  belt_level: Joi.string().required().custom((value, helpers) => {
+    const configService = ConfigService.getInstance();
+    if (!configService.isValidBeltLevel(value)) {
+      const validBeltLevels = configService.getBeltLevelValues().join(', ');
+      return helpers.error('any.invalid', { message: `Invalid belt level. Must be one of: ${validBeltLevels}` });
+    }
+    return value;
+  }),
   phone: Joi.string().required(),
   emergency_contact: Joi.object({
     name: Joi.string().required(),
@@ -36,9 +49,21 @@ export const createStudentSchema = Joi.object<CreateStudentDto>({
 export const updateStudentSchema = Joi.object<UpdateStudentDto>({
   name: Joi.string().min(2).max(100),
   categories: Joi.array().items(
-    Joi.string().valid(...studentCategories)
+    Joi.string().custom((value, helpers) => {
+      const configService = ConfigService.getInstance();
+      if (!configService.isValidCategory(value)) {
+        return helpers.error('any.invalid');
+      }
+      return value;
+    })
   ).min(1),
-  belt_level: Joi.string(),
+  belt_level: Joi.string().custom((value, helpers) => {
+    const configService = ConfigService.getInstance();
+    if (!configService.isValidBeltLevel(value)) {
+      return helpers.error('any.invalid');
+    }
+    return value;
+  }),
   phone: Joi.string(),
   emergency_contact: Joi.object({
     name: Joi.string(),
@@ -51,7 +76,14 @@ export const createClassSchema = Joi.object<CreateClassDto>({
   name: Joi.string().required().min(3).max(100),
   description: Joi.string().required(),
   categories: Joi.array().items(
-    Joi.string().valid(...studentCategories)
+    Joi.string().custom((value, helpers) => {
+      const configService = ConfigService.getInstance();
+      if (!configService.isValidCategory(value)) {
+        const validCategories = configService.getCategoryValues().join(', ');
+        return helpers.error('any.invalid', { message: `Invalid category. Must be one of: ${validCategories}` });
+      }
+      return value;
+    })
   ).min(1).required(),
   instructor: Joi.string().required(),
   max_capacity: Joi.number().integer().min(1).max(100).required(),
@@ -62,7 +94,13 @@ export const updateClassSchema = Joi.object<UpdateClassDto>({
   name: Joi.string().min(3).max(100),
   description: Joi.string(),
   categories: Joi.array().items(
-    Joi.string().valid(...studentCategories)
+    Joi.string().custom((value, helpers) => {
+      const configService = ConfigService.getInstance();
+      if (!configService.isValidCategory(value)) {
+        return helpers.error('any.invalid');
+      }
+      return value;
+    })
   ).min(1),
   instructor: Joi.string(),
   max_capacity: Joi.number().integer().min(1).max(100),
