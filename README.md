@@ -171,16 +171,8 @@ This file defines:
 - Advanced - Advanced training for all ages
 
 **Belt Levels (10 default):**
-- White Belt (rank 1)
-- Yellow Belt (rank 2)
-- Orange Belt (rank 3)
-- Green Belt (rank 4)
-- Blue Belt (rank 5)
-- Purple Belt (rank 6)
-- Brown Belt (rank 7)
-- Black Belt 1st Dan (rank 8)
-- Black Belt 2nd Dan (rank 9)
-- Black Belt 3rd Dan (rank 10)
+- White Belt (rank 1), etc
+- ... (yellow, orange, green, blue(youth), brown, black)
 
 ### Modifying Configuration
 

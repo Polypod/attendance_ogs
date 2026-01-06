@@ -9,12 +9,12 @@ version: "1.0"
 categories:
   - value: "kids"
     label: "Kids"
-    description: "Children's classes (ages 5-10)"
+    description: "Children's classes (ages 8-11)"
     order: 1
 
   - value: "youth"
     label: "Youth"
-    description: "Youth classes (ages 11-17)"
+    description: "Youth classes (ages 12-17)"
     order: 2
 
   - value: "adult"
@@ -29,6 +29,7 @@ categories:
 
 # Belt level progression
 # Defines the ranking system for students
+# to be changed to a kyu/dan system 
 belt_levels:
   - value: "white"
     label: "White Belt"
@@ -55,27 +56,22 @@ belt_levels:
     rank: 5
     color: "#0000FF"
 
-  - value: "purple"
-    label: "Purple Belt"
-    rank: 6
-    color: "#800080"
-
   - value: "brown"
     label: "Brown Belt"
-    rank: 7
+    rank: 6
     color: "#8B4513"
 
   - value: "black_1st"
     label: "Black Belt (1st Dan)"
-    rank: 8
+    rank: 7
     color: "#000000"
 
   - value: "black_2nd"
     label: "Black Belt (2nd Dan)"
-    rank: 9
+    rank: 8
     color: "#000000"
 
   - value: "black_3rd"
     label: "Black Belt (3rd Dan)"
-    rank: 10
+    rank: 9
     color: "#000000"
