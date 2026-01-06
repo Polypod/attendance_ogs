@@ -7,10 +7,11 @@ A comprehensive TypeScript-based attendance management system for karate schools
 
 ### Core Functionality
 -  **Authentication & Authorization**: Secure JWT-based authentication with role-based access control (RBAC)
--  **Student management** with multiple categories (kids, youth, adult, advanced)
--  **Class scheduling and management**
--  **Real-time attendance tracking**
+-  **Student management** with configurable categories and belt level tracking
+-  **Class scheduling and management** with multi-category support
+-  **Real-time attendance tracking** with category-specific recording
 -  **User management**: Admin-only user creation with 4 role types (admin, instructor, staff, student)
+-  **Configuration management**: YAML-based category and belt level configuration
 -  **Teacher-friendly interface** optimized for tablets
 -  **Automatic detection** of next upcoming class
 -  **Historical attendance editing**
@@ -23,7 +24,8 @@ A comprehensive TypeScript-based attendance management system for karate schools
 -  **Next.js 16** with App Router for frontend
 -  **NextAuth.js** for session management
 -  **Responsive web interface** with shadcn/ui components
--  **Data validation** with Joi
+-  **Data validation** with Joi and dynamic config validation
+-  **YAML configuration** for semi-static data management
 -  **Calendar integration** with FullCalendar
 -  **Time-based logic** for class management
 -  **Rate limiting** to prevent brute force attacks
@@ -148,6 +150,112 @@ The system uses 5 main collections:
 
 **Note**: MongoDB on Docker is mapped to port 27018 to avoid conflicts with local MongoDB instances (default port 27017)
 
+## Configuration Management
+
+The system uses a YAML configuration file to manage categories and belt levels, allowing administrators to customize these values without code changes.
+
+### Configuration File
+
+**Location:** `config/system.yaml`
+
+This file defines:
+- **Categories**: Student and class skill/age levels (e.g., kids, youth, adult, advanced)
+- **Belt Levels**: Karate belt progression with ranks and colors (e.g., white, yellow, orange... black)
+
+### Default Configuration
+
+**Categories (4 default):**
+- Kids - Children's classes (ages 5-10)
+- Youth - Youth classes (ages 11-17)
+- Adult - Adult classes (ages 18+)
+- Advanced - Advanced training for all ages
+
+**Belt Levels (10 default):**
+- White Belt (rank 1)
+- Yellow Belt (rank 2)
+- Orange Belt (rank 3)
+- Green Belt (rank 4)
+- Blue Belt (rank 5)
+- Purple Belt (rank 6)
+- Brown Belt (rank 7)
+- Black Belt 1st Dan (rank 8)
+- Black Belt 2nd Dan (rank 9)
+- Black Belt 3rd Dan (rank 10)
+
+### Modifying Configuration
+
+1. **Edit the YAML file:**
+   ```bash
+   # Open config/system.yaml in your editor
+   nano config/system.yaml
+   ```
+
+2. **Add/modify categories:**
+   ```yaml
+   categories:
+     - value: "beginner"        # Database value
+       label: "Beginner"        # Display name
+       description: "New students"
+       order: 1                 # Display order
+   ```
+
+3. **Add/modify belt levels:**
+   ```yaml
+   belt_levels:
+     - value: "white"           # Database value
+       label: "White Belt"      # Display name
+       rank: 1                  # Progression rank
+       color: "#FFFFFF"         # Hex color code
+   ```
+
+4. **Restart the backend server:**
+   ```bash
+   pnpm run dev
+   ```
+
+### Important Notes
+
+- Changes to the configuration file require a server restart to take effect
+- The `value` field is stored in the database - avoid changing existing values
+- The `order` field controls the display order in dropdowns
+- The `rank` field determines belt progression order
+- Before removing a category or belt level, ensure no existing data uses it
+
+### Configuration API
+
+The configuration is exposed via a public API endpoint:
+
+```
+GET /api/config
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "categories": [
+      {
+        "value": "kids",
+        "label": "Kids",
+        "description": "Children's classes (ages 5-10)",
+        "order": 1
+      }
+    ],
+    "beltLevels": [
+      {
+        "value": "white",
+        "label": "White Belt",
+        "rank": 1,
+        "color": "#FFFFFF"
+      }
+    ]
+  }
+}
+```
+
+This endpoint is used by the frontend to populate category and belt level dropdowns dynamically.
+
 ## User Roles & Permissions
 
 The system implements role-based access control with 4 user types:
@@ -221,6 +329,9 @@ The system implements role-based access control with 4 user types:
 
 **Note**: All endpoints except authentication require a valid JWT token in the Authorization header.
 
+#### Configuration (Public)
+- `GET /api/config` - Get system configuration (categories and belt levels)
+
 #### Authentication
 - `POST /api/auth/login` - User login (public)
 - `POST /api/auth/refresh-token` - Refresh access token (public)
@@ -267,15 +378,23 @@ The system implements role-based access control with 4 user types:
 
 ### Project Structure
 ```
+config/
+ system.yaml      # Configuration for categories and belt levels
 src/
  controllers/     # Request handlers
  models/         # Mongoose models
  routes/         # Express routes
- services/       # Business logic
+ services/       # Business logic (ConfigService, AttendanceService)
  middleware/     # Custom middleware
  utils/          # Utility functions
  types/          # TypeScript interfaces
  index.ts        # App entry point
+frontend/
+ src/
+  app/           # Next.js pages
+  components/    # React components
+  hooks/         # Custom hooks (useConfig, useAuth)
+  lib/           # Utilities (API wrapper)
 ```
 
 ### Scripts
@@ -298,17 +417,21 @@ src/
 
 2. **Role-based Authorization**: Granular permission system with 4 user roles, allowing fine-grained access control to different features.
 
-3. **Multiple Categories per Student/Class**: Students and classes can belong to multiple categories (e.g., a 16-year-old might be in both "youth" and "adult" classes)
+3. **YAML Configuration**: Categories and belt levels are managed via a YAML file rather than hardcoded or database-stored, providing a balance between flexibility and simplicity. Changes require a server restart.
 
-4. **Time-based Class Selection**: The system automatically highlights the next upcoming class to streamline the teacher workflow
+4. **Multiple Categories per Student/Class**: Students and classes can belong to multiple categories (e.g., a 16-year-old might be in both "youth" and "adult" classes)
 
-5. **Separate Schedule Instances**: Classes and their schedules are separate entities, allowing for flexible scheduling and easy editing of specific instances
+5. **Dynamic Validation**: All category and belt level validation uses the ConfigService, ensuring consistency between configuration and validation rules.
 
-6. **Category-specific Attendance**: Attendance is tracked per category, enabling mixed-level classes
+6. **Time-based Class Selection**: The system automatically highlights the next upcoming class to streamline the teacher workflow
 
-7. **Teacher-centric UI**: Interface optimized for tablet use with large touch targets and minimal navigation
+7. **Separate Schedule Instances**: Classes and their schedules are separate entities, allowing for flexible scheduling and easy editing of specific instances
 
-8. **Admin-only User Creation**: No self-registration to maintain security and control over who accesses the system
+8. **Category-specific Attendance**: Attendance is tracked per category, enabling mixed-level classes
+
+9. **Teacher-centric UI**: Interface optimized for tablet use with large touch targets and minimal navigation
+
+10. **Admin-only User Creation**: No self-registration to maintain security and control over who accesses the system
 
 ## Security
 
