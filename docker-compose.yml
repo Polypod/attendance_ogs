@@ -9,7 +9,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ogsadmin
       MONGO_INITDB_DATABASE: attendance
     ports:
-      - "27018:27017"
+      - "27019:27017"
     volumes:
       - mongodb_data:/data/db
     restart: unless-stopped

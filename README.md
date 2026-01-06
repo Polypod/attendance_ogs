@@ -26,49 +26,119 @@ A comprehensive TypeScript-based attendance management system for karate schools
 ## Quick Start
 
 ### Prerequisites
-- Node.js 16+ 
-- MongoDB 4.4+
-- pnpm or yarn
+- Node.js 16+
+- MongoDB 4.4+ (or Docker for containerized MongoDB)
+- pnpm (recommended) or npm/yarn
+- Docker & Docker Compose (optional, for MongoDB)
 
 ### Installation
 
 1. Clone the repository
 ```bash
 git clone <repository-url>
-cd <repository-name>
+cd attendance_ogs
 ```
 
 2. Install dependencies
 ```bash
+# Install root dependencies
 pnpm install
+
+# Install frontend dependencies
+cd frontend && pnpm install && cd ..
 ```
 
 3. Set up environment variables
+
+**Backend (.env in project root):**
 ```bash
 cp .env.example .env
-# Edit .env with your configuration
+# Edit .env with your MongoDB credentials and desired ports
 ```
 
-4. Start MongoDB (if running locally. For Docker use your docker-compose.yml configuration)
+**Frontend (.env.local in frontend directory):**
+```bash
+cd frontend
+cat > .env.local << EOF
+# Next.js Server Configuration
+PORT=4001
+
+# NextAuth Configuration
+NEXTAUTH_SECRET=dev_secret_change_me
+NEXTAUTH_URL=http://localhost:4001
+
+# Backend API URL (must match PORT in root .env)
+NEXT_PUBLIC_API_URL=http://localhost:4000
+EOF
+cd ..
+```
+
+4. Start MongoDB (choose one)
+
+**Option A: Using Docker (recommended for development)**
+```bash
+docker-compose up -d
+```
+This will start MongoDB on port 27019 (mapped from container port 27017).
+
+**Option B: Using local MongoDB**
 ```bash
 mongod
-# Or with Docker:
-docker-compose up
 ```
+Ensure MongoDB is running on port 27017 (default), and update MONGODB_URI in .env accordingly.
 
-5. Run the development server
+5. Create admin user (first time only)
 ```bash
-pnpm run dev
+pnpm run seed:admin
+```
+This creates an admin account:
+- Email: `admin@karateattendance.com`
+- Password: `ChangeMe123!`
+
+6. Run the development servers
+
+```bash
+# Start both backend and frontend together
+pnpm run dev:all
 ```
 
-The API will be available at http://localhost:3000.
-The frontend will be available at http://localhost:3001.
-To log in to the system, use the following credentials at
-http://localhost:3001/login:
+Or run separately:
+```bash
+# Terminal 1 - Backend on http://localhost:4000
+pnpm run dev
 
-📧 Email: admin@karateattendance.com
+# Terminal 2 - Frontend on http://localhost:4001
+cd frontend && pnpm run dev
+```
 
-🔑 Password: ChangeMe123!
+### Accessing the Application
+
+- **Frontend**: http://localhost:4001
+- **Backend API**: http://localhost:4000
+- **API Health Check**: http://localhost:4000/api/health
+- **Login Page**: http://localhost:4001/login
+
+Default credentials:
+- 📧 Email: `admin@karateattendance.com`
+- 🔑 Password: `ChangeMe123!`
+
+⚠️ **IMPORTANT**: Change these credentials in production!
+
+### Environment Variable Sync
+
+These two files must be kept in sync:
+
+| Variable | Root .env | frontend/.env.local | Purpose |
+|----------|-----------|---------------------|----------|
+| PORT | 4000 | - | Backend server port |
+| FRONTEND_URL | 4001 | - | Backend CORS origin |
+| NEXTAUTH_URL | - | 4001 | NextAuth callback URL |
+| NEXT_PUBLIC_API_URL | - | 4000 | Frontend API endpoint |
+
+Example: If you change backend PORT to 5000:
+1. Update `PORT=5000` in root `.env`
+2. Update `NEXT_PUBLIC_API_URL=http://localhost:5000` in `frontend/.env.local`
+3. Restart both servers
 
 ### Database Schema
 
@@ -96,7 +166,11 @@ The system uses 4 main collections:
 - Notes and timestamps
 - Teacher who recorded attendance
 
--- Note: mongoDB on docker mapped to port 27018 to not interfere with already running mongoDB instance (default is 27017)
+### Database Configuration Notes
+
+- **MongoDB Port Mapping**: When using Docker, MongoDB container port 27017 is mapped to host port 27019 to avoid conflicts with locally running MongoDB instances
+- **Default MongoDB Connection**: `mongodb://root:ogsadmin@localhost:27019/attendance?authSource=admin`
+- **Credentials**: Set MONGO_USERNAME and MONGO_PASSWORD in docker-compose.yml as needed
 
 ## Usage
 

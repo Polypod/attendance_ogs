@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 type Student = {
   _id: string;
@@ -10,6 +11,7 @@ type Student = {
 };
 
 export default function StudentsPage() {
+  const { data: session, status } = useSession();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,13 +21,26 @@ export default function StudentsPage() {
   const [category, setCategory] = useState("");
   const [email, setEmail] = useState("");
 
+  // Helper function to make authenticated requests
+  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+    const token = (session as any)?.accessToken;
+    const headers = {
+      "Content-Type": "application/json",
+      ...options.headers,
+      ...(token && { Authorization: `Bearer ${token}` })
+    };
+    return fetch(url, { ...options, headers });
+  };
+
   // Fetch students
   useEffect(() => {
+    if (status !== "authenticated") return;
+
     async function fetchStudents() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("http://localhost:3000/api/students");
+        const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/students`);
         if (!res.ok) throw new Error("Failed to fetch students");
         const data = await res.json();
         setStudents(data.students || []);
@@ -36,14 +51,14 @@ export default function StudentsPage() {
       setLoading(false);
     }
     fetchStudents();
-  }, []);
+  }, [session, status]);
 
   // Add student
   async function handleAddStudent(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch("http://localhost:3000/api/students", {
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/students`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

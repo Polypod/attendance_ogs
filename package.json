@@ -5,6 +5,8 @@
     "main": "dist/index.js",
     "scripts": {
         "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
+        "dev:frontend": "cd frontend && export $(grep -v '^#' .env.local | xargs) && pnpm run dev",
+        "dev:all": "pnpm run dev & pnpm run dev:frontend",
         "build": "tsc",
         "start": "node dist/index.js",
         "test": "jest",
@@ -26,7 +28,6 @@
         "mongoose": "^9.1.2"
     },
     "devDependencies": {
-        "@types/bcryptjs": "^3.0.0",
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.6",
         "@types/jest": "^30.0.0",

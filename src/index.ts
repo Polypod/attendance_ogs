@@ -50,6 +50,11 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
+// Root redirects to health for convenience
+app.get('/', (req: Request, res: Response) => {
+  return res.redirect('/api/health');
+});
+
 // 404 handler
 app.use((req: Request, res: Response) => {
   res.status(404).json({ 

@@ -12,8 +12,10 @@ export const applyMiddleware = (app: Express): void => {
   app.use(helmet());
 
   // Enable CORS with specific configuration
+  const frontendOrigin = process.env.FRONTEND_URL || `http://localhost:3001}`;
+  console.log('🔧 CORS origin set to', frontendOrigin);
   app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    origin: frontendOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
