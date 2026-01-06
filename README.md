@@ -6,22 +6,28 @@ A comprehensive TypeScript-based attendance management system for karate schools
 ## Features
 
 ### Core Functionality
--  Student management with multiple categories (kids, youth, adult, advanced)
--  Class scheduling and management  
--  Real-time attendance tracking
--  Teacher-friendly interface optimized for tablets
--  Automatic detection of next upcoming class
--  Historical attendance editing
--  Comprehensive reporting
+-  **Authentication & Authorization**: Secure JWT-based authentication with role-based access control (RBAC)
+-  **Student management** with multiple categories (kids, youth, adult, advanced)
+-  **Class scheduling and management**
+-  **Real-time attendance tracking**
+-  **User management**: Admin-only user creation with 4 role types (admin, instructor, staff, student)
+-  **Teacher-friendly interface** optimized for tablets
+-  **Automatic detection** of next upcoming class
+-  **Historical attendance editing**
+-  **Comprehensive reporting**
 
 ### Technical Features
--  TypeScript for type safety
--  MongoDB with Mongoose ODM
--  Express.js REST API
--  Responsive web interface
--  Data validation with Joi
--  Calendar integration with FullCalendar
--  Time-based logic for class management
+-  **TypeScript** for type safety across frontend and backend
+-  **MongoDB** with Mongoose ODM
+-  **Express.js** REST API with JWT authentication
+-  **Next.js 16** with App Router for frontend
+-  **NextAuth.js** for session management
+-  **Responsive web interface** with shadcn/ui components
+-  **Data validation** with Joi
+-  **Calendar integration** with FullCalendar
+-  **Time-based logic** for class management
+-  **Rate limiting** to prevent brute force attacks
+-  **bcrypt** password hashing
 
 ## Quick Start
 
@@ -32,47 +38,84 @@ A comprehensive TypeScript-based attendance management system for karate schools
 
 ### Installation
 
-1. Clone the repository
+1. **Clone the repository**
 ```bash
 git clone <repository-url>
 cd <repository-name>
 ```
 
-2. Install dependencies
+2. **Install backend dependencies**
 ```bash
 pnpm install
 ```
 
-3. Set up environment variables
+3. **Install frontend dependencies**
+```bash
+cd frontend
+pnpm install
+cd ..
+```
+
+4. **Set up environment variables**
+
+Backend:
 ```bash
 cp .env.example .env
 # Edit .env with your configuration
+# Generate secure random strings for JWT_SECRET, JWT_REFRESH_SECRET
 ```
 
-4. Start MongoDB (if running locally. For Docker use your docker-compose.yml configuration)
+Frontend:
 ```bash
-mongod
-# Or with Docker:
-docker-compose up
+cd frontend
+cp .env.example .env.local
+# Edit .env.local with your configuration
+# Generate a secure random string for NEXTAUTH_SECRET
+cd ..
 ```
 
-5. Run the development server
+5. **Start MongoDB**
+```bash
+# With Docker (recommended):
+docker-compose up -d
+
+# Or locally:
+mongod
+```
+
+6. **Create initial admin user**
+```bash
+pnpm run seed:admin
+```
+
+This creates an admin account with:
+- 📧 Email: `admin@karateattendance.com`
+- 🔑 Password: `ChangeMe123!`
+- ⚠️ **Change this password immediately after first login!**
+
+7. **Start the backend server**
 ```bash
 pnpm run dev
 ```
 
-The API will be available at http://localhost:3000.
-The frontend will be available at http://localhost:3001.
-To log in to the system, use the following credentials at
-http://localhost:3001/login:
+The API will be available at http://localhost:3000
 
-📧 Email: admin@karateattendance.com
+8. **Start the frontend** (in a new terminal)
+```bash
+cd frontend
+pnpm run dev
+```
 
-🔑 Password: ChangeMe123!
+The frontend will be available at http://localhost:3001
+
+9. **Login to the system**
+- Navigate to http://localhost:3001/login
+- Use the admin credentials above
+- Change the password in your first session
 
 ### Database Schema
 
-The system uses 4 main collections:
+The system uses 5 main collections:
 
 #### Students
 - Personal information and contact details
@@ -96,11 +139,64 @@ The system uses 4 main collections:
 - Notes and timestamps
 - Teacher who recorded attendance
 
--- Note: mongoDB on docker mapped to port 27018 to not interfere with already running mongoDB instance (default is 27017)
+#### Users
+- Email and hashed password (bcrypt)
+- Role (admin, instructor, staff, student)
+- Status (active, inactive, suspended)
+- Last login tracking
+- Password change tracking
+
+**Note**: MongoDB on Docker is mapped to port 27018 to avoid conflicts with local MongoDB instances (default port 27017)
+
+## User Roles & Permissions
+
+The system implements role-based access control with 4 user types:
+
+### ADMIN
+- **Full system access**
+- Manage users (create, edit, delete)
+- Manage students, classes, and schedules
+- Mark attendance and view all reports
+- Access to all features
+
+### INSTRUCTOR
+- **Limited administrative access**
+- View all students and classes
+- Create and manage their own class schedules
+- Mark attendance for any class
+- View attendance reports
+- Cannot manage users or delete data
+
+### STAFF
+- **Check-in desk role**
+- View students and class schedules
+- Mark attendance (check-in functionality)
+- Cannot create, edit, or delete data
+- Cannot view reports
+
+### STUDENT
+- **View-only access**
+- View their own attendance history
+- View class schedules
+- Cannot modify any data
 
 ## Usage
 
-### For Teachers
+### For Administrators
+
+1. **User Management**
+   - Navigate to "Users" in the sidebar (admin only)
+   - Click "Create User" to add new users
+   - Assign appropriate roles (admin, instructor, staff, student)
+   - Set initial passwords (users should change on first login)
+   - Activate/deactivate user accounts as needed
+
+2. **System Configuration**
+   - Manage all students, classes, and schedules
+   - View comprehensive reports
+   - Monitor system usage
+
+### For Instructors/Teachers
 
 1. **Daily Workflow**
    - Open app to see today's classes
@@ -122,6 +218,24 @@ The system uses 4 main collections:
    - Track student attendance patterns
 
 ### API Endpoints
+
+**Note**: All endpoints except authentication require a valid JWT token in the Authorization header.
+
+#### Authentication
+- `POST /api/auth/login` - User login (public)
+- `POST /api/auth/refresh-token` - Refresh access token (public)
+- `GET /api/auth/me` - Get current user profile (protected)
+- `PUT /api/auth/me` - Update current user profile (protected)
+- `PUT /api/auth/change-password` - Change password (protected)
+
+#### Users (Admin only)
+- `GET /api/users` - Get all users
+- `GET /api/users/:id` - Get user by ID
+- `POST /api/users` - Create new user
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user
+- `PUT /api/users/:id/status` - Change user status
+- `PUT /api/users/:id/reset-password` - Admin password reset
 
 #### Attendance
 - `GET /api/attendance/today` - Get today's classes
@@ -165,22 +279,71 @@ src/
 ```
 
 ### Scripts
-- `pnpm run dev` - Start development server
-- `pnpm run build` - Build for production  
+
+**Backend:**
+- `pnpm run dev` - Start development server with hot reload
+- `pnpm run build` - Build for production
 - `pnpm start` - Start production server
 - `pnpm test` - Run tests
+- `pnpm run seed:admin` - Create initial admin user
+
+**Frontend:**
+- `cd frontend && pnpm run dev` - Start Next.js development server
+- `cd frontend && pnpm run build` - Build frontend for production
+- `cd frontend && pnpm start` - Start frontend production server
 
 ### Key Design Decisions
 
-1. **Multiple Categories per Student/Class**: Students and classes can belong to multiple categories (e.g., a 16-year-old might be in both "youth" and "adult" classes)
+1. **JWT-based Authentication**: Secure token-based authentication with refresh tokens for session management. Access tokens expire in 24 hours, refresh tokens in 7 days.
 
-2. **Time-based Class Selection**: The system automatically highlights the next upcoming class to streamline the teacher workflow
+2. **Role-based Authorization**: Granular permission system with 4 user roles, allowing fine-grained access control to different features.
 
-3. **Separate Schedule Instances**: Classes and their schedules are separate entities, allowing for flexible scheduling and easy editing of specific instances
+3. **Multiple Categories per Student/Class**: Students and classes can belong to multiple categories (e.g., a 16-year-old might be in both "youth" and "adult" classes)
 
-4. **Category-specific Attendance**: Attendance is tracked per category, enabling mixed-level classes
+4. **Time-based Class Selection**: The system automatically highlights the next upcoming class to streamline the teacher workflow
 
-5. **Teacher-centric UI**: Interface optimized for tablet use with large touch targets and minimal navigation
+5. **Separate Schedule Instances**: Classes and their schedules are separate entities, allowing for flexible scheduling and easy editing of specific instances
+
+6. **Category-specific Attendance**: Attendance is tracked per category, enabling mixed-level classes
+
+7. **Teacher-centric UI**: Interface optimized for tablet use with large touch targets and minimal navigation
+
+8. **Admin-only User Creation**: No self-registration to maintain security and control over who accesses the system
+
+## Security
+
+### Authentication & Authorization
+- **Password Hashing**: bcrypt with 10 rounds
+- **JWT Tokens**: Signed with HS256 algorithm
+- **Token Expiry**: 24h for access tokens, 7d for refresh tokens
+- **Rate Limiting**: 5 login attempts per 15 minutes per IP
+- **CORS**: Restricted to frontend URL only
+- **Password Requirements**: Minimum 8 characters
+
+### Best Practices
+- Change default admin password immediately after first login
+- Use strong, unique passwords for all users
+- Generate secure random strings for JWT_SECRET, JWT_REFRESH_SECRET, and NEXTAUTH_SECRET
+- Keep environment variables secure and never commit to version control
+- Regularly review user access and deactivate unused accounts
+- Enable HTTPS in production
+
+## Troubleshooting
+
+### Cannot login
+- Ensure MongoDB is running (`docker-compose up -d`)
+- Verify backend is running on port 3000
+- Check that admin user exists (`pnpm run seed:admin`)
+- Verify JWT_SECRET is set in `.env`
+
+### 401 Unauthorized errors
+- Check that you're logged in
+- Token may have expired - log out and log back in
+- Verify NEXTAUTH_SECRET matches between requests
+
+### CORS errors
+- Verify FRONTEND_URL in backend `.env` matches your frontend URL
+- Check that frontend is running on the correct port (3001)
 
 ## Contributing
 
