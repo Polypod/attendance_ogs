@@ -191,7 +191,17 @@ export interface CreateClassScheduleDto {
   status?: ClassStatusEnum;
 }
 
-export interface UpdateClassScheduleDto extends Partial<Omit<CreateClassScheduleDto, 'class_id'>> {}
+export interface UpdateClassScheduleSession {
+  date: Date | string;
+  status?: ClassStatusEnum;
+  notes?: string;
+  'S-instructor'?: string;
+  _id?: string;
+}
+
+export interface UpdateClassScheduleDto extends Partial<Omit<CreateClassScheduleDto, 'class_id'>> {
+  sessions?: UpdateClassScheduleSession[];
+}
 
 export interface MarkAttendanceDto {
   student_id: string;
