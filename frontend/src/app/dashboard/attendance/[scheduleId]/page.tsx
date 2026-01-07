@@ -7,6 +7,7 @@ import { createApiClient } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Save, CheckCircle, XCircle } from "lucide-react";
 import {
   Select,
@@ -66,6 +67,7 @@ export default function TakeAttendancePage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [showAllStudents, setShowAllStudents] = useState(false);
+  const [showOnlyActive, setShowOnlyActive] = useState(true);
   const [attendance, setAttendance] = useState<Record<string, AttendanceRecord>>({});
   const [sessionInstructor, setSessionInstructor] = useState("");
   const [sessionNotes, setSessionNotes] = useState("");
@@ -404,11 +406,25 @@ export default function TakeAttendancePage() {
           </Card>
         )}
 
+        <div className="flex items-center gap-3 mb-4">
+          <Checkbox
+            id="show-active-attendance"
+            checked={showOnlyActive}
+            onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
+          />
+          <label
+            htmlFor="show-active-attendance"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+          >
+            Show only active students
+          </label>
+        </div>
+
         <Card className="p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
             <div>
               <h2 className="text-xl font-semibold">
-                Students in Class Categories ({students.length})
+                Students in Class Categories ({showOnlyActive ? students.filter(s => s.active !== false).length : students.length})
               </h2>
               <p className="text-sm text-muted-foreground">
                 Students matching class categories
@@ -442,7 +458,7 @@ export default function TakeAttendancePage() {
             </p>
           ) : (
             <div className="space-y-3">
-              {students.map((student) => (
+              {(showOnlyActive ? students.filter(s => s.active !== false) : students).map((student) => (
                 <Card key={student._id} className="p-4">
                   <div className="flex flex-col md:flex-row md:items-center gap-4">
                     <div className="flex-1">
@@ -513,6 +529,7 @@ export default function TakeAttendancePage() {
             <div className="space-y-3">
               {allStudents
                 .filter(student => !students.some(s => s._id === student._id))
+                .filter(student => showOnlyActive ? student.active !== false : true)
                 .map((student) => (
                   <Card key={student._id} className="p-4 bg-white">
                     <div className="flex flex-col md:flex-row md:items-center gap-4">

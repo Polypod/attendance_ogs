@@ -88,6 +88,7 @@ export interface Student {
   phone: string;
   emergency_contact: EmergencyContact;
   status: StudentStatusEnum;
+  active?: boolean;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -159,10 +160,12 @@ export interface CreateStudentDto {
   belt_level: string;
   phone: string;
   emergency_contact: EmergencyContact;
+  active?: boolean;
 }
 
 export interface UpdateStudentDto extends Partial<Omit<CreateStudentDto, 'email' | 'emergency_contact'>> {
   emergency_contact?: Partial<EmergencyContact>;
+  active?: boolean;
 }
 
 export interface CreateClassDto {

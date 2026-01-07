@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Edit, Plus } from "lucide-react";
 
 type Student = {
@@ -37,6 +38,7 @@ type Student = {
     name?: string;
     phone?: string;
   };
+  active?: boolean;
 };
 
 export default function StudentsPage() {
@@ -44,6 +46,7 @@ export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showOnlyActive, setShowOnlyActive] = useState(true);
 
   // Fetch config for dropdowns
   const { config, loading: configLoading } = useConfig();
@@ -65,6 +68,7 @@ export default function StudentsPage() {
       name: "",
       phone: "",
     },
+    active: true,
   });
 
   // Form state for edit student (email cannot be changed after creation)
@@ -77,6 +81,7 @@ export default function StudentsPage() {
       name: "",
       phone: "",
     },
+    active: true,
   });
 
   // Fetch students
@@ -153,6 +158,7 @@ export default function StudentsPage() {
           name: "",
           phone: "",
         },
+        active: true,
       });
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
@@ -226,6 +232,7 @@ export default function StudentsPage() {
         name: student.emergency_contact?.name || "",
         phone: student.emergency_contact?.phone || "",
       },
+      active: student.active !== undefined ? student.active : true,
     });
     setEditDialogOpen(true);
   }
@@ -412,6 +419,27 @@ export default function StudentsPage() {
                     </div>
                   </div>
                 </div>
+
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="create-active"
+                      checked={createForm.active}
+                      onCheckedChange={(checked) =>
+                        setCreateForm({ ...createForm, active: checked === true })
+                      }
+                    />
+                    <label
+                      htmlFor="create-active"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Active Student
+                    </label>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1 ml-6">
+                    Check this box to mark the student as active (default is checked)
+                  </p>
+                </div>
               </div>
               <DialogFooter>
                 <Button
@@ -447,20 +475,38 @@ export default function StudentsPage() {
           </p>
         </Card>
       ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Categories</TableHead>
-                <TableHead>Belt Level</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {students.map((student) => (
+        <div className="space-y-4">
+          <Card className="p-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="filter-active"
+                checked={showOnlyActive}
+                onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
+              />
+              <label
+                htmlFor="filter-active"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Show only active students
+              </label>
+            </div>
+          </Card>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Categories</TableHead>
+                  <TableHead>Belt Level</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {students
+                  .filter(student => !showOnlyActive || student.active !== false)
+                  .map((student) => (
                 <TableRow key={student._id}>
                   <TableCell className="font-medium">{student.name}</TableCell>
                   <TableCell>
@@ -492,6 +538,7 @@ export default function StudentsPage() {
             </TableBody>
           </Table>
         </Card>
+        </div>
       )}
 
       {/* Edit Student Dialog */}
@@ -650,6 +697,27 @@ export default function StudentsPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-active"
+                    checked={editForm.active}
+                    onCheckedChange={(checked) =>
+                      setEditForm({ ...editForm, active: checked === true })
+                    }
+                  />
+                  <label
+                    htmlFor="edit-active"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Active Student
+                  </label>
+                </div>
+                <p className="text-sm text-gray-500 mt-1 ml-6">
+                  Uncheck this box to mark the student as inactive
+                </p>
               </div>
             </div>
             <DialogFooter>

@@ -43,7 +43,8 @@ export const createStudentSchema = Joi.object<CreateStudentDto>({
   emergency_contact: Joi.object({
     name: Joi.string().optional().allow(''),
     phone: Joi.string().optional().allow('')
-  }).optional()
+  }).optional(),
+  active: Joi.boolean().optional()
 });
 
 export const updateStudentSchema = Joi.object<UpdateStudentDto>({
@@ -68,7 +69,8 @@ export const updateStudentSchema = Joi.object<UpdateStudentDto>({
   emergency_contact: Joi.object({
     name: Joi.string().optional().allow('', null),
     phone: Joi.string().optional().allow('', null)
-  }).optional().allow(null)
+  }).optional().allow(null),
+  active: Joi.boolean().optional()
 }).min(1); // At least one field is required for update
 
 // Class validation schemas

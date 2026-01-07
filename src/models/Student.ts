@@ -87,6 +87,11 @@ const studentSchema = new Schema<IStudentDocument>({
       message: `Status must be one of: ${Object.values(StudentStatusEnum).join(', ')}`
     },
     default: StudentStatusEnum.ACTIVE
+  },
+  active: {
+    type: Boolean,
+    default: true,
+    required: false
   }
 }, {
   timestamps: { 
