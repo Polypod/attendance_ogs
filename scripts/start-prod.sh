@@ -89,7 +89,15 @@ echo "Building backend (root)..."
 pnpm build
 
 echo "Building frontend..."
-cd frontend && pnpm build && cd ..
+# Run frontend build and save logs for easier debugging
+if ! pnpm --prefix frontend build > logs/frontend-build.log 2>&1; then
+  echo "Frontend build failed. See logs/frontend-build.log for details."
+  show_log_tail "logs/frontend-build.log"
+  exit 1
+fi
+# Show the last lines of build log for quick feedback
+echo "==== Frontend build output (tail) ===="
+tail -n 50 logs/frontend-build.log || true
 
 # Start backend and frontend with specified ports
 echo "Starting backend on port 4010..."
