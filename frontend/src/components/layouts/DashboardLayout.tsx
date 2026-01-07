@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Menu, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,8 +27,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     user && link.roles.includes(user.role)
   );
 
+  const router = useRouter();
+
   const handleLogout = async () => {
-    await signOut({ callbackUrl: "/login" });
+    // Sign out without server redirect, then navigate client-side to /login
+    await signOut({ redirect: false });
+    // Force same-origin navigation to avoid any absolute NEXTAUTH_URL redirects
+    // (use window.location to ensure current host is used)
+    if (typeof window !== "undefined") {
+      window.location.href = `${window.location.origin}/login`;
+    } else {
+      router.replace('/login');
+    }
   };
 
   return (
