@@ -1,7 +1,7 @@
 // frontend/src/app/api/[...path]/route.ts - API proxy to backend
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4000';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 
 export async function GET(
   request: NextRequest,
