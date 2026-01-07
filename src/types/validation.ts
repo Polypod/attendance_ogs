@@ -39,11 +39,11 @@ export const createStudentSchema = Joi.object<CreateStudentDto>({
     }
     return value;
   }),
-  phone: Joi.string().required(),
+  phone: Joi.string().optional().allow(''),
   emergency_contact: Joi.object({
-    name: Joi.string().required(),
-    phone: Joi.string().required()
-  }).required()
+    name: Joi.string().optional().allow(''),
+    phone: Joi.string().optional().allow('')
+  }).optional()
 });
 
 export const updateStudentSchema = Joi.object<UpdateStudentDto>({
@@ -64,11 +64,11 @@ export const updateStudentSchema = Joi.object<UpdateStudentDto>({
     }
     return value;
   }),
-  phone: Joi.string(),
+  phone: Joi.string().optional().allow('', null),
   emergency_contact: Joi.object({
-    name: Joi.string(),
-    phone: Joi.string()
-  })
+    name: Joi.string().optional().allow('', null),
+    phone: Joi.string().optional().allow('', null)
+  }).optional().allow(null)
 }).min(1); // At least one field is required for update
 
 // Class validation schemas
@@ -113,21 +113,30 @@ export const createClassScheduleSchema = Joi.object<CreateClassScheduleDto>({
   date: Joi.date().required(),
   start_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
   end_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
-  day_of_week: Joi.string().valid(
-    ...daysOfWeek
-  ).required(),
-  recurring: Joi.boolean().default(false)
-});
+  day_of_week: Joi.string().valid(...daysOfWeek).optional(), // Made optional - legacy field
+  days_of_week: Joi.array().items(Joi.number().integer().min(0).max(6)).min(1).optional(), // Array of day numbers (0=Sunday, 6=Saturday)
+  recurring: Joi.boolean().default(false),
+  recurrence_end_date: Joi.date().optional().when('recurring', {
+    is: true,
+    then: Joi.date().required().greater(Joi.ref('date')),
+    otherwise: Joi.optional()
+  })
+}).options({ stripUnknown: true });
 
 export const updateClassScheduleSchema = Joi.object<UpdateClassScheduleDto>({
   date: Joi.date(),
   start_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
   end_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  day_of_week: Joi.string().valid(
-    ...daysOfWeek
-  ),
-  recurring: Joi.boolean()
-}).min(1);
+  day_of_week: Joi.string().valid(...daysOfWeek).optional(), // Legacy field
+  days_of_week: Joi.array().items(Joi.number().integer().min(0).max(6)).min(1).optional(), // Array of day numbers
+  recurring: Joi.boolean(),
+  recurrence_end_date: Joi.date().optional().when('recurring', {
+    is: true,
+    then: Joi.date().greater(Joi.ref('date')),
+    otherwise: Joi.optional()
+  }),
+  status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled').optional()
+}).min(1).options({ stripUnknown: true });
 
 // Authentication validation schemas
 export const loginSchema = Joi.object<LoginDto>({

@@ -17,7 +17,9 @@ const handler = NextAuth({
 
         try {
           // Call backend login endpoint
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/auth/login`, {
+          // Use BACKEND_URL for server-side requests (supports remote development)
+          const apiUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+          const res = await fetch(`${apiUrl}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

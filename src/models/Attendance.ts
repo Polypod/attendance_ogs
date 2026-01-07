@@ -85,9 +85,9 @@ const attendanceSchema = new Schema<IAttendanceDocument>(
   }
 );
 
-// Ensure unique attendance per student per class schedule
+// Ensure unique attendance per student per class schedule per date
 attendanceSchema.index(
-  { student_id: 1, class_schedule_id: 1 }, 
+  { student_id: 1, class_schedule_id: 1, date: 1 }, 
   { unique: true }
 );
 

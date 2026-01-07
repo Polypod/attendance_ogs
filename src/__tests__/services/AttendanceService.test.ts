@@ -18,16 +18,17 @@ describe('AttendanceService', () => {
   let testScheduleId: mongoose.Types.ObjectId;
   let testStudentId: mongoose.Types.ObjectId;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     attendanceService = new AttendanceService();
     
     // Create test data
     const testClass = await ClassModel.create({
       name: 'Test Class',
-      instructor: 'Test Instructor',
+      description: 'Test class description',
       categories: [StudentCategoryEnum.KIDS, StudentCategoryEnum.YOUTH],
-      schedule: [],
-      description: 'Test class description'
+      instructor: 'Test Instructor',
+      max_capacity: 30,
+      duration_minutes: 60
     });
     testClassId = testClass._id;
 
@@ -45,10 +46,11 @@ describe('AttendanceService', () => {
     const testStudent = await StudentModel.create({
       name: 'Test Student',
       email: 'test@example.com',
-      category: StudentCategoryEnum.BEGINNER,
-      date_of_birth: new Date('2000-01-01'),
-      join_date: new Date(),
-      emergency_contact: '1234567890'
+      categories: [StudentCategoryEnum.KIDS],
+      belt_level: 'white',
+      registration_date: new Date('2000-01-01'),
+      phone: '1234567890',
+      emergency_contact: { name: 'Parent', phone: '1234567890' }
     });
     testStudentId = testStudent._id;
   });
@@ -117,7 +119,8 @@ describe('AttendanceService', () => {
       );
 
       expect(attendance).toHaveLength(1);
-      expect(attendance[0].student_id).toEqual(testStudentId);
+      // `student_id` is returned as a string here
+      expect(attendance[0].student_id).toEqual(testStudentId.toString());
       expect(attendance[0].status).toBe(AttendanceStatusEnum.PRESENT);
     });
 
@@ -138,6 +141,7 @@ describe('AttendanceService', () => {
         date: pastDate,
         start_time: '10:00',
         end_time: '11:30',
+        day_of_week: 'monday',
         status: 'completed'
       });
 

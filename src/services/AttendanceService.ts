@@ -124,27 +124,41 @@ export class AttendanceService {
 
             const studentId = new Types.ObjectId(data.student_id);
             const scheduleId = new Types.ObjectId(data.class_schedule_id);
+            const attendanceDate = data.date ? new Date(data.date) : new Date();
             const now = new Date();
 
+            // Check for existing attendance for this student, schedule, and date
             const existingAttendance = await AttendanceModel.findOne({
               student_id: studentId,
               class_schedule_id: scheduleId,
-              date: now
+              date: {
+                $gte: moment(attendanceDate).startOf('day').toDate(),
+                $lte: moment(attendanceDate).endOf('day').toDate()
+              }
             });
 
+            let attendance;
             if (existingAttendance) {
-              throw new Error('Attendance already recorded for this student and class schedule');
+              // Update existing attendance
+              existingAttendance.status = data.status;
+              existingAttendance.notes = data.notes || '';
+              existingAttendance.category = data.category;
+              existingAttendance.recorded_by = recordedBy;
+              existingAttendance.recorded_at = now;
+              existingAttendance.updated_at = now;
+              attendance = await existingAttendance.save();
+            } else {
+              // Create new attendance
+              attendance = await AttendanceModel.create({
+                ...data,
+                student_id: studentId,
+                class_schedule_id: scheduleId,
+                recorded_by: recordedBy,
+                recorded_at: now,
+                date: attendanceDate,
+                updated_at: now
+              });
             }
-
-            const attendance = await AttendanceModel.create({
-              ...data,
-              student_id: studentId,
-              class_schedule_id: scheduleId,
-              recorded_by: recordedBy,
-              recorded_at: now,
-              date: now,
-              updated_at: now
-            });
 
             return { 
               success: true, 
@@ -166,6 +180,77 @@ export class AttendanceService {
       results.push(...batchResults);
     }
 
+    // After all attendance is processed, update the schedule's sessions array
+    // Get the user who recorded the attendance for the instructor field
+    const { UserModel } = require('../models/User');
+    let instructorName = 'Unknown';
+    
+    try {
+      // recordedBy might be an email or ObjectId - try to find user
+      const user = Types.ObjectId.isValid(recordedBy)
+        ? await UserModel.findById(recordedBy).select('name email')
+        : await UserModel.findOne({ email: recordedBy }).select('name email');
+      
+      instructorName = user ? (user.name || user.email) : recordedBy;
+    } catch (error) {
+      console.error('Failed to fetch user for instructor name:', error);
+      instructorName = recordedBy; // Fallback to recordedBy value
+    }
+    
+    // Group results by schedule and date to update sessions
+    const scheduleUpdates = new Map<string, { date: Date; scheduleId: Types.ObjectId }>();
+    
+    for (const result of results) {
+      if (result.success && result.attendance) {
+        const att = result.attendance;
+        const dateStr = att.date.toISOString().split('T')[0];
+        const key = `${att.class_schedule_id}-${dateStr}`;
+        
+        if (!scheduleUpdates.has(key)) {
+          scheduleUpdates.set(key, {
+            date: att.date,
+            scheduleId: att.class_schedule_id
+          });
+        }
+      }
+    }
+
+    // Update each schedule's sessions array
+    const { ClassScheduleModel } = require('../models/ClassSchedule');
+    for (const [key, update] of scheduleUpdates) {
+      try {
+        const schedule = await ClassScheduleModel.findById(update.scheduleId);
+        if (schedule) {
+          const dateStr = update.date.toISOString().split('T')[0];
+          const existingSessionIndex = schedule.sessions?.findIndex(
+            (s: any) => s.date.toISOString().split('T')[0] === dateStr
+          ) ?? -1;
+
+          if (existingSessionIndex >= 0) {
+            // Update existing session to completed
+            schedule.sessions[existingSessionIndex].status = 'completed';
+            schedule.sessions[existingSessionIndex].instructor = instructorName;
+          } else {
+            // Create new session
+            if (!schedule.sessions) {
+              schedule.sessions = [];
+            }
+            schedule.sessions.push({
+              date: update.date,
+              instructor: instructorName,
+              status: 'completed',
+              notes: ''
+            });
+          }
+          
+          await schedule.save();
+        }
+      } catch (error) {
+        console.error(`Failed to update session for schedule ${update.scheduleId}:`, error);
+        // Don't throw - attendance is already saved, session update is secondary
+      }
+    }
+
     return results;
   }
 
@@ -181,10 +266,10 @@ export class AttendanceService {
     category?: StudentCategory
   ): Promise<AttendanceWithDetails[]> {
     // Validate the class schedule ID format
-    if (!Types.ObjectId.isValid(classScheduleId)) {
-      throw new Error('Invalid class schedule ID format');
-    }
-
+    // Use the project ValidationError for consistent error handling
+    const { validateObjectId } = require('../utils/validators');
+    validateObjectId(classScheduleId, 'class schedule ID');
+5509
     const query: { 
       class_schedule_id: Types.ObjectId;
       category?: StudentCategory;
@@ -199,7 +284,7 @@ export class AttendanceService {
     try {
       // Define the populated attendance type
       type PopulatedAttendance = Omit<IAttendanceDocument, 'student_id' | 'class_schedule_id'> & {
-        student_id: { _id: Types.ObjectId; name: string; email: string };
+        student_id: { _id: Types.ObjectId; name: string; email: string; categories: StudentCategory[] };
         class_schedule_id: IClassScheduleDocument & {
           class_id: IClassInfo | Types.ObjectId;
           date: Date;
@@ -212,7 +297,7 @@ export class AttendanceService {
       // Execute the query with proper typing
       const attendanceRecords = await (Attendance as IAttendanceModel)
         .find(query)
-        .populate<{ student_id: { _id: Types.ObjectId; name: string; email: string } }>('student_id', 'name email')
+        .populate<{ student_id: { _id: Types.ObjectId; name: string; email: string; categories: StudentCategory[] } }>('student_id', 'name email categories')
         .populate<{ 
           class_schedule_id: IClassScheduleDocument & { 
             class_id: IClassInfo | Types.ObjectId;
@@ -231,89 +316,13 @@ export class AttendanceService {
         .sort({ 'student_id.name': 1 })
         .lean<PopulatedAttendance[]>();
 
-      // Map the results to the expected output format
-      return attendanceRecords.map((record) => {
-        const schedule = record.class_schedule_id;
-        const student = record.student_id;
-        
-        // Safely extract class information whether it's populated or not
-        let className = 'Unknown';
-        let classInstructor = 'Unknown';
-        let classCategories: StudentCategory[] = [];
-        let classDescription = '';
-        let classMaxCapacity = 20; // Default value
-        let classDurationMinutes = 60; // Default value
-        
-        if (schedule?.class_id && typeof schedule.class_id === 'object' && 'name' in schedule.class_id) {
-          const classInfo = schedule.class_id as IClassInfo;
-          className = classInfo.name;
-          classInstructor = classInfo.instructor;
-          classCategories = classInfo.categories || [];
-          // Extract additional class info if available
-          if ('description' in schedule.class_id) {
-            classDescription = (schedule.class_id as any).description || '';
-          }
-          if ('max_capacity' in schedule.class_id) {
-            classMaxCapacity = (schedule.class_id as any).max_capacity || 20;
-          }
-          if ('duration_minutes' in schedule.class_id) {
-            classDurationMinutes = (schedule.class_id as any).duration_minutes || 60;
-          }
-        }
+      // Filter out any records missing required populated fields
+      // Note: student_id can be null for "other students" attendance
+      const filteredRecords = attendanceRecords.filter(r => r.class_schedule_id);
 
-        // Create the attendance details with all required fields
-        const result: AttendanceWithDetails = {
-          _id: record._id.toString(),
-          student_id: student._id.toString(),
-          class_schedule_id: schedule._id.toString(),
-          date: schedule.date,
-          status: record.status as AttendanceStatus,
-          category: record.category as StudentCategory,
-          notes: record.notes || '',
-          recorded_by: record.recorded_by,
-          recorded_at: record.recorded_at,
-          created_at: record.created_at,
-          updated_at: record.updated_at,
-          student: {
-            _id: student._id.toString(),
-            name: student.name,
-            email: student.email,
-            categories: [],
-            belt_level: '',
-            registration_date: new Date(),
-            phone: '',
-            emergency_contact: { name: '', phone: '' },
-            status: StudentStatusEnum.ACTIVE,
-            created_at: new Date(),
-            updated_at: new Date()
-          },
-          class_schedule: {
-            _id: schedule._id.toString(),
-            class_id: (schedule.class_id as IClassInfo)?._id?.toString() || '',
-            date: schedule.date,
-            start_time: schedule.start_time,
-            end_time: schedule.end_time,
-            day_of_week: schedule.day_of_week || 'monday', // Default to monday if not provided
-            recurring: schedule.recurring || false, // Default to false if not provided
-            status: schedule.status as ClassStatus,
-            created_at: schedule.created_at || new Date(),
-            updated_at: schedule.updated_at || new Date(),
-            class: {
-              _id: (schedule.class_id as IClassInfo)?._id?.toString() || '',
-              name: className,
-              description: classDescription,
-              categories: classCategories,
-              instructor: classInstructor,
-              max_capacity: classMaxCapacity,
-              duration_minutes: classDurationMinutes,
-              created_at: new Date(),
-              updated_at: new Date()
-            }
-          }
-        };
-        
-        return result;
-      });
+      console.log('[AttendanceService] getClassAttendance returning', filteredRecords.length, 'records');
+      // The populated student_id includes categories field
+      return filteredRecords as any as AttendanceWithDetails[];
     } catch (error) {
       const errorMessage = isErrorWithMessage(error)
         ? `Failed to retrieve class attendance: ${error.message}`
@@ -440,8 +449,9 @@ export class AttendanceService {
             _id: {
               student_id: '$student._id',
               student_name: '$student.name',
-              category: '$student.category'
+              category: { $arrayElemAt: ['$student.categories', 0] }
             },
+            class_name: { $first: '$class.name' },
             total_classes: { $sum: 1 },
             present: {
               $sum: {
@@ -460,14 +470,18 @@ export class AttendanceService {
             }
           }
         },
+
         {
           $project: {
             _id: 0,
             student_id: '$_id.student_id',
             student_name: '$_id.student_name',
             category: '$_id.category',
+            class_name: '$class_name',
             total_classes: 1,
+            total_students: '$total_classes',
             present: 1,
+            present_count: '$present',
             absent: 1,
             late: 1,
             attendance_percentage: {
@@ -501,8 +515,11 @@ export class AttendanceService {
         student_id: new Types.ObjectId(item.student_id),
         student_name: item.student_name,
         category: item.category as StudentCategory,
+        class_name: item.class_name || '',
         total_classes: item.total_classes,
+        total_students: item.total_students || item.total_classes,
         present: item.present,
+        present_count: item.present || 0,
         absent: item.absent,
         late: item.late,
         attendance_percentage: parseFloat(item.attendance_percentage.toFixed(2))

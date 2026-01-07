@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { useSession } from "next-auth/react";
+import { createApiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Table,
@@ -43,6 +44,7 @@ type User = {
 };
 
 export default function UsersPage() {
+  const { data: session, status } = useSession();
   const { isAdmin } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,15 +77,23 @@ export default function UsersPage() {
 
   // Fetch users
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    console.log('[Users] useEffect triggered, status:', status, 'session:', session, 'accessToken:', session?.accessToken);
+    if (status === 'authenticated' && session?.accessToken) {
+      fetchUsers();
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
+      setError('Not authenticated');
+    }
+  }, [status, session]);
 
   async function fetchUsers() {
+    if (!session?.accessToken) return;
     setLoading(true);
     setError(null);
     try {
+      const api = createApiClient((session as any)?.accessToken);
       const data = await api.get("/api/users");
-      setUsers(data.users || []);
+      setUsers(data.data || []);
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
       else setError("Failed to fetch users");
@@ -95,10 +105,12 @@ export default function UsersPage() {
   // Create user
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
+    if (!session?.accessToken) return;
     setError(null);
     try {
+      const api = createApiClient((session as any)?.accessToken);
       const data = await api.post("/api/users", createForm);
-      setUsers((prev) => [...prev, data.user]);
+      setUsers((prev) => [...prev, data.data]);
       setCreateDialogOpen(false);
       setCreateForm({ name: "", email: "", password: "", role: "student" });
     } catch (e: unknown) {
@@ -110,12 +122,13 @@ export default function UsersPage() {
   // Edit user
   async function handleEditUser(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedUser) return;
+    if (!selectedUser || !session?.accessToken) return;
     setError(null);
     try {
+      const api = createApiClient((session as any)?.accessToken);
       const data = await api.put(`/api/users/${selectedUser._id}`, editForm);
       setUsers((prev) =>
-        prev.map((u) => (u._id === selectedUser._id ? data.user : u))
+        prev.map((u) => (u._id === selectedUser._id ? data.data : u))
       );
       setEditDialogOpen(false);
       setSelectedUser(null);
@@ -127,9 +140,10 @@ export default function UsersPage() {
 
   // Delete user
   async function handleDeleteUser() {
-    if (!selectedUser) return;
+    if (!selectedUser || !session?.accessToken) return;
     setError(null);
     try {
+      const api = createApiClient((session as any)?.accessToken);
       await api.delete(`/api/users/${selectedUser._id}`);
       setUsers((prev) => prev.filter((u) => u._id !== selectedUser._id));
       setDeleteDialogOpen(false);
@@ -143,9 +157,10 @@ export default function UsersPage() {
   // Reset password
   async function handleResetPassword(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedUser) return;
+    if (!selectedUser || !session?.accessToken) return;
     setError(null);
     try {
+      const api = createApiClient((session as any)?.accessToken);
       await api.put(`/api/users/${selectedUser._id}/reset-password`, {
         newPassword,
       });

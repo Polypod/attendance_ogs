@@ -38,6 +38,7 @@
         "@types/node": "^22.10.5",
         "jest": "^30.2.0",
         "mongodb-memory-server": "^11.0.1",
+        "ts-jest": "^29.4.6",
         "ts-node-dev": "^2.0.0",
         "tsconfig-paths": "^4.2.0",
         "typescript": "^5.9.3"

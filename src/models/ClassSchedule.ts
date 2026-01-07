@@ -19,9 +19,12 @@ const classScheduleSchema = new Schema<IClassScheduleDocument>({
     type: Date,
     required: [true, 'Class date is required'],
     validate: {
-      validator: function(value: Date) {
-        // Ensure date is not in the past for new documents
+      validator: function(this: any, value: Date) {
+        // Allow past dates for classes that are completed; otherwise ensure date is not in the past for new documents
         if ((this as any).isNew) {
+          if (this.status === ClassStatusEnum.COMPLETED) {
+            return true;
+          }
           return value >= new Date(new Date().setHours(0, 0, 0, 0));
         }
         return true;
@@ -61,15 +64,40 @@ const classScheduleSchema = new Schema<IClassScheduleDocument>({
   },
   day_of_week: { 
     type: String, 
-    required: [true, 'Day of week is required'],
+    required: false, // Made optional since we're using days_of_week now
     enum: {
       values: Object.values(DayOfWeekEnum),
       message: `Day of week must be one of: ${Object.values(DayOfWeekEnum).join(', ')}`
     }
   },
+  days_of_week: {
+    type: [Number],
+    required: false,
+    validate: {
+      validator: function(value: number[]) {
+        if (!value || value.length === 0) return true; // Allow empty array
+        return value.every(day => typeof day === 'number' && day >= 0 && day <= 6);
+      },
+      message: 'Each day must be a number between 0 (Sunday) and 6 (Saturday)'
+    }
+  },
   recurring: { 
     type: Boolean, 
     default: false 
+  },
+  recurrence_end_date: {
+    type: Date,
+    required: false,
+    validate: {
+      validator: function(this: any, value: Date) {
+        // If recurring is true, recurrence_end_date should be provided and after start date
+        if (this.recurring && value) {
+          return value >= this.date;
+        }
+        return true;
+      },
+      message: 'Recurrence end date must be after or equal to start date'
+    }
   },
   status: {
     type: String,
@@ -78,6 +106,28 @@ const classScheduleSchema = new Schema<IClassScheduleDocument>({
       message: `Status must be one of: ${Object.values(ClassStatusEnum).join(', ')}`
     },
     default: ClassStatusEnum.SCHEDULED
+  },
+  sessions: {
+    type: [{
+      date: {
+        type: Date,
+        required: true
+      },
+      instructor: {
+        type: String,
+        required: true
+      },
+      status: {
+        type: String,
+        enum: Object.values(ClassStatusEnum),
+        default: ClassStatusEnum.SCHEDULED
+      },
+      notes: {
+        type: String,
+        default: ''
+      }
+    }],
+    default: []
   }
 }, {
   timestamps: { 

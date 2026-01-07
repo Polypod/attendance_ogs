@@ -21,9 +21,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Trash2, Edit, Plus } from "lucide-react";
 
@@ -37,12 +43,17 @@ type Class = {
   duration_minutes: number;
 };
 
+function getTodayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function CalendarPage() {
   const { data: session, status } = useSession();
   const { config } = useConfig();
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(getTodayISO());
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -69,6 +80,16 @@ export default function CalendarPage() {
     max_capacity: 20,
     duration_minutes: 60,
   });
+
+  // Fetch classes
+  useEffect(() => {
+    if (status === 'authenticated' && session?.accessToken) {
+      fetchClasses();
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
+      setError('Not authenticated');
+    }
+  }, [status, session]);
 
   // Fetch classes
   useEffect(() => {
@@ -108,13 +129,13 @@ export default function CalendarPage() {
       setCreateDialogOpen(false);
       setCreateForm({
         name: "",
+        instructor: "",
+        category: [],
         description: "",
         categories: [],
         instructor: "",
         max_capacity: 20,
-        duration_minutes: 60,
-      });
-    } catch (e: unknown) {
+        duration_minutes: 6) {
       if (e instanceof Error) setError(e.message);
       else setError("Failed to create class");
     }
@@ -160,12 +181,12 @@ export default function CalendarPage() {
     setSelectedClass(cls);
     setEditForm({
       name: cls.name || "",
+      instructor: cls.instructor || "",
       description: cls.description || "",
       categories: cls.categories || [],
       instructor: cls.instructor || "",
       max_capacity: cls.max_capacity || 20,
-      duration_minutes: cls.duration_minutes || 60,
-    });
+      duration_minutes: cls.duration_minutes || 6
     setEditDialogOpen(true);
   }
 
@@ -179,9 +200,9 @@ export default function CalendarPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Classes</h1>
+          <h1 className="text-3xl font-bold">Calendar</h1>
           <p className="text-muted-foreground mt-1">
-            View and manage class definitions
+            View and manage class schedules
           </p>
         </div>
 
@@ -198,13 +219,13 @@ export default function CalendarPage() {
               <DialogHeader>
                 <DialogTitle>Create New Class</DialogTitle>
                 <DialogDescription>
-                  Add a new class definition.
+                  Add a new class to the schedule.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div>
                   <label htmlFor="create-name" className="block text-sm font-medium mb-1">
-                    Class Name *
+                    Class Name
                   </label>
                   <Input
                     id="create-name"
@@ -217,23 +238,8 @@ export default function CalendarPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="create-description" className="block text-sm font-medium mb-1">
-                    Description *
-                  </label>
-                  <Textarea
-                    id="create-description"
-                    value={createForm.description}
-                    onChange={(e) =>
-                      setCreateForm({ ...createForm, description: e.target.value })
-                    }
-                    required
-                    placeholder="Description of the class"
-                    rows={3}
-                  />
-                </div>
-                <div>
                   <label htmlFor="create-instructor" className="block text-sm font-medium mb-1">
-                    Instructor *
+                    Instructor
                   </label>
                   <Input
                     id="create-instructor"
@@ -246,24 +252,36 @@ export default function CalendarPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="create-duration" className="block text-sm font-medium mb-1">
-                    Duration (minutes) *
+                  <label htmlFor="create-start-time" className="block text-sm font-medium mb-1">
+                    Start Time
                   </label>
                   <Input
-                    id="create-duration"
-                    type="number"
-                    value={createForm.duration_minutes}
+                    id="create-start-time"
+                    type="time"
+                    value={createForm.start_time}
                     onChange={(e) =>
-                      setCreateForm({ ...createForm, duration_minutes: parseInt(e.target.value) })
+                      setCreateForm({ ...createForm, start_time: e.target.value })
                     }
                     required
-                    min="15"
-                    max="240"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="create-end-time" className="block text-sm font-medium mb-1">
+                    End Time
+                  </label>
+                  <Input
+                    id="create-end-time"
+                    type="time"
+                    value={createForm.end_time}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, end_time: e.target.value })
+                    }
+                    required
                   />
                 </div>
                 <div>
                   <label htmlFor="create-capacity" className="block text-sm font-medium mb-1">
-                    Max Capacity *
+                    Max Capacity
                   </label>
                   <Input
                     id="create-capacity"
@@ -274,35 +292,64 @@ export default function CalendarPage() {
                     }
                     required
                     min="1"
-                    max="100"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Categories *
+                    Categories
                   </label>
                   <div className="space-y-2">
                     {config?.categories.map((cat) => (
                       <label key={cat.value} className="flex items-center">
                         <input
                           type="checkbox"
-                          checked={createForm.categories.includes(cat.value)}
+                          checked={createForm.category.includes(cat.value)}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setCreateForm({
                                 ...createForm,
-                                categories: [...createForm.categories, cat.value],
+                                category: [...createForm.category, cat.value],
                               });
                             } else {
                               setCreateForm({
                                 ...createForm,
-                                categories: createForm.categories.filter((c) => c !== cat.value),
+                                category: createForm.category.filter((c) => c !== cat.value),
                               });
                             }
                           }}
                           className="mr-2"
                         />
                         {cat.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Days of Week
+                  </label>
+                  <div className="space-y-2">
+                    {daysOfWeek.map((day) => (
+                      <label key={day.value} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={createForm.days_of_week.includes(day.value)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setCreateForm({
+                                ...createForm,
+                                days_of_week: [...createForm.days_of_week, day.value],
+                              });
+                            } else {
+                              setCreateForm({
+                                ...createForm,
+                                days_of_week: createForm.days_of_week.filter((d) => d !== day.value),
+                              });
+                            }
+                          }}
+                          className="mr-2"
+                        />
+                        {day.label}
                       </label>
                     ))}
                   </div>
@@ -325,14 +372,27 @@ export default function CalendarPage() {
         </Card>
       )}
 
+      <div className="mb-4">
+        <label htmlFor="date-select" className="font-medium mr-2">
+          Select date:
+        </label>
+        <Input
+          id="date-select"
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="w-auto inline-block"
+        />
+      </div>
+
       {loading ? (
         <Card className="p-8 text-center">
           <div className="text-muted-foreground">Loading classes...</div>
         </Card>
-      ) : classes.length === 0 ? (
+      ) : filteredClasses.length === 0 ? (
         <Card className="p-8 text-center">
           <div className="text-muted-foreground">
-            No classes found. Create your first class to get started.
+            No classes scheduled for this date.
           </div>
         </Card>
       ) : (
@@ -340,26 +400,28 @@ export default function CalendarPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Class Name</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Class</TableHead>
                 <TableHead>Instructor</TableHead>
-                <TableHead>Categories</TableHead>
-                <TableHead>Duration</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Capacity</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {classes.map((cls) => (
+              {filteredClasses.map((cls) => (
                 <TableRow key={cls._id}>
+                  <TableCell>
+                    {cls.start_time} - {cls.end_time}
+                  </TableCell>
                   <TableCell className="font-medium">{cls.name}</TableCell>
                   <TableCell>{cls.instructor}</TableCell>
                   <TableCell>
-                    {Array.isArray(cls.categories)
-                      ? cls.categories.join(", ")
-                      : cls.categories || "N/A"}
+                    {Array.isArray(cls.category)
+                      ? cls.category.join(", ")
+                      : cls.category || "N/A"}
                   </TableCell>
-                  <TableCell>{cls.duration_minutes} min</TableCell>
-                  <TableCell>{cls.max_capacity}</TableCell>
+                  <TableCell>{cls.max_capacity || "N/A"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
@@ -398,7 +460,7 @@ export default function CalendarPage() {
             <div className="space-y-4 py-4">
               <div>
                 <label htmlFor="edit-name" className="block text-sm font-medium mb-1">
-                  Class Name *
+                  Class Name
                 </label>
                 <Input
                   id="edit-name"
@@ -410,22 +472,8 @@ export default function CalendarPage() {
                 />
               </div>
               <div>
-                <label htmlFor="edit-description" className="block text-sm font-medium mb-1">
-                  Description *
-                </label>
-                <Textarea
-                  id="edit-description"
-                  value={editForm.description}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, description: e.target.value })
-                  }
-                  required
-                  rows={3}
-                />
-              </div>
-              <div>
                 <label htmlFor="edit-instructor" className="block text-sm font-medium mb-1">
-                  Instructor *
+                  Instructor
                 </label>
                 <Input
                   id="edit-instructor"
@@ -437,24 +485,36 @@ export default function CalendarPage() {
                 />
               </div>
               <div>
-                <label htmlFor="edit-duration" className="block text-sm font-medium mb-1">
-                  Duration (minutes) *
+                <label htmlFor="edit-start-time" className="block text-sm font-medium mb-1">
+                  Start Time
                 </label>
                 <Input
-                  id="edit-duration"
-                  type="number"
-                  value={editForm.duration_minutes}
+                  id="edit-start-time"
+                  type="time"
+                  value={editForm.start_time}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, duration_minutes: parseInt(e.target.value) })
+                    setEditForm({ ...editForm, start_time: e.target.value })
                   }
                   required
-                  min="15"
-                  max="240"
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-end-time" className="block text-sm font-medium mb-1">
+                  End Time
+                </label>
+                <Input
+                  id="edit-end-time"
+                  type="time"
+                  value={editForm.end_time}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, end_time: e.target.value })
+                  }
+                  required
                 />
               </div>
               <div>
                 <label htmlFor="edit-capacity" className="block text-sm font-medium mb-1">
-                  Max Capacity *
+                  Max Capacity
                 </label>
                 <Input
                   id="edit-capacity"
@@ -465,35 +525,64 @@ export default function CalendarPage() {
                   }
                   required
                   min="1"
-                  max="100"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Categories *
+                  Categories
                 </label>
                 <div className="space-y-2">
                   {config?.categories.map((cat) => (
                     <label key={cat.value} className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={editForm.categories.includes(cat.value)}
+                        checked={editForm.category.includes(cat.value)}
                         onChange={(e) => {
                           if (e.target.checked) {
                             setEditForm({
                               ...editForm,
-                              categories: [...editForm.categories, cat.value],
+                              category: [...editForm.category, cat.value],
                             });
                           } else {
                             setEditForm({
                               ...editForm,
-                              categories: editForm.categories.filter((c) => c !== cat.value),
+                              category: editForm.category.filter((c) => c !== cat.value),
                             });
                           }
                         }}
                         className="mr-2"
                       />
                       {cat.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Days of Week
+                </label>
+                <div className="space-y-2">
+                  {daysOfWeek.map((day) => (
+                    <label key={day.value} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.days_of_week.includes(day.value)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditForm({
+                              ...editForm,
+                              days_of_week: [...editForm.days_of_week, day.value],
+                            });
+                          } else {
+                            setEditForm({
+                              ...editForm,
+                              days_of_week: editForm.days_of_week.filter((d) => d !== day.value),
+                            });
+                          }
+                        }}
+                        className="mr-2"
+                      />
+                      {day.label}
                     </label>
                   ))}
                 </div>

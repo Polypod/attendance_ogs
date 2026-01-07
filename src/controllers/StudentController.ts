@@ -74,9 +74,32 @@ export class StudentController {
       const { id } = req.params;
       const updateData = req.body;
       
+      // Prepare update operations
+      const updateOps: any = { $set: {} };
+      const unsetOps: any = {};
+      
+      // Process each field - if null, unset it, otherwise set it
+      for (const [key, value] of Object.entries(updateData)) {
+        if (value === null) {
+          unsetOps[key] = "";
+        } else {
+          updateOps.$set[key] = value;
+        }
+      }
+      
+      // Add $unset operation if there are fields to remove
+      if (Object.keys(unsetOps).length > 0) {
+        updateOps.$unset = unsetOps;
+      }
+      
+      // If no fields to set, remove empty $set
+      if (Object.keys(updateOps.$set).length === 0) {
+        delete updateOps.$set;
+      }
+      
       const updatedStudent = await StudentModel.findByIdAndUpdate(
         id, 
-        updateData, 
+        updateOps, 
         { new: true, runValidators: true }
       );
 

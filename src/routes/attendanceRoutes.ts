@@ -22,6 +22,13 @@ router.post(
   attendanceController.markAttendance
 );
 
+// Bulk attendance route (alias for mark)
+router.post(
+  '/bulk',
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  attendanceController.markAttendance
+);
+
 // Routes for admins and instructors who can view reports
 router.get(
   '/reports/:dateRange',

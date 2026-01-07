@@ -17,17 +17,40 @@ These ports enable CORS communication between services and must be reflected in 
 
 ### 2. API Endpoint Configuration (🔴 MUST MATCH)
 
-All frontend API calls must point to the correct backend URL:
+⚠️ **CRITICAL: Remote SSH Development Configuration**
 
+The `NEXT_PUBLIC_API_URL` setting depends on your development environment:
+
+#### For Remote SSH Development (VS Code Remote, SSH tunneling):
+**In `frontend/.env.local`:**
+```
+NEXT_PUBLIC_API_URL=
+BACKEND_URL=http://localhost:4000
+```
+
+When `NEXT_PUBLIC_API_URL` is **empty**, the frontend uses relative URLs that are proxied through Next.js API routes (`/frontend/src/app/api/[...path]/route.ts`). This is **REQUIRED** when:
+- Your browser runs on a different machine than the backend (e.g., Windows browser, Linux server)
+- You're using VS Code Remote SSH
+- `localhost` in the browser points to a different machine than where the backend runs
+
+#### For Local Development (everything on same machine):
 **In `frontend/.env.local`:**
 ```
 NEXT_PUBLIC_API_URL=http://localhost:4000
+BACKEND_URL=http://localhost:4000
 ```
+
+When `NEXT_PUBLIC_API_URL` has a value, the browser connects directly to the backend URL.
+
+**🔴 IMPORTANT:** If you see "Loading..." forever on dashboard pages:
+1. Check which environment you're in (remote SSH vs local)
+2. Set `NEXT_PUBLIC_API_URL` correctly (empty for remote, URL for local)
+3. Restart frontend: `pnpm run dev:frontend`
 
 This variable is used by:
 - Client-side API calls in dashboard pages
 - NextAuth authentication callbacks
-- API wrapper functions
+- API wrapper functions in `frontend/src/lib/api.ts`
 
 If the backend port changes, this must be updated and both servers restarted.
 

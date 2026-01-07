@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { createApiClient } from "@/lib/api";
 
 type Class = {
   _id: string;
@@ -18,41 +19,29 @@ type Instructor = {
 };
 
 export default function TeachersPage() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Helper function to make authenticated requests
-  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    const token = (session as any)?.accessToken;
-    const headers = {
-      "Content-Type": "application/json",
-      ...options.headers,
-      ...(token && { Authorization: `Bearer ${token}` })
-    };
-    return fetch(url, { ...options, headers });
-  };
-
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (!session?.accessToken) return;
 
     async function fetchClasses() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/classes`);
-        if (!res.ok) throw new Error("Failed to fetch classes");
-        const data = await res.json();
-        setClasses(data.classes || []);
+        const api = createApiClient((session as any)?.accessToken);
+        const data = await api.get("/api/classes");
+        setClasses(data.classes || data.data || []);
       } catch (e: unknown) {
         if (e instanceof Error) setError(e.message);
-        else setError("Unknown error");
+        else setError("Failed to fetch classes");
       }
       setLoading(false);
     }
     fetchClasses();
-  }, [session, status]);
+  }, [session]);
 
   // Aggregate instructors
   const instructors: Instructor[] = [];

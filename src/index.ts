@@ -89,7 +89,7 @@ mongoose.connect(MONGODB_URI, MONGODB_OPTIONS)
     }
 
     // Start the server only after successful DB connection AND config load
-    const server = app.listen(PORT, () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
 

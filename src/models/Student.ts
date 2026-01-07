@@ -17,11 +17,11 @@ interface IEmergencyContact {
 const emergencyContactSchema = new Schema<IEmergencyContact>({
   name: { 
     type: String, 
-    required: [true, 'Emergency contact name is required'] 
+    required: false
   },
   phone: { 
     type: String, 
-    required: [true, 'Emergency contact phone is required'] 
+    required: false
   }
 }, { _id: false, timestamps: false });
 
@@ -36,8 +36,8 @@ const studentSchema = new Schema<IStudentDocument>({
     unique: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address']
   },
-  categories: [{
-    type: String,
+  categories: {
+    type: [String],
     required: [true, 'At least one category is required'],
     validate: {
       validator: function(this: any, values: string[]) {
@@ -51,7 +51,8 @@ const studentSchema = new Schema<IStudentDocument>({
         return `Invalid student category. Must be one of: ${validCategories}`;
       }
     }
-  }],
+  },
+
   belt_level: {
     type: String,
     required: [true, 'Belt level is required'],
@@ -73,11 +74,11 @@ const studentSchema = new Schema<IStudentDocument>({
   },
   phone: { 
     type: String, 
-    required: [true, 'Phone number is required'] 
+    required: false
   },
   emergency_contact: { 
     type: emergencyContactSchema, 
-    required: [true, 'Emergency contact information is required'] 
+    required: false
   },
   status: {
     type: String,

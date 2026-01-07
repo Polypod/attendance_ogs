@@ -21,8 +21,8 @@ const classSchema = new Schema<IClassDocument>({
     required: [true, 'Class description is required'],
     trim: true
   },
-  categories: [{
-    type: String,
+  categories: {
+    type: [String],
     required: [true, 'At least one category is required'],
     validate: {
       validator: function(this: any, values: string[]) {
@@ -36,7 +36,7 @@ const classSchema = new Schema<IClassDocument>({
         return `Invalid class category. Must be one of: ${validCategories}`;
       }
     }
-  }],
+  },
   instructor: { 
     type: String, 
     required: [true, 'Instructor name is required'],

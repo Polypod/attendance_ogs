@@ -20,9 +20,10 @@ export const signToken = (userId: string): string => {
     throw new Error('JWT_SECRET is not defined in environment variables');
   }
 
-  return jwt.sign({ id: userId }, secret, {
+  // Cast to jwt.Secret and jwt.SignOptions to satisfy TypeScript signatures
+  return jwt.sign({ id: userId }, secret as jwt.Secret, {
     expiresIn
-  });
+  } as jwt.SignOptions);
 };
 
 /**
@@ -38,9 +39,10 @@ export const signRefreshToken = (userId: string): string => {
     throw new Error('JWT_REFRESH_SECRET is not defined in environment variables');
   }
 
-  return jwt.sign({ id: userId }, secret, {
+  // Cast to jwt.Secret and jwt.SignOptions to satisfy TypeScript signatures
+  return jwt.sign({ id: userId }, secret as jwt.Secret, {
     expiresIn
-  });
+  } as jwt.SignOptions);
 };
 
 /**
