@@ -10,11 +10,17 @@ A comprehensive TypeScript-based attendance management system for karate schools
 -  **Student management** with configurable categories and belt level tracking
 -  **Class scheduling and management** with multi-category support
 -  **Real-time attendance tracking** with category-specific recording
+-  **Session-specific instructors and notes**: Override class default instructor and add notes for individual sessions
+-  **Enhanced calendar view**: 
+   - Display weekday names instead of numeric values
+   - Show attendance count for each session
+   - Display session-specific instructor (falls back to class default instructor)
+-  **Dashboard**: View today's schedules with session-specific instructor display
 -  **User management**: Admin-only user creation with 4 role types (admin, instructor, staff, student)
 -  **Configuration management**: YAML-based category and belt level configuration
 -  **Teacher-friendly interface** optimized for tablets
 -  **Automatic detection** of next upcoming class
--  **Historical attendance editing**
+-  **Historical attendance editing** with session notes
 -  **Comprehensive reporting**
 
 ### Technical Features
@@ -151,6 +157,52 @@ Example: If you change backend PORT to 5000:
 2. Update `NEXT_PUBLIC_API_URL=http://localhost:5000` in `frontend/.env.local`
 3. Restart both servers
 
+---
+
+## Production ports & build notes 🔧
+
+- The `pnpm build` step only **compiles** the application; it does **not** set runtime ports.
+- **Runtime ports are determined when you start the app**: the process reads `process.env.PORT` or falls back to **3000** (both backend and Next.js default to 3000 when PORT is unset).
+- To ensure the same ports in production, **set the `PORT` environment variable** before starting the server (systemd/unit, Docker, or host environment):
+  - Backend (Express): `PORT=4000 node dist/index.js` or export `PORT=4000` in the service environment
+  - Frontend (Next.js): `PORT=4001 pnpm --prefix frontend start` or set `PORT=4001` in the frontend service
+- Alternatively, use a reverse proxy (Nginx) to expose ports 80/443 and proxy to internal app ports.
+
+Set env vars in your host/CI/CD to control production ports and secrets securely.
+### Starting locally in "production" mode (ports 4010/4011) 🔧
+
+A convenience script is included to build and start both backend and frontend on the local host using the ports below:
+
+- Backend: 4010
+- Frontend: 4011
+
+Usage:
+```bash
+# From repository root
+./scripts/start-prod.sh
+```
+
+What the script does:
+- Kills processes listening on ports 4010 and 4011 (if any)
+- Builds backend (`pnpm build`) and frontend (`cd frontend && pnpm build`)
+- Starts backend on port 4010 and frontend on port 4011 in the background
+- Writes logs to `logs/backend-prod.log` and `logs/frontend-prod.log`
+- Saves process IDs to `.prod_backend.pid` and `.prod_frontend.pid`
+
+To stop the servers:
+```bash
+kill "$(cat .prod_backend.pid)" || true
+kill "$(cat .prod_frontend.pid)" || true
+```
+
+Script verification
+- The script now verifies that the backend and frontend actually bind to ports **4010** and **4011** after startup (it waits and retries briefly). If a service fails to bind the script prints the last 200 lines from the corresponding log file (`logs/backend-prod.log` or `logs/frontend-prod.log`) and exits with a non-zero status so failures are visible when testing locally.
+
+Repository hygiene
+- The PID files and logs created by the script are ignored by git:
+  - `.prod_backend.pid`, `.prod_frontend.pid`, and the `logs/` directory are listed in `.gitignore` to avoid leaking runtime artifacts.
+
+Note: This script is intended for local testing of production builds. In real production deploys, prefer systemd units, Docker, or a process manager (PM2) that integrates with your host environment and secret management.
 ### Database Schema
 
 The system uses 5 main collections:

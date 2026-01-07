@@ -137,8 +137,17 @@ export const updateClassScheduleSchema = Joi.object<UpdateClassScheduleDto>({
     then: Joi.date().greater(Joi.ref('date')),
     otherwise: Joi.optional()
   }),
-  status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled').optional()
-}).min(1).options({ stripUnknown: true });
+  status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled').optional(),
+  sessions: Joi.array().items(
+    Joi.object({
+      date: Joi.alternatives().try(Joi.date(), Joi.string().isoDate()).required(),
+      status: Joi.string().valid('scheduled', 'completed', 'cancelled').default('scheduled'),
+      notes: Joi.string().allow('').optional(),
+      'S-instructor': Joi.string().allow('').optional(),
+      _id: Joi.string().optional() // Allow MongoDB _id in updates
+    })
+  ).optional()
+}).min(1).options({ stripUnknown: false }); // Changed to false to allow sessions through
 
 // Authentication validation schemas
 export const loginSchema = Joi.object<LoginDto>({

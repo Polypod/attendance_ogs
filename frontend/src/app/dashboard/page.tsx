@@ -17,7 +17,7 @@ type ClassInfo = {
 
 type ClassScheduleSession = {
   date: string;
-  instructor: string;
+  "S-instructor": string;
   status?: string;
   notes?: string;
 };
@@ -120,8 +120,8 @@ export default function DashboardPage() {
   }
 
   function getInstructorName(classId: ClassInfo | string): string {
-    if (typeof classId === 'object') return classId.instructor;
-    return 'Unknown';
+    if (typeof classId === 'object') return classId.instructor || 'N/A';
+    return 'N/A';
   }
 
   function getCategories(classId: ClassInfo | string): string {
@@ -135,17 +135,16 @@ export default function DashboardPage() {
   }
 
   function getSessionInstructor(schedule: Schedule): string {
-    // For expanded recurring instances, instructor is already set
-    if ((schedule as any).instructor) {
-      return (schedule as any).instructor;
-    }
-    
-    // Otherwise, check sessions array
+    // Check sessions array for session-specific instructor
     const scheduleDate = schedule.date.split('T')[0];
     const session = schedule.sessions?.find(
       (s) => s.date.split('T')[0] === scheduleDate
     );
-    return session?.instructor || getInstructorName(schedule.class_id);
+    const sInstructor = session?.['S-instructor']?.trim();
+    if (sInstructor) {
+      return sInstructor;
+    }
+    return getInstructorName(schedule.class_id);
   }
 
   function getAttendanceSummary(scheduleId: string, scheduleDate: string) {

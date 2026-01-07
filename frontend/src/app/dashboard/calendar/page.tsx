@@ -38,6 +38,13 @@ type ClassInfo = {
   instructor: string;
 };
 
+type ClassScheduleSession = {
+  date: string;
+  status?: string;
+  notes?: string;
+  "S-instructor": string;
+};
+
 type Schedule = {
   _id: string;
   class_id: ClassInfo | string;
@@ -49,6 +56,7 @@ type Schedule = {
   recurring: boolean;
   recurrence_end_date?: string; // New field for recurring end date
   status: string;
+  sessions?: ClassScheduleSession[];
 };
 
 type Class = {
@@ -77,6 +85,7 @@ export default function CalendarPage() {
   const { data: session, status } = useSession();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [attendanceCounts, setAttendanceCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(getTwoWeeksBack());
@@ -144,7 +153,31 @@ export default function CalendarPage() {
       const api = createApiClient((session as any)?.accessToken);
       // Always expand recurring schedules to show individual instances
       const data = await api.get(`/api/schedules?startDate=${startDate}&endDate=${endDate}&expandRecurring=true`);
-      setSchedules(data.data || []);
+      const schedulesList = data.data || [];
+      setSchedules(schedulesList);
+      
+      // Fetch attendance counts for each schedule
+      const counts: Record<string, number> = {};
+      for (const schedule of schedulesList) {
+        try {
+          const attendanceData = await api.get(`/api/attendance/class/${schedule._id}`);
+          const attendanceList = attendanceData.data || [];
+          
+          // Filter attendance for this specific date (important for recurring classes)
+          const scheduleDate = schedule.date.split('T')[0];
+          const dateAttendance = attendanceList.filter((a: any) => {
+            if (!a.date) return true; // Old format without date
+            return a.date.split('T')[0] === scheduleDate;
+          });
+          
+          // Count present students only
+          const presentCount = dateAttendance.filter((a: any) => a.status === 'present').length;
+          counts[`${schedule._id}-${scheduleDate}`] = presentCount;
+        } catch {
+          counts[`${schedule._id}-${schedule.date.split('T')[0]}`] = 0;
+        }
+      }
+      setAttendanceCounts(counts);
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
       else setError("Failed to fetch schedules");
@@ -319,10 +352,26 @@ export default function CalendarPage() {
     return cls?.name || classId;
   }
 
-  function getInstructorName(classId: ClassInfo | string): string {
-    if (typeof classId === 'object') return classId.instructor;
+  function getInstructorName(classId: ClassInfo | string, schedule: Schedule): string {
+    // Check if there's a session-specific S-instructor for this date
+    const scheduleDate = schedule.date.split('T')[0];
+    const session = schedule.sessions?.find(s => s.date.split('T')[0] === scheduleDate);
+    
+    const sInstructor = session?.['S-instructor']?.trim();
+    if (sInstructor) {
+      return sInstructor;
+    }
+    
+    // Fall back to class instructor
+    if (typeof classId === 'object') return classId.instructor || 'N/A';
     const cls = classes.find(c => c._id === classId);
     return cls?.instructor || 'N/A';
+  }
+
+  function getDayOfWeekName(dateString: string): string {
+    const date = new Date(dateString);
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return dayNames[date.getDay()];
   }
 
   return (
@@ -492,42 +541,44 @@ export default function CalendarPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
+                <TableHead>Day</TableHead>
                 <TableHead>Time</TableHead>
                 <TableHead>Class</TableHead>
                 <TableHead>Instructor</TableHead>
-                <TableHead>Day</TableHead>
+                <TableHead>Attendees</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {schedules.map((schedule, index) => (
-                <TableRow key={`${schedule._id}-${schedule.date}-${index}`}>
-                  <TableCell>{new Date(schedule.date).toLocaleDateString('sv-SE')}</TableCell>
-                  <TableCell className="font-medium">{schedule.start_time} - {schedule.end_time}</TableCell>
-                  <TableCell>{getClassName(schedule.class_id)}</TableCell>
-                  <TableCell>{getInstructorName(schedule.class_id)}</TableCell>
-                  <TableCell className="capitalize">
-                    {schedule.days_of_week && schedule.days_of_week.length > 0
-                      ? schedule.days_of_week.map(d => daysOfWeek.find(day => day.value === d)?.label || d).join(", ")
-                      : schedule.day_of_week || "-"}
-                  </TableCell>
-                  <TableCell>
-                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                      schedule.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      schedule.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                      schedule.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>{schedule.status}</span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(schedule)}><Edit className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => openDeleteDialog(schedule)}><Trash2 className="w-4 h-4" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {schedules.map((schedule, index) => {
+                const scheduleDate = schedule.date.split('T')[0];
+                const attendanceKey = `${schedule._id}-${scheduleDate}`;
+                return (
+                  <TableRow key={`${schedule._id}-${scheduleDate}-${index}`}>
+                    <TableCell>{new Date(schedule.date).toLocaleDateString('sv-SE')}</TableCell>
+                    <TableCell>{getDayOfWeekName(schedule.date)}</TableCell>
+                    <TableCell className="font-medium">{schedule.start_time} - {schedule.end_time}</TableCell>
+                    <TableCell>{getClassName(schedule.class_id)}</TableCell>
+                    <TableCell>{getInstructorName(schedule.class_id, schedule)}</TableCell>
+                    <TableCell className="text-center">{attendanceCounts[attendanceKey] || 0}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                        schedule.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        schedule.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        schedule.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>{schedule.status}</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => openEditDialog(schedule)}><Edit className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => openDeleteDialog(schedule)}><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </Card>

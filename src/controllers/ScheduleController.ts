@@ -28,9 +28,18 @@ export class ScheduleController {
         ];
         recurringQuery.date = { $lte: rangeEnd };
         
-        const recurringSchedules = await ClassScheduleModel.find(recurringQuery)
+        // Use lean() to bypass Mongoose document cache and get raw MongoDB data
+        const recurringSchedulesRaw = await ClassScheduleModel.find(recurringQuery)
+          .lean()
           .populate('class_id', 'name instructor categories')
           .sort({ date: 1, start_time: 1 });
+        
+        // Convert lean results back to Mongoose documents for compatibility
+        const recurringSchedules = recurringSchedulesRaw.map((doc: any) => ({
+          ...doc,
+          toObject: () => doc,
+          _id: doc._id
+        }));
         
         console.log('[ScheduleController] Found', recurringSchedules.length, 'recurring schedules');
         
@@ -53,12 +62,11 @@ export class ScheduleController {
         // Expand recurring schedules
         for (const schedule of recurringSchedules) {
           if (schedule.days_of_week && schedule.days_of_week.length > 0) {
-            console.log('[ScheduleController] Expanding schedule:', {
-              _id: schedule._id,
-              date: schedule.date,
-              days_of_week: schedule.days_of_week,
-              recurring: schedule.recurring
-            });
+            console.log('[ScheduleController] ====== EXPANDING SCHEDULE ======');
+            console.log('[ScheduleController] Schedule ID:', schedule._id.toString());
+            console.log('[ScheduleController] Schedule date:', schedule.date);
+            console.log('[ScheduleController] Days of week:', schedule.days_of_week);
+            console.log('[ScheduleController] Recurring:', schedule.recurring);
             
             const recurrenceEnd = schedule.recurrence_end_date 
               ? new Date(schedule.recurrence_end_date) 
@@ -78,6 +86,17 @@ export class ScheduleController {
                 if (currentDate >= rangeStart && currentDate <= rangeEnd) {
                   // Check if a session exists for this date
                   const dateStr = currentDate.toISOString().split('T')[0];
+                  
+                  // DEBUG: Log all sessions in this schedule
+                  console.log('[ScheduleController] Schedule has', schedule.sessions?.length || 0, 'sessions total');
+                  schedule.sessions?.forEach((s: any, idx: number) => {
+                    console.log(`[ScheduleController]   Session ${idx}:`, {
+                      date: s.date.toISOString().split('T')[0],
+                      instructor: s.instructor,
+                      status: s.status
+                    });
+                  });
+                  
                   const existingSession = schedule.sessions?.find(
                     (s: any) => s.date.toISOString().split('T')[0] === dateStr
                   );
@@ -86,19 +105,38 @@ export class ScheduleController {
                   const instanceDate = new Date(currentDate);
                   
                   console.log('[ScheduleController] Adding instance:', dateStr, 'dayOfWeek:', dayOfWeek);
+                  console.log('[ScheduleController] Looking for session with date:', dateStr);
                   
-                  // Only use session status if session exists, otherwise keep as scheduled
-                  const instanceStatus = existingSession ? existingSession.status : ClassStatusEnum.SCHEDULED;
-                  
-                  expandedSchedules.push({
-                    ...schedule.toObject(),
-                    date: instanceDate,
-                    _isRecurringInstance: true,
-                    _originalScheduleId: schedule._id,
-                    status: instanceStatus,
-                    instructor: existingSession?.instructor,
-                    notes: existingSession?.notes,
-                  });
+                  // If session exists for this date, use its data
+                  if (existingSession) {
+                    console.log('[ScheduleController] ✓ Found matching session:', {
+                      sessionDate: existingSession.date.toISOString().split('T')[0],
+                      sessionInstructor: existingSession['S-instructor'],
+                      sessionStatus: existingSession.status
+                    });
+                    
+                    // Create expanded instance with session-specific data
+                    // Keep sessions array for frontend to access S-instructor field
+                    expandedSchedules.push({
+                      ...schedule.toObject(),
+                      date: instanceDate,
+                      _isRecurringInstance: true,
+                      _originalScheduleId: schedule._id,
+                      status: existingSession.status,
+                      notes: existingSession.notes,
+                    });
+                  } else {
+                    console.log('[ScheduleController] ✗ No session found for date:', dateStr);
+                    // No session yet, create instance without session-specific data
+                    const { sessions, ...scheduleWithoutSessions } = schedule.toObject();
+                    expandedSchedules.push({
+                      ...scheduleWithoutSessions,
+                      date: instanceDate,
+                      _isRecurringInstance: true,
+                      _originalScheduleId: schedule._id,
+                      status: ClassStatusEnum.SCHEDULED,
+                    });
+                  }
                 }
               }
               
@@ -124,6 +162,15 @@ export class ScheduleController {
         });
         
         console.log('[ScheduleController] Returning', expandedSchedules.length, 'expanded schedules');
+        // Log first schedule's instructor info for debugging
+        if (expandedSchedules.length > 0) {
+          console.log('[ScheduleController] Sample expanded schedule:', {
+            date: expandedSchedules[0].date,
+            instructor: expandedSchedules[0].instructor,
+            hasInstructorField: 'instructor' in expandedSchedules[0],
+            status: expandedSchedules[0].status
+          });
+        }
         
         res.status(200).json({ success: true, data: expandedSchedules });
       } else {
@@ -219,19 +266,96 @@ export class ScheduleController {
       const { id } = req.params;
       const updateData = req.body;
       
-      const updatedSchedule = await ClassScheduleModel.findByIdAndUpdate(
-        id, 
-        updateData, 
-        { new: true, runValidators: true }
-      ).populate('class_id', 'name instructor categories');
-
-      if (!updatedSchedule) {
+      console.log('[ScheduleController] updateSchedule called:', {
+        id,
+        updateData: {
+          status: updateData.status,
+          sessions: updateData.sessions?.map((s: any) => ({
+            date: s.date,
+            instructor: s.instructor,
+            instructorType: typeof s.instructor,
+            instructorLength: s.instructor?.length,
+            status: s.status,
+            notes: s.notes
+          }))
+        }
+      });
+      
+      console.log('[ScheduleController] Raw updateData.sessions:', JSON.stringify(updateData.sessions, null, 2));
+      
+      // Find the schedule first
+      const schedule = await ClassScheduleModel.findById(id);
+      
+      if (!schedule) {
         res.status(404).json({ 
           success: false, 
           message: 'Schedule not found' 
         });
         return;
       }
+      
+      console.log('[ScheduleController] Current schedule sessions BEFORE update:', 
+        schedule.sessions?.map((s: any) => ({
+          date: s.date,
+          instructor: s.instructor,
+          status: s.status
+        }))
+      );
+      
+      // Update fields explicitly
+      if (updateData.status !== undefined) {
+        schedule.status = updateData.status;
+      }
+      
+      if (updateData.sessions !== undefined) {
+        console.log('[ScheduleController] Setting new sessions array with', updateData.sessions.length, 'sessions');
+        schedule.sessions = updateData.sessions;
+        schedule.markModified('sessions');
+        console.log('[ScheduleController] Sessions after assignment:', 
+          schedule.sessions?.map((s: any) => ({
+            date: s.date,
+            instructor: s.instructor,
+            status: s.status
+          }))
+        );
+      }
+      
+      // Update other fields (using type assertion for dynamic key access)
+      Object.keys(updateData).forEach((key: string) => {
+        if (key !== 'sessions' && key !== 'status') {
+          (schedule as any)[key as keyof typeof schedule] = updateData[key];
+        }
+      });
+      
+      // Save with validation and ensure write is acknowledged
+      await schedule.save({ wtimeout: 5000, w: 'majority' });
+      console.log('[ScheduleController] Schedule saved with write concern');
+      
+      // Read directly from MongoDB to verify - bypass ALL caches with .lean()
+// Re-fetch to verify
+      const verifySchedule = await ClassScheduleModel.findById(id)
+        .lean()
+        .populate('class_id', 'name instructor categories');
+        
+      console.log('[ScheduleController] Verified sessions from DB after save:', 
+        verifySchedule?.sessions?.map((s: any) => ({
+          date: s.date,
+          instructor: s.instructor,
+          instructorType: typeof s.instructor,
+          status: s.status
+        }))
+      );
+      
+      // Return the verified schedule (already populated from lean query above)
+      const updatedSchedule = verifySchedule;
+
+      console.log('[ScheduleController] Returning updated schedule with sessions:', 
+        updatedSchedule?.sessions?.map((s: any) => ({
+          date: s.date,
+          instructor: s.instructor,
+          status: s.status
+        }))
+      );
 
       res.status(200).json({ 
         success: true, 
@@ -239,6 +363,7 @@ export class ScheduleController {
         data: updatedSchedule 
       });
     } catch (error) {
+      console.error('[ScheduleController] Error updating schedule:', error);
       res.status(500).json({ 
         success: false, 
         message: 'Error updating schedule',

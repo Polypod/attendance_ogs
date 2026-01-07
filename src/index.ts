@@ -20,7 +20,8 @@ import { ConfigService } from './services/ConfigService';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+// Ensure PORT is a number (env vars are strings)
+const PORT = Number(process.env.PORT ?? 3000);
 
 // Apply common middleware
 applyMiddleware(app);

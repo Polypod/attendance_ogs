@@ -26,9 +26,9 @@ type ClassInfo = {
 
 type ClassScheduleSession = {
   date: string;
-  instructor: string;
   status?: string;
   notes?: string;
+  "S-instructor": string;
 };
 
 type Schedule = {
@@ -47,6 +47,7 @@ type Student = {
   email: string;
   categories: string[];
   belt_level: string;
+  active?: boolean;
 };
 
 type AttendanceRecord = {
@@ -69,8 +70,8 @@ export default function TakeAttendancePage() {
   const [showAllStudents, setShowAllStudents] = useState(false);
   const [showOnlyActive, setShowOnlyActive] = useState(true);
   const [attendance, setAttendance] = useState<Record<string, AttendanceRecord>>({});
-  const [sessionInstructor, setSessionInstructor] = useState("");
   const [sessionNotes, setSessionNotes] = useState("");
+  const [sInstructor, setSInstructor] = useState("");
   const [sessionDate, setSessionDate] = useState<string>(""); // Store the actual session date
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -106,12 +107,13 @@ export default function TakeAttendancePage() {
         (s: ClassScheduleSession) => s.date.split('T')[0] === actualDate
       );
 
-      // Set session instructor and notes - use existing session or defaults
+      // Set session instructor and notes - use existing session or leave empty
       if (existingSession) {
-        setSessionInstructor(existingSession.instructor);
+        setSInstructor(existingSession["S-instructor"] || "");
         setSessionNotes(existingSession.notes || "");
-      } else if (typeof scheduleInfo.class_id === 'object') {
-        setSessionInstructor(scheduleInfo.class_id.instructor || "");
+      } else {
+        // Don't prefill with class default - user must specify instructor for each session
+        setSInstructor("");
         setSessionNotes("");
       }
 
@@ -209,7 +211,12 @@ export default function TakeAttendancePage() {
     e.preventDefault();
     if (!session?.accessToken || !schedule) return;
 
-    if (!sessionInstructor.trim()) {
+    console.log('[ATTENDANCE] handleSubmit called');
+    console.log('[ATTENDANCE] Current S-instructor state:', sInstructor);
+    console.log('[ATTENDANCE] S-instructor type:', typeof sInstructor);
+    console.log('[ATTENDANCE] S-instructor length:', sInstructor.length);
+
+    if (!sInstructor.trim()) {
       setError("Please specify an instructor for this session");
       return;
     }
@@ -239,38 +246,98 @@ export default function TakeAttendancePage() {
 
       // Update schedule with session-specific instructor and notes
       const existingSessions = schedule.sessions || [];
+      
+      console.log('[ATTENDANCE] Existing sessions before update:', 
+        existingSessions.map(s => ({
+          date: s.date,
+          'S-instructor': s['S-instructor'],
+          status: s.status
+        }))
+      );
+      
       const sessionIndex = existingSessions.findIndex(
         (s) => s.date.split('T')[0] === sessionDate
       );
 
+      console.log('[ATTENDANCE] Found session at index:', sessionIndex, 'for date:', sessionDate);
+      console.log('[ATTENDANCE] S-instructor value to save:', sInstructor);
+
       let updatedSessions;
       if (sessionIndex >= 0) {
-        // Update existing session
-        updatedSessions = [...existingSessions];
-        updatedSessions[sessionIndex] = {
-          ...updatedSessions[sessionIndex],
-          instructor: sessionInstructor,
-          notes: sessionNotes,
-          status: "completed",
-        };
+        // Update existing session - create a completely new array with updated session
+        updatedSessions = existingSessions.map((session, index) => {
+          if (index === sessionIndex) {
+            // Update this session with new instructor and notes
+            return {
+              date: session.date, // Preserve original date
+              "S-instructor": sInstructor,
+              notes: sessionNotes,
+              status: "completed" as const,
+            };
+          }
+          // Keep other sessions unchanged - but filter out old 'instructor' field
+          return {
+            date: session.date,
+            "S-instructor": session["S-instructor"] || "",
+            notes: session.notes || "",
+            status: session.status,
+          };
+        });
       } else {
-        // Add new session
+        // Add new session - create ISO date string for MongoDB
+        const sessionDateISO = new Date(sessionDate + 'T00:00:00').toISOString();
         updatedSessions = [
-          ...existingSessions,
+          ...existingSessions.map(s => ({
+            date: s.date,
+            "S-instructor": s["S-instructor"] || "",
+            notes: s.notes || "",
+            status: s.status,
+          })),
           {
-            date: sessionDate, // Use the date from URL or schedule
-            instructor: sessionInstructor,
+            date: sessionDateISO,
+            "S-instructor": sInstructor,
             notes: sessionNotes,
-            status: "completed",
+            status: "completed" as const,
           },
         ];
       }
 
       // Update the schedule with session info
-      await api.put(`/api/schedules/${scheduleId}`, {
+      console.log('[ATTENDANCE] Updating schedule with sessions:', {
+        scheduleId,
+        sessionDate,
+        sInstructor,
+        updatedSessions: updatedSessions.map(s => ({
+          date: s.date,
+          'S-instructor': s['S-instructor'],
+          status: s.status
+        }))
+      });
+      
+      const schedulePayload = {
         sessions: updatedSessions,
         status: "completed",
+      };
+      
+      console.log('[ATTENDANCE] Full PUT payload:', JSON.stringify(schedulePayload, null, 2));
+      
+      const scheduleUpdateResponse = await api.put(`/api/schedules/${scheduleId}`, schedulePayload);
+      
+      console.log('[ATTENDANCE] Schedule updated successfully:', {
+        returnedSessions: scheduleUpdateResponse.data?.sessions?.map((s: any) => ({
+          date: s.date,
+          'S-instructor': s['S-instructor'],
+          status: s.status
+        }))
       });
+      
+      console.log('[ATTENDANCE] FULL RESPONSE DATA:', JSON.stringify(scheduleUpdateResponse.data, null, 2));
+      
+      // Verify the specific session we just saved
+      const savedSessionForOurDate = scheduleUpdateResponse.data?.sessions?.find((s: any) => 
+        s.date.split('T')[0] === sessionDate
+      );
+      console.log('[ATTENDANCE] CRITICAL: Saved session for date', sessionDate, ':', savedSessionForOurDate);
 
       // Submit attendance
       await api.post("/api/attendance/bulk", {
@@ -278,6 +345,10 @@ export default function TakeAttendancePage() {
         recorded_by: userEmail,
       });
 
+      console.log('[ATTENDANCE] Attendance submitted successfully');
+
+      // Don't update the state - the user already set the correct values
+      // Just show success and redirect
       setSuccess("Attendance recorded successfully!");
       setTimeout(() => {
         router.push("/dashboard");
@@ -337,7 +408,7 @@ export default function TakeAttendancePage() {
               <div>
                 <p className="text-muted-foreground">Date:</p>
                 <p className="font-semibold">
-                  {new Date(schedule.date).toLocaleDateString('sv-SE')}
+                  {sessionDate ? new Date(sessionDate + 'T00:00:00').toLocaleDateString('sv-SE') : new Date(schedule.date).toLocaleDateString('sv-SE')}
                 </p>
               </div>
               <div>
@@ -368,8 +439,8 @@ export default function TakeAttendancePage() {
               </label>
               <Input
                 type="text"
-                value={sessionInstructor}
-                onChange={(e) => setSessionInstructor(e.target.value)}
+                value={sInstructor}
+                onChange={(e) => setSInstructor(e.target.value)}
                 placeholder="Enter instructor name"
                 required
               />

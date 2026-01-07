@@ -113,16 +113,16 @@ const classScheduleSchema = new Schema<IClassScheduleDocument>({
         type: Date,
         required: true
       },
-      instructor: {
-        type: String,
-        required: true
-      },
       status: {
         type: String,
         enum: Object.values(ClassStatusEnum),
         default: ClassStatusEnum.SCHEDULED
       },
       notes: {
+        type: String,
+        default: ''
+      },
+      'S-instructor': {
         type: String,
         default: ''
       }
