@@ -7,8 +7,6 @@ import { ClassModel } from '../../models/Class';
 import { 
   StudentCategoryEnum, 
   AttendanceStatusEnum,
-  StudentCategory,
-  AttendanceStatus
 } from '../../types/interfaces';
 import { ValidationError } from '../../utils/validators';
 

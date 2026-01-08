@@ -1,5 +1,4 @@
 import { ClassModel } from '../../models/Class';
-import mongoose from 'mongoose';
 import { ConfigService } from '../../services/ConfigService';
 
 // Ensure ConfigService is initialized with local config
@@ -14,7 +13,6 @@ beforeAll(async () => {
   } catch (err: unknown) {
     // If initialization fails, let tests proceed; validator will throw accordingly
     // but we don't want the test harness to crash here.
-    // eslint-disable-next-line no-console
     console.warn('ConfigService initialization in test failed, continuing:', (err instanceof Error ? err.message : err));
   }
 });

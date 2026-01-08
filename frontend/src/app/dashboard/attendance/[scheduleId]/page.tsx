@@ -20,13 +20,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Save, CheckCircle, XCircle } from "lucide-react";
 import { Plus } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 type ClassInfo = {
   _id: string;
@@ -63,12 +56,13 @@ type Student = {
 
 type AttendanceRecord = {
   student_id: string;
+  student?: { _id: string; name: string; categories: string[] };
   status: "present" | "absent" | "excused";
   notes: string;
 };
 
 // Helper to convert YYYY-MM-DD to an ISO date at UTC midnight
-import { formatDateToIso, buildAttendancePayload, AttendanceRecord as PayloadAttendanceRecord } from '../utils';
+import { formatDateToIso, buildAttendancePayload } from '../utils';
 
 // Local helper types to avoid using `any`
 type SessionWithToken = { accessToken?: string; user?: { email?: string } };
@@ -208,7 +202,7 @@ export default function TakeAttendancePage() {
           }
         });
         setAttendance(initialAttendance);
-      } catch (attendanceError) {
+      } catch {
         // If no attendance found, initialize with defaults
         const initialAttendance: Record<string, AttendanceRecord> = {};
         allStudentsList.forEach((student: Student) => {
@@ -377,7 +371,7 @@ export default function TakeAttendancePage() {
         sessions: updatedSessions,
         status: "completed",
       };
-      const scheduleUpdateResponse = await api.put(`/api/schedules/${scheduleId}`, schedulePayload);
+      await api.put(`/api/schedules/${scheduleId}`, schedulePayload);
 
       // Submit attendance
       await api.post("/api/attendance/bulk", {

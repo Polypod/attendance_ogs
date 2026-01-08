@@ -1,6 +1,6 @@
 // src/models/ClassSchedule.ts - Class Schedule model
 import { Schema, model, Document, Types } from 'mongoose';
-import { ClassSchedule, ClassStatus, ClassStatusEnum, DayOfWeekEnum } from '../types/interfaces';
+import { ClassSchedule, ClassStatusEnum, DayOfWeekEnum } from '../types/interfaces';
 
 export interface IClassScheduleDocument extends Omit<ClassSchedule, '_id' | 'class_id'>, Document {
   _id: Types.ObjectId;

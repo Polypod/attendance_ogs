@@ -128,7 +128,7 @@ export class ScheduleController {
                   } else {
                     console.log('[ScheduleController] ✗ No session found for date:', dateStr);
                     // No session yet, create instance without session-specific data
-                    const { sessions, ...scheduleWithoutSessions } = schedule.toObject();
+                    const { sessions: _sessions, ...scheduleWithoutSessions } = schedule.toObject();
                     expandedSchedules.push({
                       ...scheduleWithoutSessions,
                       date: instanceDate,

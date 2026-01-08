@@ -18,7 +18,6 @@ beforeAll(async () => {
     await ConfigService.initialize();
   } catch (err) {
     // If it fails, log and continue - tests will surface validation errors appropriately
-    // eslint-disable-next-line no-console
     console.warn('ConfigService.initialize() failed in test setup:', err?.message || err);
   }
 });

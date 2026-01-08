@@ -2,10 +2,7 @@
 import { Schema, model, Document, Types, Model } from 'mongoose';
 import {
   Attendance,
-  AttendanceStatus,
-  StudentCategory,
-  AttendanceStatusEnum,
-  StudentCategoryEnum
+  AttendanceStatusEnum
 } from '../types/interfaces';
 import { ConfigService } from '../services/ConfigService';
 
@@ -92,6 +89,7 @@ attendanceSchema.index(
 );
 
 // Create and export the model
-const Attendance = model<IAttendanceDocument, IAttendanceModel>('Attendance', attendanceSchema);
+export const AttendanceModel = model<IAttendanceDocument, IAttendanceModel>('Attendance', attendanceSchema);
 
-export { Attendance };
+// Also export as Attendance for backward compatibility
+export { AttendanceModel as Attendance };

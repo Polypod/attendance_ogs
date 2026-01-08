@@ -63,7 +63,7 @@ async function proxyRequest(
       if (body) {
         options.body = body;
       }
-    } catch (e) {
+    } catch {
       // No body
     }
   }

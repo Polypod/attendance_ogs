@@ -103,7 +103,7 @@ export default function DashboardPage() {
           const scheduleId = (schedule as any)._originalScheduleId || schedule._id;
           const attendanceRes = await api.get(`/api/attendance/class/${scheduleId}`);
           return { scheduleId: schedule._id, data: attendanceRes.data || [] };
-        } catch (e) {
+        } catch {
           return { scheduleId: schedule._id, data: [] };
         }
       });
@@ -188,7 +188,10 @@ export default function DashboardPage() {
       
       // Get student name - either from student_id (populated) or student_name (for "other students")
       let studentName = '';
-      if (a.student_id && typeof a.student_id === 'object' && a.student_id.name) {
+      // Prefer explicit student object (added by API) then populated student_id object, then freeform student_name
+      if ((a as any).student && (a as any).student.name) {
+        studentName = (a as any).student.name;
+      } else if (a.student_id && typeof a.student_id === 'object' && a.student_id.name) {
         studentName = a.student_id.name;
       } else if (a.student_name) {
         studentName = a.student_name;

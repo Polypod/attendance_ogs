@@ -12,7 +12,6 @@ import {
   ChangePasswordDto
 } from './interfaces';
 import { ConfigService } from '../services/ConfigService';
-const classStatuses = ['scheduled', 'cancelled', 'completed'] as const;
 const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 const userRoles = ['admin', 'instructor', 'staff', 'student'] as const;
 const userStatuses = ['active', 'inactive', 'suspended'] as const;

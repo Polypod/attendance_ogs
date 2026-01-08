@@ -75,17 +75,13 @@ userSchema.pre('save', async function() {
   // Only hash the password if it has been modified (or is new)
   if (!this.isModified('password')) return;
 
-  try {
-    // Hash the password with bcrypt (10 rounds)
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+  // Hash the password with bcrypt (10 rounds)
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 
-    // Set password_changed_at if password was modified (but not for new users)
-    if (!this.isNew) {
-      this.password_changed_at = new Date();
-    }
-  } catch (error) {
-    throw error;
+  // Set password_changed_at if password was modified (but not for new users)
+  if (!this.isNew) {
+    this.password_changed_at = new Date();
   }
 });
 

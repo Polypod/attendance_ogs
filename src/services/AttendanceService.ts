@@ -1,16 +1,12 @@
 // src/services/AttendanceService.ts - Core attendance business logic
 import moment from 'moment';
-import { Types, Document, Model } from 'mongoose';
+import { Types } from 'mongoose';
 import { Attendance, IAttendanceDocument, IAttendanceModel } from '../models/Attendance';
 import { ClassScheduleModel, IClassScheduleDocument } from '../models/ClassSchedule';
-import { StudentModel } from '../models/Student';
 import { 
   MarkAttendanceDto, 
   AttendanceWithDetails, 
-  StudentCategory,
-  StudentStatusEnum,
-  AttendanceStatus,
-  ClassStatus
+  StudentCategory
 } from '../types/interfaces';
 
 // Cast the model to include our custom methods
@@ -33,14 +29,6 @@ interface PopulatedClassSchedule extends Omit<IClassScheduleDocument, 'class_id'
 interface PastClassResult extends Omit<IClassScheduleDocument, 'class_id'> {
   class_id: IClassInfo;
 }
-
-// Type for attendance record with populated fields
-type AttendanceWithPopulatedFields = IAttendanceDocument & {
-  student_id: { _id: Types.ObjectId; name: string; email: string };
-  class_schedule_id: IClassScheduleDocument & {
-    class_id: IClassInfo | Types.ObjectId;
-  };
-};
 
 // Type guard for error handling
 function isErrorWithMessage(error: unknown): error is { message: string } {
@@ -217,7 +205,7 @@ export class AttendanceService {
 
     // Update each schedule's sessions array
     const { ClassScheduleModel } = require('../models/ClassSchedule');
-    for (const [key, update] of scheduleUpdates) {
+    for (const [, update] of scheduleUpdates) {
       try {
         const schedule = await ClassScheduleModel.findById(update.scheduleId);
         if (schedule) {
@@ -321,8 +309,27 @@ export class AttendanceService {
       const filteredRecords = attendanceRecords.filter(r => r.class_schedule_id);
 
       console.log('[AttendanceService] getClassAttendance returning', filteredRecords.length, 'records');
-      // The populated student_id includes categories field
-      return filteredRecords as any as AttendanceWithDetails[];
+      // Normalize `student_id` to a string id (tests and API expect ID strings)
+      const normalized = filteredRecords.map(rec => {
+        const studentField: any = rec.student_id;
+        const studentIdString = studentField && typeof studentField === 'object' && '_id' in studentField
+          ? (studentField._id as Types.ObjectId).toString()
+          : studentField;
+
+        // Preserve student details separately so UI can show names while
+        // keeping student_id as a string for API/tests.
+        const student = studentField && typeof studentField === 'object'
+          ? { ...studentField, _id: (studentField._id as Types.ObjectId).toString() }
+          : undefined;
+
+        return {
+          ...rec,
+          student_id: studentIdString,
+          student
+        } as any;
+      });
+
+      return normalized as AttendanceWithDetails[];
     } catch (error) {
       const errorMessage = isErrorWithMessage(error)
         ? `Failed to retrieve class attendance: ${error.message}`

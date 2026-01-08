@@ -1,6 +1,6 @@
 // src/models/Class.ts - Class Mongoose model
 import { Schema, model, Document, Types } from 'mongoose';
-import { Class, StudentCategory } from '../types/interfaces';
+import { Class } from '../types/interfaces';
 import { ConfigService } from '../services/ConfigService';
 
 interface IClassDocument extends Omit<Class, '_id'>, Document {

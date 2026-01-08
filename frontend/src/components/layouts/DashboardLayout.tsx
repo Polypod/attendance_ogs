@@ -20,7 +20,7 @@ const navLinks = [
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user, isAdmin, isInstructor, isStaff, isStudent } = useAuth();
+  const { user } = useAuth();
 
   // Filter nav links based on user role
   const filteredNavLinks = navLinks.filter(link =>

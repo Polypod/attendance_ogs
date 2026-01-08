@@ -128,13 +128,6 @@ export default function CalendarPage() {
     { value: "sunday", label: "Sunday", number: 0 },
   ];
 
-  const statusOptions = [
-    { value: "scheduled", label: "Scheduled" },
-    { value: "in_progress", label: "In Progress" },
-    { value: "completed", label: "Completed" },
-    { value: "cancelled", label: "Cancelled" },
-  ];
-
   useEffect(() => {
     if (status === 'authenticated' && session?.accessToken) {
       fetchSchedules();
@@ -277,7 +270,7 @@ export default function CalendarPage() {
     try {
       const api = createApiClient((session as any)?.accessToken);
       // Remove class_id from update payload - it's not allowed in updates
-      const { class_id, ...updateData } = editForm;
+      const { class_id: _classId, ...updateData } = editForm;
       // Convert day strings to numbers (only if recurring)
       const daysAsNumbers = editForm.recurring
         ? editForm.days_of_week.map(day => 

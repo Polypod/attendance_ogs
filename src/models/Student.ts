@@ -1,6 +1,6 @@
 // src/models/Student.ts - Student Mongoose model
 import { Schema, model, Document, Types } from 'mongoose';
-import { Student, StudentCategory, StudentStatus, StudentStatusEnum } from '../types/interfaces';
+import { Student, StudentStatusEnum } from '../types/interfaces';
 import { ConfigService } from '../services/ConfigService';
 
 interface IStudentDocument extends Omit<Student, '_id'>, Document {
