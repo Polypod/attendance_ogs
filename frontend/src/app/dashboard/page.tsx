@@ -53,6 +53,12 @@ function getTodayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function getISOPlusDays(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -78,10 +84,13 @@ export default function DashboardPage() {
     setError(null);
     try {
       const api = createApiClient((session as any)?.accessToken);
-      // Always expand recurring schedules to show individual instances
+      // Determine fetch range: when showing a custom date range use that,
+      // otherwise fetch from today up to 7 days ahead so upcoming list can be populated.
+      const fetchStart = showDateRange ? startDate : getTodayISO();
+      const fetchEnd = showDateRange ? endDate : getISOPlusDays(7);
       const expandParam = '&expandRecurring=true';
-      console.log('[Dashboard] Fetching schedules:', { startDate, endDate, showDateRange, expandParam });
-      const data = await api.get(`/api/schedules?startDate=${startDate}&endDate=${endDate}${expandParam}`);
+      console.log('[Dashboard] Fetching schedules:', { fetchStart, fetchEnd, showDateRange, expandParam });
+      const data = await api.get(`/api/schedules?startDate=${fetchStart}&endDate=${fetchEnd}${expandParam}`);
       const schedulesData = data.data || [];
       console.log('[Dashboard] Received', schedulesData.length, 'schedules');
       setSchedules(schedulesData);
@@ -197,6 +206,14 @@ export default function DashboardPage() {
   }
 
   const todaySchedules = schedules.filter(s => s.date.split('T')[0] === getTodayISO());
+
+  // Upcoming schedules for the next 7 days (excluding today)
+  const upcomingStart = getISOPlusDays(1);
+  const upcomingEnd = getISOPlusDays(7);
+  const upcomingSchedules = schedules.filter((s) => {
+    const ds = s.date.split('T')[0];
+    return ds >= upcomingStart && ds <= upcomingEnd;
+  });
 
   return (
     <div className="max-w-6xl mx-auto w-full">
@@ -325,6 +342,67 @@ export default function DashboardPage() {
                   </div>
                 </Card>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Upcoming Classes Section - next 7 days */}
+      {!showDateRange && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <Calendar className="w-5 h-5 mr-2" />
+            Upcoming Classes (next 7 days)
+          </h2>
+          {loading ? (
+            <Card className="p-6">
+              <p className="text-muted-foreground">Loading upcoming classes...</p>
+            </Card>
+          ) : upcomingSchedules.length === 0 ? (
+            <Card className="p-6">
+              <p className="text-muted-foreground">No upcoming classes in the next 7 days.</p>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {upcomingSchedules.map((schedule) => {
+                const uniqueKey = `${schedule._id}-${schedule.date}`;
+                return (
+                  <Card key={uniqueKey} className="p-4">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold">{getClassName(schedule.class_id)}</h3>
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            schedule.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            schedule.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            schedule.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {schedule.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          Date: {formatDate(schedule.date)} | Instructor: {schedule.status === 'completed' ? getSessionInstructor(schedule) : getInstructorName(schedule.class_id)}
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-1">Categories: {getCategories(schedule.class_id)}</p>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {schedule.start_time} - {schedule.end_time}
+                        </div>
+                      </div>
+                      {schedule.status === 'scheduled' ? (
+                        <Button className="mt-3 md:mt-0 md:ml-4" asChild>
+                          <a href={`/dashboard/attendance/${schedule._originalScheduleId || schedule._id}?date=${schedule.date.split('T')[0]}`}>Take Attendance</a>
+                        </Button>
+                      ) : schedule.status === 'completed' ? (
+                        <Button variant="outline" className="mt-3 md:mt-0 md:ml-4" asChild>
+                          <a href={`/dashboard/attendance/${schedule._originalScheduleId || schedule._id}?date=${schedule.date.split('T')[0]}`}>Edit Attendance</a>
+                        </Button>
+                      ) : null}
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
