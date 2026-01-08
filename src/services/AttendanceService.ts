@@ -467,6 +467,11 @@ export class AttendanceService {
               $sum: {
                 $cond: [{ $eq: ['$status', 'late'] }, 1, 0]
               }
+            },
+            excused: {
+              $sum: {
+                $cond: [{ $eq: ['$status', 'excused'] }, 1, 0]
+              }
             }
           }
         },
@@ -484,6 +489,8 @@ export class AttendanceService {
             present_count: '$present',
             absent: 1,
             late: 1,
+            excused: 1,
+            excused_count: '$excused',
             attendance_percentage: {
               $multiply: [
                 {
@@ -492,7 +499,7 @@ export class AttendanceService {
                     0,
                     {
                       $divide: [
-                        { $add: ['$present', { $multiply: ['$late', 0.5] }] },
+                        { $add: ['$present', '$excused', { $multiply: ['$late', 0.5] }] },
                         '$total_classes'
                       ]
                     }
@@ -511,7 +518,7 @@ export class AttendanceService {
       const result = await Attendance.aggregate(mutablePipeline);
       
       // Map the result to the expected return type
-      return result.map((item: any) => ({
+        return result.map((item: any) => ({
         student_id: new Types.ObjectId(item.student_id),
         student_name: item.student_name,
         category: item.category as StudentCategory,
@@ -522,6 +529,8 @@ export class AttendanceService {
         present_count: item.present || 0,
         absent: item.absent,
         late: item.late,
+        excused: item.excused || 0,
+        excused_count: item.excused || 0,
         attendance_percentage: parseFloat(item.attendance_percentage.toFixed(2))
       }));
     } catch (error) {

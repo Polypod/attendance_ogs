@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-muted">
       {/* Sidebar for desktop/tablet */}
-      <aside className="hidden md:flex flex-col w-64 bg-background border-r border-border p-4">
+      <aside className="hidden md:flex flex-col w-40 bg-background border-r border-border p-3">
         <div className="mb-8 flex items-center gap-2">
           <span className="font-bold text-xl tracking-tight">Karate Attendance</span>
         </div>
@@ -93,7 +93,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <Menu className="w-6 h-6" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">
+          <SheetContent side="left" className="p-0 w-40">
             <div className="p-4">
               <span className="font-bold text-xl tracking-tight">Karate Attendance</span>
             </div>
@@ -143,7 +143,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Main content area */}
-      <main className="flex-1 flex flex-col p-4 md:ml-64 mt-14 md:mt-0">
+      <main className="flex-1 flex flex-col p-3 md:ml-40 mt-14 md:mt-0">
         {children}
       </main>
     </div>

@@ -4,11 +4,22 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createApiClient } from "@/lib/api";
+import { useConfig } from "@/hooks/useConfig";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Save, CheckCircle, XCircle } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -56,6 +67,23 @@ type AttendanceRecord = {
   notes: string;
 };
 
+// Helper to convert YYYY-MM-DD to an ISO date at UTC midnight
+import { formatDateToIso, buildAttendancePayload, AttendanceRecord as PayloadAttendanceRecord } from '../utils';
+
+// Local helper types to avoid using `any`
+type SessionWithToken = { accessToken?: string; user?: { email?: string } };
+type ApiStudentRef = string | { _id: string };
+type ApiAttendance = { date?: string; student_id: ApiStudentRef; status?: "present" | "absent" | "excused"; notes?: string };
+type CreateStudentForm = {
+  name: string;
+  categories: string[];
+  belt_level: string;
+  email: string;
+  phone?: string;
+  emergency_contact?: { name?: string; phone?: string };
+  active?: boolean;
+};
+
 export default function TakeAttendancePage() {
   const { data: session, status: authStatus } = useSession();
   const params = useParams();
@@ -68,6 +96,18 @@ export default function TakeAttendancePage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [showAllStudents, setShowAllStudents] = useState(false);
+  // Create student dialog state (reuse behaviour from Students page)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    categories: [] as string[],
+    belt_level: "",
+    email: "",
+    phone: "",
+    emergency_contact: { name: "", phone: "" },
+    active: true,
+  });
+  const { config, loading: configLoading } = useConfig();
   const [showOnlyActive, setShowOnlyActive] = useState(true);
   const [attendance, setAttendance] = useState<Record<string, AttendanceRecord>>({});
   const [sessionNotes, setSessionNotes] = useState("");
@@ -91,7 +131,7 @@ export default function TakeAttendancePage() {
     setLoading(true);
     setError(null);
     try {
-      const api = createApiClient((session as any)?.accessToken);
+      const api = createApiClient((session as unknown as SessionWithToken)?.accessToken);
       
       // Fetch schedule
       const scheduleData = await api.get(`/api/schedules/${scheduleId}`);
@@ -136,10 +176,10 @@ export default function TakeAttendancePage() {
       // Fetch existing attendance for this schedule
       try {
         const attendanceRes = await api.get(`/api/attendance/class/${scheduleId}`);
-        const existingAttendanceList = attendanceRes.data || [];
-        
+        const existingAttendanceList = (attendanceRes.data || []) as ApiAttendance[];
+
         // Filter attendance for this specific date (important for recurring classes)
-        const existingAttendance = existingAttendanceList.filter((a: any) => {
+        const existingAttendance = existingAttendanceList.filter((a) => {
           if (!a.date) return true; // Old format without date
           return a.date.split('T')[0] === actualDate;
         });
@@ -147,14 +187,16 @@ export default function TakeAttendancePage() {
         // Initialize attendance records with existing data or absent as default
         const initialAttendance: Record<string, AttendanceRecord> = {};
         allStudentsList.forEach((student: Student) => {
-          const existing = existingAttendance.find(
-            (a: any) => (a.student_id._id || a.student_id) === student._id
-          );
+          const existing = existingAttendance.find((a) => {
+            const sid = typeof a.student_id === 'string' ? a.student_id : a.student_id._id;
+            return sid === student._id;
+          });
           
           if (existing) {
+            const status = (existing.status ?? "absent") as AttendanceRecord["status"];
             initialAttendance[student._id] = {
               student_id: student._id,
-              status: existing.status,
+              status,
               notes: existing.notes || "",
             };
           } else {
@@ -187,12 +229,73 @@ export default function TakeAttendancePage() {
     }
   }
 
+  // Create student - mirror StudentsPage behaviour
+  async function handleCreateStudent(e?: React.SyntheticEvent) {
+    // Prevent the inner form submit from propagating to the outer attendance form
+    e?.stopPropagation();
+    e?.preventDefault();
+    if (!session?.accessToken) return;
+    setError(null);
+    try {
+      const api = createApiClient((session as unknown as SessionWithToken)?.accessToken);
+      const studentData: Partial<CreateStudentForm> = { ...createForm };
+      if (!studentData.phone || studentData.phone.trim() === '') {
+        delete studentData.phone;
+      }
+      if (studentData.emergency_contact) {
+        const hasName = studentData.emergency_contact.name && studentData.emergency_contact.name.trim() !== '';
+        const hasPhone = studentData.emergency_contact.phone && studentData.emergency_contact.phone.trim() !== '';
+        if (!hasName && !hasPhone) {
+          delete studentData.emergency_contact;
+        } else {
+          if (!hasName) delete studentData.emergency_contact.name;
+          if (!hasPhone) delete studentData.emergency_contact.phone;
+        }
+      }
+
+      const data = await api.post('/api/students', studentData);
+      const created = data.data;
+      // Add to allStudents and possibly students list if categories match
+      setAllStudents((prev) => [...prev, created]);
+      // If created student matches class categories, add to students list
+      const classCategories = typeof schedule?.class_id === 'object' ? schedule.class_id.categories : [];
+      if (created.categories && created.categories.some((c: string) => classCategories.includes(c))) {
+        setStudents((prev) => [...prev, created]);
+      }
+
+      // Ensure the new student has an attendance entry so status buttons are clickable immediately
+      setAttendance((prev) => ({
+        ...prev,
+        [created._id]: {
+          student_id: created._id,
+          status: 'absent',
+          notes: '',
+        },
+      }));
+
+      setCreateDialogOpen(false);
+      setCreateForm({
+        name: "",
+        categories: [],
+        belt_level: "",
+        email: "",
+        phone: "",
+        emergency_contact: { name: "", phone: "" },
+        active: true,
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error) setError(e.message);
+      else setError('Failed to create student');
+    }
+  }
+
   function updateAttendanceStatus(studentId: string, status: "present" | "absent" | "excused") {
     setAttendance((prev) => ({
       ...prev,
       [studentId]: {
-        ...prev[studentId],
+        ...(prev[studentId] || { student_id: studentId, notes: "" }),
         status,
+        student_id: studentId,
       },
     }));
   }
@@ -211,56 +314,25 @@ export default function TakeAttendancePage() {
     e.preventDefault();
     if (!session?.accessToken || !schedule) return;
 
-    console.log('[ATTENDANCE] handleSubmit called');
-    console.log('[ATTENDANCE] Current S-instructor state:', sInstructor);
-    console.log('[ATTENDANCE] S-instructor type:', typeof sInstructor);
-    console.log('[ATTENDANCE] S-instructor length:', sInstructor.length);
-
-    if (!sInstructor.trim()) {
-      setError("Please specify an instructor for this session");
-      return;
-    }
+    // Instructor is optional for this session; allow empty value
 
     setSaving(true);
     setError(null);
     setSuccess(null);
 
     try {
-      const api = createApiClient((session as any)?.accessToken);
+      const api = createApiClient((session as unknown as SessionWithToken)?.accessToken);
       
-      // Prepare attendance records
-      const attendanceRecords = Object.values(attendance).map((record) => {
-        const student = allStudents.find(s => s._id === record.student_id);
-        return {
-          student_id: record.student_id,
-          class_schedule_id: scheduleId,
-          date: sessionDate, // Use the date from URL or schedule
-          status: record.status,
-          notes: record.notes || undefined,
-          category: student?.categories[0] || "adult",
-        };
-      });
+      // Prepare attendance records (use consistent ISO date)
+      const attendanceRecords = buildAttendancePayload(attendance, allStudents, scheduleId, sessionDate);
 
       // Get current user email for recorded_by
-      const userEmail = (session as any)?.user?.email || "system";
+      const userEmail = (session as unknown as SessionWithToken)?.user?.email || "system";
 
       // Update schedule with session-specific instructor and notes
       const existingSessions = schedule.sessions || [];
       
-      console.log('[ATTENDANCE] Existing sessions before update:', 
-        existingSessions.map(s => ({
-          date: s.date,
-          'S-instructor': s['S-instructor'],
-          status: s.status
-        }))
-      );
-      
-      const sessionIndex = existingSessions.findIndex(
-        (s) => s.date.split('T')[0] === sessionDate
-      );
-
-      console.log('[ATTENDANCE] Found session at index:', sessionIndex, 'for date:', sessionDate);
-      console.log('[ATTENDANCE] S-instructor value to save:', sInstructor);
+      const sessionIndex = existingSessions.findIndex((s) => s.date.split("T")[0] === sessionDate);
 
       let updatedSessions;
       if (sessionIndex >= 0) {
@@ -285,7 +357,7 @@ export default function TakeAttendancePage() {
         });
       } else {
         // Add new session - create ISO date string for MongoDB
-        const sessionDateISO = new Date(sessionDate + 'T00:00:00').toISOString();
+        const sessionDateISO = formatDateToIso(sessionDate);
         updatedSessions = [
           ...existingSessions.map(s => ({
             date: s.date,
@@ -301,43 +373,11 @@ export default function TakeAttendancePage() {
           },
         ];
       }
-
-      // Update the schedule with session info
-      console.log('[ATTENDANCE] Updating schedule with sessions:', {
-        scheduleId,
-        sessionDate,
-        sInstructor,
-        updatedSessions: updatedSessions.map(s => ({
-          date: s.date,
-          'S-instructor': s['S-instructor'],
-          status: s.status
-        }))
-      });
-      
       const schedulePayload = {
         sessions: updatedSessions,
         status: "completed",
       };
-      
-      console.log('[ATTENDANCE] Full PUT payload:', JSON.stringify(schedulePayload, null, 2));
-      
       const scheduleUpdateResponse = await api.put(`/api/schedules/${scheduleId}`, schedulePayload);
-      
-      console.log('[ATTENDANCE] Schedule updated successfully:', {
-        returnedSessions: scheduleUpdateResponse.data?.sessions?.map((s: any) => ({
-          date: s.date,
-          'S-instructor': s['S-instructor'],
-          status: s.status
-        }))
-      });
-      
-      console.log('[ATTENDANCE] FULL RESPONSE DATA:', JSON.stringify(scheduleUpdateResponse.data, null, 2));
-      
-      // Verify the specific session we just saved
-      const savedSessionForOurDate = scheduleUpdateResponse.data?.sessions?.find((s: any) => 
-        s.date.split('T')[0] === sessionDate
-      );
-      console.log('[ATTENDANCE] CRITICAL: Saved session for date', sessionDate, ':', savedSessionForOurDate);
 
       // Submit attendance
       await api.post("/api/attendance/bulk", {
@@ -345,7 +385,7 @@ export default function TakeAttendancePage() {
         recorded_by: userEmail,
       });
 
-      console.log('[ATTENDANCE] Attendance submitted successfully');
+
 
       // Don't update the state - the user already set the correct values
       // Just show success and redirect
@@ -408,7 +448,7 @@ export default function TakeAttendancePage() {
               <div>
                 <p className="text-muted-foreground">Date:</p>
                 <p className="font-semibold">
-                  {sessionDate ? new Date(sessionDate + 'T00:00:00').toLocaleDateString('sv-SE') : new Date(schedule.date).toLocaleDateString('sv-SE')}
+                    {sessionDate ? new Date(formatDateToIso(sessionDate)).toLocaleDateString('sv-SE') : new Date(schedule.date).toLocaleDateString('sv-SE')}
                 </p>
               </div>
               <div>
@@ -435,14 +475,13 @@ export default function TakeAttendancePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">
-                Instructor for this session *
+                Instructor for this session (optional)
               </label>
               <Input
                 type="text"
                 value={sInstructor}
                 onChange={(e) => setSInstructor(e.target.value)}
                 placeholder="Enter instructor name"
-                required
               />
               <p className="text-sm text-muted-foreground mt-1">
                 You can specify a different instructor for this specific session
@@ -510,6 +549,119 @@ export default function TakeAttendancePage() {
                   Absent: {absentCount}
                 </span>
               </div>
+              {/* Create Student dialog trigger */}
+              <div>
+                <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="outline" size="sm">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Student
+                    </Button>
+                  </DialogTrigger>
+
+                  <DialogContent className="max-w-2xl">
+                    <form onSubmit={(e) => { e.stopPropagation(); e.preventDefault(); }}>
+                      <DialogHeader>
+                        <DialogTitle>Create New Student</DialogTitle>
+                        <DialogDescription>Add a new student to your system</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div>
+                          <label htmlFor="create-name" className="block text-sm font-medium mb-1">Name *</label>
+                          <Input
+                            id="create-name"
+                            value={createForm.name}
+                            onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor="create-categories" className="block text-sm font-medium mb-1">Categories * (hold Ctrl/Cmd to select multiple)</label>
+                          <select
+                            id="create-categories"
+                            className="w-full border rounded-md px-3 py-2"
+                            multiple
+                            size={4}
+                            value={createForm.categories}
+                            onChange={(e) => {
+                              const selected = Array.from(e.target.selectedOptions, option => option.value);
+                              setCreateForm({ ...createForm, categories: selected });
+                            }}
+                            required
+                            disabled={configLoading}
+                          >
+                            {(config?.categories as { value: string; label: string; order: number }[] ?? [])
+                              .slice()
+                              .sort((a, b) => a.order - b.order)
+                              .map((cat) => (
+                                <option key={cat.value} value={cat.value}>{cat.label}</option>
+                              ))}
+                          </select>
+                          {createForm.categories.length > 0 && (
+                            <p className="text-sm text-gray-600 mt-1">Selected: {createForm.categories.join(", ")}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label htmlFor="create-belt-level" className="block text-sm font-medium mb-1">Belt Level *</label>
+                          <select
+                            id="create-belt-level"
+                            className="w-full border rounded-md px-3 py-2"
+                            value={createForm.belt_level}
+                            onChange={(e) => setCreateForm({ ...createForm, belt_level: e.target.value })}
+                            required
+                            disabled={configLoading}
+                          >
+                            <option value="">Select belt level...</option>
+                            {((config?.beltLevels as { value: string; label: string; rank: number }[] ) ?? [])
+                              .slice()
+                              .sort((a, b) => a.rank - b.rank)
+                              .map((belt) => (
+                                <option key={belt.value} value={belt.value}>{belt.label}</option>
+                              ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label htmlFor="create-email" className="block text-sm font-medium mb-1">Email *</label>
+                          <Input
+                            id="create-email"
+                            type="email"
+                            value={createForm.email}
+                            onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                            required
+                          />
+                          <p className="text-sm text-gray-500 mt-1">Email is required and cannot be changed later</p>
+                        </div>
+
+                        <div>
+                          <label htmlFor="create-phone" className="block text-sm font-medium mb-1">Phone</label>
+                          <Input id="create-phone" type="tel" value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} placeholder="Optional" />
+                        </div>
+
+                        <div className="border-t pt-4 mt-4">
+                          <h3 className="text-sm font-semibold mb-3">Emergency Contact (Optional)</h3>
+                          <div className="space-y-4">
+                            <div>
+                              <label htmlFor="create-emergency-name" className="block text-sm font-medium mb-1">Emergency Contact Name</label>
+                              <Input id="create-emergency-name" type="text" value={createForm.emergency_contact.name} onChange={(e) => setCreateForm({ ...createForm, emergency_contact: { ...createForm.emergency_contact, name: e.target.value } })} placeholder="Optional" />
+                            </div>
+                            <div>
+                              <label htmlFor="create-emergency-phone" className="block text-sm font-medium mb-1">Emergency Contact Phone</label>
+                              <Input id="create-emergency-phone" type="tel" value={createForm.emergency_contact.phone} onChange={(e) => setCreateForm({ ...createForm, emergency_contact: { ...createForm.emergency_contact, phone: e.target.value } })} placeholder="Optional" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+                        <Button type="button" onClick={(e) => handleCreateStudent(e)} disabled={configLoading}>Create Student</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
               {allStudents.length > students.length && (
                 <Button
                   type="button"
@@ -564,7 +716,7 @@ export default function TakeAttendancePage() {
                         <Button
                           type="button"
                           size="sm"
-                          variant={attendance[student._id]?.status === "excused" ? "secondary" : "outline"}
+                          variant={attendance[student._id]?.status === "excused" ? "default" : "outline"}
                           onClick={() => updateAttendanceStatus(student._id, "excused")}
                           className="flex-1 md:flex-none"
                         >
@@ -636,7 +788,7 @@ export default function TakeAttendancePage() {
                           <Button
                             type="button"
                             size="sm"
-                            variant={attendance[student._id]?.status === "excused" ? "secondary" : "outline"}
+                            variant={attendance[student._id]?.status === "excused" ? "default" : "outline"}
                             onClick={() => updateAttendanceStatus(student._id, "excused")}
                             className="flex-1 md:flex-none"
                           >

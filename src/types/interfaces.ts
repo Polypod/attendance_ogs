@@ -13,7 +13,8 @@ export enum StudentCategoryEnum {
 export enum AttendanceStatusEnum {
   PRESENT = 'present',
   ABSENT = 'absent',
-  LATE = 'late'
+  LATE = 'late',
+  EXCUSED = 'excused'
 }
 
 export enum ClassStatusEnum {
@@ -219,6 +220,7 @@ export interface AttendanceReport {
   present_count: number;
   absent_count: number;
   late_count: number;
+  excused_count: number;
   attendance_percentage: number;
 }
 
