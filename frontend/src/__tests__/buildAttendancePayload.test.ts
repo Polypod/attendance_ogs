@@ -9,7 +9,7 @@ describe('buildAttendancePayload', () => {
 
     const allStudents = [
       { _id: 's1', name: 'Alice', email: 'a@example.com', categories: ['adult'], belt_level: 'blue' },
-      { _id: 's2', name: 'Bob', email: 'b@example.com', categories: ['kids'], belt_level: 'white' },
+      { _id: 's2', name: 'Bob', email: 'b@example.com', categories: ['kids'], belt_level: '10kyu' },
     ];
 
     const scheduleId = 'schedule123';

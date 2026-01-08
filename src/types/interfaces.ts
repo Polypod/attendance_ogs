@@ -3,7 +3,6 @@
 
 // Enums for better type safety and value usage
 export enum StudentCategoryEnum {
-  BEGINNER = 'beginner',
   KIDS = 'kids',
   YOUTH = 'youth',
   ADULT = 'adult',

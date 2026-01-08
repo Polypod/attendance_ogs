@@ -3,10 +3,12 @@ import moment from 'moment';
 import { Types } from 'mongoose';
 import { Attendance, IAttendanceDocument, IAttendanceModel } from '../models/Attendance';
 import { ClassScheduleModel, IClassScheduleDocument } from '../models/ClassSchedule';
+import { UserModel } from '../models/User';
 import { 
   MarkAttendanceDto, 
   AttendanceWithDetails, 
-  StudentCategory
+  StudentCategory,
+  ClassScheduleSession
 } from '../types/interfaces';
 
 // Cast the model to include our custom methods
@@ -43,20 +45,22 @@ function isErrorWithMessage(error: unknown): error is { message: string } {
 export class AttendanceService {
 
   // Get all classes scheduled for a specific date
-  async getClassesForDate(date: Date): Promise<any[]> {
+  async getClassesForDate(date: Date): Promise<PopulatedClassSchedule[]> {
     const startOfDay = moment(date).startOf('day').toDate();
     const endOfDay = moment(date).endOf('day').toDate();
 
-    return await ClassScheduleModel.find({
+    const results = await ClassScheduleModel.find({
       date: { $gte: startOfDay, $lte: endOfDay },
       status: 'scheduled'
     })
-    .populate('class_id')
+    .populate<{ class_id: IClassInfo }>('class_id')
     .sort({ start_time: 1 });
+
+    return results as PopulatedClassSchedule[];
   }
 
   // Get the next upcoming class (closest in time to now)
-  async getNextUpcomingClass(): Promise<any> {
+  async getNextUpcomingClass(): Promise<any | null> {
     const now = new Date();
 
     // First try to find classes today that haven't started yet
@@ -170,21 +174,18 @@ export class AttendanceService {
 
     // After all attendance is processed, update the schedule's sessions array
     // Get the user who recorded the attendance for the instructor field
-    const { UserModel } = require('../models/User');
-    let instructorName = 'Unknown';
+    let user;
     
-    try {
-      // recordedBy might be an email or ObjectId - try to find user
-      const user = Types.ObjectId.isValid(recordedBy)
-        ? await UserModel.findById(recordedBy).select('name email')
-        : await UserModel.findOne({ email: recordedBy }).select('name email');
-      
-      instructorName = user ? (user.name || user.email) : recordedBy;
-    } catch (error) {
-      console.error('Failed to fetch user for instructor name:', error);
-      instructorName = recordedBy; // Fallback to recordedBy value
+    // Check if recordedBy is a valid ObjectId or an email/string
+    if (Types.ObjectId.isValid(recordedBy)) {
+      user = await UserModel.findById(recordedBy).select('name email');
+    } else {
+      // Assume it's an email or name, try to find by email first
+      user = await UserModel.findOne({ email: recordedBy }).select('name email');
     }
     
+    let instructorName = user ? user.name : recordedBy;
+
     // Group results by schedule and date to update sessions
     const scheduleUpdates = new Map<string, { date: Date; scheduleId: Types.ObjectId }>();
     
@@ -203,38 +204,50 @@ export class AttendanceService {
       }
     }
 
-    // Update each schedule's sessions array
-    const { ClassScheduleModel } = require('../models/ClassSchedule');
-    for (const [, update] of scheduleUpdates) {
+    // Update schedules efficiently: batch fetch instead of looping
+    if (scheduleUpdates.size > 0) {
       try {
-        const schedule = await ClassScheduleModel.findById(update.scheduleId);
-        if (schedule) {
-          const dateStr = update.date.toISOString().split('T')[0];
-          const existingSessionIndex = schedule.sessions?.findIndex(
-            (s: any) => s.date.toISOString().split('T')[0] === dateStr
-          ) ?? -1;
+        // Get all schedule IDs
+        const scheduleIds = Array.from(scheduleUpdates.values()).map(u => u.scheduleId);
+        
+        // Fetch all schedules in one query
+        const schedules = await ClassScheduleModel.find({ _id: { $in: scheduleIds } });
+        
+        // Create a map for O(1) lookup
+        const scheduleMap = new Map(schedules.map(s => [s._id.toString(), s]));
+        
+        // Update all schedules in memory
+        for (const [, update] of scheduleUpdates) {
+          const schedule = scheduleMap.get(update.scheduleId.toString());
+          if (schedule && schedule.sessions) {
+            const dateStr = update.date.toISOString().split('T')[0];
+            const existingSessionIndex = schedule.sessions.findIndex(
+              (s: ClassScheduleSession) => s.date.toISOString().split('T')[0] === dateStr
+            );
 
-          if (existingSessionIndex >= 0) {
-            // Update existing session to completed
-            schedule.sessions[existingSessionIndex].status = 'completed';
-            schedule.sessions[existingSessionIndex].instructor = instructorName;
-          } else {
-            // Create new session
-            if (!schedule.sessions) {
-              schedule.sessions = [];
+            if (existingSessionIndex >= 0) {
+              // Update existing session to completed
+              schedule.sessions[existingSessionIndex].status = 'completed' as any;
+              schedule.sessions[existingSessionIndex].instructor = instructorName;
+            } else {
+              // Create new session
+              if (!schedule.sessions) {
+                schedule.sessions = [];
+              }
+              schedule.sessions.push({
+                date: update.date,
+                instructor: instructorName,
+                status: 'completed' as any,
+                notes: ''
+              });
             }
-            schedule.sessions.push({
-              date: update.date,
-              instructor: instructorName,
-              status: 'completed',
-              notes: ''
-            });
           }
-          
-          await schedule.save();
         }
+        
+        // Save all schedules in parallel
+        await Promise.all(schedules.map(s => s.save()));
       } catch (error) {
-        console.error(`Failed to update session for schedule ${update.scheduleId}:`, error);
+        console.error('Failed to update sessions after marking attendance:', error);
         // Don't throw - attendance is already saved, session update is secondary
       }
     }

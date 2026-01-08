@@ -45,7 +45,7 @@ describe('AttendanceService', () => {
       name: 'Test Student',
       email: 'test@example.com',
       categories: [StudentCategoryEnum.KIDS],
-      belt_level: 'white',
+      belt_level: '10kyu',
       registration_date: new Date('2000-01-01'),
       phone: '1234567890',
       emergency_contact: { name: 'Parent', phone: '1234567890' }

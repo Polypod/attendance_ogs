@@ -68,8 +68,14 @@ export const authenticate = async (
     }
 
     // 6. Update last login timestamp
-    user.last_login = new Date();
-    await user.save({ validateBeforeSave: false });
+    // Uppdatera endast var 5:e minut
+    const lastUpdate = user.last_login ?
+      Date.now() - user.last_login.getTime() : Infinity;
+
+    if (lastUpdate > 5 * 60 * 1000) {  // 5 minuter
+      user.last_login = new Date();
+      await user.save({ validateBeforeSave: false });
+    }
 
     // 7. Attach user to request (without password)
     req.user = {

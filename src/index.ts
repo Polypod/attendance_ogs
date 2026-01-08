@@ -1,9 +1,8 @@
-
-
 // src/index.ts - Main application entry point
 import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import rateLimit from 'express-rate-limit';
 import { studentRoutes } from './routes/studentRoutes';
 import { classRoutes } from './routes/classRoutes';
 import { scheduleRoutes } from './routes/scheduleRoutes';

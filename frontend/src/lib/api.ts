@@ -38,8 +38,13 @@ export async function fetchWithAuth(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  console.log('[API] Fetching:', `${baseUrl}${endpoint}`);
-  console.log('[API] Headers:', headers);
+  // Only log in development mode to avoid exposing sensitive data in production
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[API] Fetching:', endpoint);
+    const safeHeaders = { ...headers };
+    delete safeHeaders['Authorization'];
+    console.log('[API] Headers:', safeHeaders);
+  }
 
   const response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
@@ -47,8 +52,10 @@ export async function fetchWithAuth(
     body: options.body ? JSON.stringify(options.body) : undefined
   });
 
-  console.log('[API] Response status:', response.status);
-  console.log('[API] Response ok:', response.ok);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[API] Response status:', response.status);
+    console.log('[API] Response ok:', response.ok);
+  }
 
   // Handle 401 Unauthorized - redirect to login
   if (response.status === 401) {
@@ -74,11 +81,17 @@ export async function fetchWithAuth(
 export function createApiClient(token?: string) {
   return {
     get: async (endpoint: string) => {
-      console.log('[createApiClient] GET request to:', endpoint);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[createApiClient] GET request to:', endpoint);
+      }
       const response = await fetchWithAuth(endpoint, { method: "GET", token });
-      console.log('[createApiClient] Got response, parsing JSON...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[createApiClient] Got response, parsing JSON...');
+      }
       const data = await response.json();
-      console.log('[createApiClient] Parsed JSON:', data);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[createApiClient] Parsed JSON:', data);
+      }
       return data;
     },
 

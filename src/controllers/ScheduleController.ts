@@ -1,7 +1,7 @@
 // src/controllers/ScheduleController.ts - Class Schedule business logic
 import { Request, Response } from 'express';
 import { ClassScheduleModel } from '../models/ClassSchedule';
-import { CreateClassScheduleDto, ClassStatusEnum } from '../types/interfaces';
+import { CreateClassScheduleDto, ClassStatusEnum, ClassScheduleSession } from '../types/interfaces';
 
 export class ScheduleController {
   // Get all class schedules
@@ -17,7 +17,7 @@ export class ScheduleController {
         const rangeEnd = new Date(endDate as string);
         
         // For recurring schedules, we need to fetch all that might overlap with range
-        const recurringQuery: any = { recurring: true };
+        const recurringQuery: Record<string, unknown> = { recurring: true };
         if (classId) recurringQuery.class_id = classId;
         
         // Fetch recurring schedules that started before or during range end
@@ -44,7 +44,7 @@ export class ScheduleController {
         console.log('[ScheduleController] Found', recurringSchedules.length, 'recurring schedules');
         
         // Fetch non-recurring schedules within range
-        const nonRecurringQuery: any = {
+        const nonRecurringQuery: Record<string, unknown> = {
           recurring: { $ne: true },
           date: {
             $gte: rangeStart,
@@ -89,7 +89,7 @@ export class ScheduleController {
                   
                   // DEBUG: Log all sessions in this schedule
                   console.log('[ScheduleController] Schedule has', schedule.sessions?.length || 0, 'sessions total');
-                  schedule.sessions?.forEach((s: any, idx: number) => {
+                  schedule.sessions?.forEach((s: ClassScheduleSession, idx: number) => {
                     console.log(`[ScheduleController]   Session ${idx}:`, {
                       date: s.date.toISOString().split('T')[0],
                       instructor: s.instructor,
@@ -98,7 +98,7 @@ export class ScheduleController {
                   });
                   
                   const existingSession = schedule.sessions?.find(
-                    (s: any) => s.date.toISOString().split('T')[0] === dateStr
+                    (s: ClassScheduleSession) => s.date.toISOString().split('T')[0] === dateStr
                   );
                   
                   // Create a new date object for this instance
@@ -175,7 +175,7 @@ export class ScheduleController {
         res.status(200).json({ success: true, data: expandedSchedules });
       } else {
         // Simple query when not expanding
-        const query: any = {};
+        const query: Record<string, unknown> = {};
         
         if (startDate && endDate) {
           query.date = {
@@ -270,7 +270,7 @@ export class ScheduleController {
         id,
         updateData: {
           status: updateData.status,
-          sessions: updateData.sessions?.map((s: any) => ({
+          sessions: updateData.sessions?.map((s: ClassScheduleSession) => ({
             date: s.date,
             instructor: s.instructor,
             instructorType: typeof s.instructor,
@@ -295,7 +295,7 @@ export class ScheduleController {
       }
       
       console.log('[ScheduleController] Current schedule sessions BEFORE update:', 
-        schedule.sessions?.map((s: any) => ({
+        schedule.sessions?.map((s: ClassScheduleSession) => ({
           date: s.date,
           instructor: s.instructor,
           status: s.status
@@ -312,7 +312,7 @@ export class ScheduleController {
         schedule.sessions = updateData.sessions;
         schedule.markModified('sessions');
         console.log('[ScheduleController] Sessions after assignment:', 
-          schedule.sessions?.map((s: any) => ({
+          schedule.sessions?.map((s: ClassScheduleSession) => ({
             date: s.date,
             instructor: s.instructor,
             status: s.status
@@ -338,7 +338,7 @@ export class ScheduleController {
         .populate('class_id', 'name instructor categories');
         
       console.log('[ScheduleController] Verified sessions from DB after save:', 
-        verifySchedule?.sessions?.map((s: any) => ({
+        verifySchedule?.sessions?.map((s: ClassScheduleSession) => ({
           date: s.date,
           instructor: s.instructor,
           instructorType: typeof s.instructor,
@@ -350,7 +350,7 @@ export class ScheduleController {
       const updatedSchedule = verifySchedule;
 
       console.log('[ScheduleController] Returning updated schedule with sessions:', 
-        updatedSchedule?.sessions?.map((s: any) => ({
+        updatedSchedule?.sessions?.map((s: ClassScheduleSession) => ({
           date: s.date,
           instructor: s.instructor,
           status: s.status

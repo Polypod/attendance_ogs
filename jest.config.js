@@ -17,10 +17,10 @@ module.exports = {
   // Relax coverage thresholds to allow incremental test additions
   coverageThreshold: {
     global: {
-      branches: 0,
-      functions: 0,
-      lines: 0,
-      statements: 0
+      branches: 50,
+      functions: 60,
+      lines: 60,
+      statements: 60
     }
   },
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts']

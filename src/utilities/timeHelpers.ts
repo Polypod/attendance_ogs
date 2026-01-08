@@ -20,7 +20,7 @@ export class TimeHelpers {
     return now.isBetween(start, end);
   }
 
-  static getNextClassTime(schedules: any[]): any | null {
+  static getNextClassTime(schedules: Array<{ start_time: string }>): { start_time: string } | null {
     const now = moment();
     const currentTime = now.format('HH:mm');
 

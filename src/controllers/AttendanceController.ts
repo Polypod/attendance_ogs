@@ -39,7 +39,8 @@ export class AttendanceController {
   markAttendance = async (req: Request, res: Response): Promise<void> => {
     try {
       const attendanceData: MarkAttendanceDto[] = req.body.attendance;
-      const recordedBy = req.body.recorded_by || 'system';
+      // Use the authenticated user's ID instead of taking from request body
+      const recordedBy = req.user?._id || 'system';
       
       const result = await this.attendanceService.markMultipleAttendance(attendanceData, recordedBy);
       res.json({ success: true, data: result });
