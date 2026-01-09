@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Script to start backend and frontend in "production" locally on ports
+# Script to start backend and frontend in "production" locally on ports using PM2
 # Backend: 4010
 # Frontend: 4011
-# It will kill any process listening on those ports, build both apps, then start them.
+# It will kill any process listening on those ports, build both apps, then start them with PM2.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 ports=(4010 4011)
+
+# Check if PM2 is installed
+if ! command -v pm2 >/dev/null 2>&1; then
+  echo "❌ PM2 is not installed. Installing globally..."
+  npm install -g pm2 || pnpm add -g pm2
+fi
 
 get_pids_for_port() {
   local port="$1"
@@ -30,6 +36,12 @@ get_pids_for_port() {
 
 # Create logs directory early so redirects don't fail
 mkdir -p logs || true
+
+# Stop and delete existing PM2 processes to avoid conflicts
+echo "Cleaning up existing PM2 processes..."
+pm2 delete backend 2>/dev/null || true
+pm2 delete frontend 2>/dev/null || true
+sleep 1
 
 # Check that a process is listening on a TCP port (retries)
 check_port() {
@@ -152,34 +164,32 @@ kill_port_pids() {
   fi
 }
 
-# Start backend and frontend with specified ports
-# Ensure no lingering process occupies the ports
+# Start backend and frontend with PM2
+# PM2 will keep the processes running and restart them if they crash
 kill_port_pids 4010
 kill_port_pids 4011
 
-echo "Starting backend on port 4010..."
-# Ensure runtime path aliases work (tsconfig paths) when running compiled code
-NODE_OPTIONS=--require=./scripts/tsconfig-paths-dist-register.js PORT=4010 nohup pnpm start > logs/backend-prod.log 2>&1 &
-backend_pid=$!
+echo "Starting backend on port 4010 with PM2..."
+NODE_OPTIONS=--require=./scripts/tsconfig-paths-dist-register.js PORT=4010 \
+  pm2 start "pnpm start" \
+    --name "backend" \
+    --cwd "$ROOT_DIR" \
+    -o logs/backend-prod.log \
+    -e logs/backend-prod-error.log \
+    --wait-ready \
+    --listen-timeout 10000
 
-# Before starting frontend, ensure port is free
-kill_port_pids 4011
+echo "Starting frontend on port 4011 with PM2..."
+PORT=4011 BACKEND_URL=http://localhost:4010 NEXTAUTH_URL=http://localhost:4011 \
+  pm2 start "pnpm start" \
+    --name "frontend" \
+    --cwd "$ROOT_DIR/frontend" \
+    -o ../logs/frontend-prod.log \
+    -e ../logs/frontend-prod-error.log \
+    --wait-ready \
+    --listen-timeout 10000
 
-echo "Starting frontend on port 4011..."
-cd frontend
-PORT=4011 nohup pnpm start > ../logs/frontend-prod.log 2>&1 &
-frontend_pid=$!
-cd ..
-
-
-# Save PIDs
-echo "$backend_pid" > .prod_backend.pid
-echo "$frontend_pid" > .prod_frontend.pid
-
-echo "Backend PID: $backend_pid (logs/backend-prod.log)"
-echo "Frontend PID: $frontend_pid (logs/frontend-prod.log)"
-
-echo "Waiting briefly for services to bind to ports..."
+echo "PM2 processes started with monitoring enabled."
 sleep 1
 
 # Verify backend
@@ -188,6 +198,7 @@ if check_port 4010 10; then
 else
   echo "❌ ERROR: Backend did NOT start listening on port 4010"
   show_log_tail "logs/backend-prod.log"
+  pm2 delete backend || true
   exit 1
 fi
 
@@ -197,7 +208,26 @@ if check_port 4011 10; then
 else
   echo "❌ ERROR: Frontend did NOT start listening on port 4011"
   show_log_tail "logs/frontend-prod.log"
+  pm2 delete frontend || true
   exit 1
 fi
 
-echo "Production servers started and verified. Use the PID files (.prod_backend.pid/.prod_frontend.pid) to stop them or check logs."
+echo "✅ Production servers started with PM2."
+echo "   Backend: http://localhost:4010 (PM2 app: backend)"
+echo "   Frontend: http://localhost:4011 (PM2 app: frontend)"
+echo ""
+echo "PM2 is running in daemon mode (background)."
+echo ""
+echo "PM2 Commands:"
+echo "   pm2 status              - Show all processes"
+echo "   pm2 logs backend        - View backend logs (live)"
+echo "   pm2 logs frontend       - View frontend logs (live)"
+echo "   pm2 logs                - View all logs"
+echo "   pm2 stop backend        - Stop backend"
+echo "   pm2 stop frontend       - Stop frontend"
+echo "   pm2 restart backend     - Restart backend"
+echo "   pm2 restart frontend    - Restart frontend"
+echo "   pm2 delete backend      - Delete backend from PM2"
+echo "   pm2 delete frontend     - Delete frontend from PM2"
+echo "   pm2 delete all          - Delete all processes from PM2"
+echo "   pm2 kill                - Kill PM2 daemon and all processes"

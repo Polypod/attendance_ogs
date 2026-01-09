@@ -171,10 +171,14 @@ Example: If you change backend PORT to 5000:
 Set env vars in your host/CI/CD to control production ports and secrets securely.
 ### Starting locally in "production" mode (ports 4010/4011) 🔧
 
-A convenience script is included to build and start both backend and frontend on the local host using the ports below:
+A convenience script is included to build and start both backend and frontend on the local host using PM2 (a production-grade process manager):
 
 - Backend: 4010
 - Frontend: 4011
+
+**Prerequisites for the script:**
+- PM2 installed globally (`npm install -g pm2` or `pnpm add -g pm2`)
+- The script will auto-install PM2 if not found
 
 Usage:
 ```bash
@@ -183,26 +187,39 @@ Usage:
 ```
 
 What the script does:
-- Kills processes listening on ports 4010 and 4011 (if any)
+- Kills any existing processes listening on ports 4010 and 4011
 - Builds backend (`pnpm build`) and frontend (`cd frontend && pnpm build`)
-- Starts backend on port 4010 and frontend on port 4011 in the background
-- Writes logs to `logs/backend-prod.log` and `logs/frontend-prod.log`
-- Saves process IDs to `.prod_backend.pid` and `.prod_frontend.pid`
+- Starts both services with PM2 for automatic restart on crashes
+- Writes logs to `logs/backend-prod.log` and `logs/frontend-prod-error.log`
+- Verifies both services bind to their respective ports
 
-To stop the servers:
+**Managing PM2 processes:**
+
+View status:
 ```bash
-kill "$(cat .prod_backend.pid)" || true
-kill "$(cat .prod_frontend.pid)" || true
+pm2 status              # Show all running processes
+pm2 logs                # View all logs (live)
+pm2 logs backend        # View backend logs only
+pm2 logs frontend       # View frontend logs only
 ```
 
-Script verification
-- The script now verifies that the backend and frontend actually bind to ports **4010** and **4011** after startup (it waits and retries briefly). If a service fails to bind the script prints the last 200 lines from the corresponding log file (`logs/backend-prod.log` or `logs/frontend-prod.log`) and exits with a non-zero status so failures are visible when testing locally.
+Control processes:
+```bash
+pm2 stop backend        # Stop backend without removing
+pm2 stop frontend       # Stop frontend without removing
+pm2 restart backend     # Restart backend
+pm2 delete backend      # Remove backend from PM2
+pm2 kill                # Kill PM2 daemon and all processes
+```
 
-Repository hygiene
-- The PID files and logs created by the script are ignored by git:
-  - `.prod_backend.pid`, `.prod_frontend.pid`, and the `logs/` directory are listed in `.gitignore` to avoid leaking runtime artifacts.
+**Benefits of PM2:**
+- Automatic restart if a process crashes
+- Built-in logging and monitoring
+- Process state persistence
+- Easier debugging with live log streaming
+- No need to manually track PIDs
 
-Note: This script is intended for local testing of production builds. In real production deploys, prefer systemd units, Docker, or a process manager (PM2) that integrates with your host environment and secret management.
+Note: This script is intended for local testing of production builds. In real production deploys, use systemd units, Docker, or orchestration platforms with your host environment and secret management.
 ### Database Schema
 
 The system uses 5 main collections:
