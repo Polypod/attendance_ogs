@@ -142,6 +142,7 @@ export default function ReportsPage() {
 
   const [mode, setMode] = useState<ViewMode>("raw");
   const [groupBy, setGroupBy] = useState<AggregatedGroupBy>("student");
+  const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
 
   const [students, setStudents] = useState<Student[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -222,6 +223,13 @@ export default function ReportsPage() {
   useEffect(() => {
     setPage(1);
   }, [from, to, studentId, studentName, classScheduleId, instructor, status.join(","), mode, groupBy]);
+
+  // Session selection only applies when grouping by session
+  useEffect(() => {
+    if (mode !== "aggregate" || groupBy !== "session") {
+      setSelectedSessionIds([]);
+    }
+  }, [groupBy, mode]);
 
   // Load report when query changes
   useEffect(() => {
@@ -535,6 +543,7 @@ export default function ReportsPage() {
                   </>
                 ) : groupBy === "session" ? (
                   <>
+                    <TableHead className="w-[3rem]" />
                     <TableHead>Date</TableHead>
                     <TableHead>Start</TableHead>
                     <TableHead>End</TableHead>
@@ -592,6 +601,22 @@ export default function ReportsPage() {
                     >
                       {groupBy === "session" ? (
                         <>
+                          <TableCell>
+                            <Checkbox
+                              checked={
+                                !!r.class_schedule_id &&
+                                selectedSessionIds.includes(r.class_schedule_id)
+                              }
+                              onCheckedChange={(v) => {
+                                if (!r.class_schedule_id) return;
+                                const nextChecked = v === true;
+                                setSelectedSessionIds((prev) => {
+                                  if (nextChecked) return Array.from(new Set([...prev, r.class_schedule_id!]));
+                                  return prev.filter((id) => id !== r.class_schedule_id);
+                                });
+                              }}
+                            />
+                          </TableCell>
                           <TableCell>{r.date ? formatDateSv(r.date) : ""}</TableCell>
                           <TableCell>{r.start_time ?? ""}</TableCell>
                           <TableCell>{r.end_time ?? ""}</TableCell>
