@@ -133,7 +133,7 @@ pnpm build
 
 echo "Building frontend..."
 # Run frontend build and save logs for easier debugging
-if ! pnpm --prefix frontend build > logs/frontend-build.log 2>&1; then
+if ! BACKEND_URL=http://localhost:4010 pnpm --prefix frontend build > logs/frontend-build.log 2>&1; then
   echo "Frontend build failed. See logs/frontend-build.log for details."
   show_log_tail "logs/frontend-build.log"
   exit 1
