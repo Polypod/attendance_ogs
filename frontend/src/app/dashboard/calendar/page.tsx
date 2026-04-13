@@ -113,6 +113,10 @@ export default function CalendarPage() {
   const [summaryAttendance, setSummaryAttendance] = useState<AttendanceRecord[]>([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
+  // Instructor sessions dialog state
+  const [instructorDialogOpen, setInstructorDialogOpen] = useState(false);
+  const [instructorName, setInstructorName] = useState<string>("");
+
   // Form states
   const [createForm, setCreateForm] = useState({
     class_id: "",
@@ -377,6 +381,11 @@ export default function CalendarPage() {
     }
   }
 
+  function openInstructorDialog(name: string) {
+    setInstructorName(name);
+    setInstructorDialogOpen(true);
+  }
+
   function getClassName(classId: ClassInfo | string): string {
     if (typeof classId === 'object') return classId.name;
     const cls = classes.find(c => c._id === classId);
@@ -606,7 +615,12 @@ export default function CalendarPage() {
                       {schedule.start_time} - {schedule.end_time}
                     </TableCell>
                     <TableCell>{getClassName(schedule.class_id)}</TableCell>
-                    <TableCell>{getInstructorName(schedule.class_id, schedule)}</TableCell>
+                    <TableCell
+                      className="cursor-pointer hover:text-primary hover:underline"
+                      onClick={() => openInstructorDialog(getInstructorName(schedule.class_id, schedule))}
+                    >
+                      {getInstructorName(schedule.class_id, schedule)}
+                    </TableCell>
                     <TableCell className="text-center">{attendanceCounts[attendanceKey] || 0}</TableCell>
                     <TableCell>
                       <Link
@@ -895,6 +909,96 @@ export default function CalendarPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setSummaryDialogOpen(false)}>Stäng</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Instructor Sessions Dialog */}
+      <Dialog open={instructorDialogOpen} onOpenChange={setInstructorDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Sessions för {instructorName}
+            </DialogTitle>
+            <DialogDescription>
+              Alla sessioner inom valt datumintervall för denna instruktör.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            {(() => {
+              const instructorSessions = schedules.filter(
+                (s) => getInstructorName(s.class_id, s) === instructorName
+              ).sort((a, b) => a.date.localeCompare(b.date));
+
+              if (instructorSessions.length === 0) {
+                return <p className="text-sm text-muted-foreground">Inga sessioner hittades.</p>;
+              }
+
+              return (
+                <div className="rounded-md border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-medium">Datum</th>
+                        <th className="text-left px-3 py-2 font-medium">Dag</th>
+                        <th className="text-left px-3 py-2 font-medium">Tid</th>
+                        <th className="text-left px-3 py-2 font-medium">Klass</th>
+                        <th className="text-left px-3 py-2 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {instructorSessions.map((s, i) => {
+                        const sd = s.date.split('T')[0];
+                        return (
+                          <tr key={`${s._id}-${sd}-${i}`} className="border-t">
+                            <td
+                              className="px-3 py-2 cursor-pointer hover:text-primary hover:underline"
+                              onClick={() => { setInstructorDialogOpen(false); openSummaryDialog(s); }}
+                            >
+                              {new Date(s.date).toLocaleDateString('sv-SE')}
+                            </td>
+                            <td
+                              className="px-3 py-2 cursor-pointer hover:text-primary hover:underline"
+                              onClick={() => { setInstructorDialogOpen(false); openSummaryDialog(s); }}
+                            >
+                              {getDayOfWeekName(s.date)}
+                            </td>
+                            <td
+                              className="px-3 py-2 cursor-pointer hover:text-primary hover:underline"
+                              onClick={() => { setInstructorDialogOpen(false); openSummaryDialog(s); }}
+                            >
+                              {s.start_time} – {s.end_time}
+                            </td>
+                            <td className="px-3 py-2">{getClassName(s.class_id)}</td>
+                            <td className="px-3 py-2">
+                              <Link
+                                href={`/dashboard/attendance/${s._id}?date=${sd}`}
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium hover:opacity-80 transition-opacity ${
+                                  s.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                  s.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                  s.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}
+                                onClick={() => setInstructorDialogOpen(false)}
+                              >
+                                {s.status}
+                              </Link>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <div className="px-3 py-2 bg-muted/30 text-xs text-muted-foreground border-t">
+                    {instructorSessions.length} session{instructorSessions.length !== 1 ? 'er' : ''}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInstructorDialogOpen(false)}>Stäng</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

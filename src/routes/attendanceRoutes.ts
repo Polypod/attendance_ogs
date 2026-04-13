@@ -52,4 +52,11 @@ router.get(
   attendanceController.getAttendanceReports
 );
 
+// Get attendance history for a specific student
+router.get(
+  '/student/:studentId',
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  attendanceController.getStudentAttendance
+);
+
 export { router as attendanceRoutes };

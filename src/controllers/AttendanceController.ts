@@ -110,6 +110,21 @@ export class AttendanceController {
       });
     }
   };
+
+  // Get all attendance records for a specific student
+  getStudentAttendance = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { studentId } = req.params;
+      const records = await this.attendanceService.getStudentAttendance(studentId);
+      res.json({ success: true, data: records });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: 'Error fetching student attendance',
+        error: (error as Error).message
+      });
+    }
+  };
 }
 
 export const attendanceController = new AttendanceController();

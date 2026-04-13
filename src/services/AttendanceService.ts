@@ -563,6 +563,24 @@ export class AttendanceService {
     }
   }
 
+  // Get all attendance records for a specific student
+  async getStudentAttendance(studentId: string): Promise<AttendanceWithDetails[]> {
+    const { validateObjectId } = require('../utils/validators');
+    validateObjectId(studentId, 'student ID');
+
+    const records = await AttendanceModel
+      .find({ student_id: new Types.ObjectId(studentId) })
+      .populate('student_id', 'name')
+      .populate({
+        path: 'class_schedule_id',
+        populate: { path: 'class_id', select: 'name instructor' }
+      })
+      .sort({ date: -1 })
+      .lean();
+
+    return records as unknown as AttendanceWithDetails[];
+  }
+
   private parseDateRange(dateRange: string): [Date, Date] {
     const now = new Date();
 

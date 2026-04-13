@@ -25,7 +25,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Edit, Plus } from "lucide-react";
+import { Trash2, Edit, Plus, BarChart2 } from "lucide-react";
+
+type AttendanceRecord = {
+  _id: string;
+  date?: string;
+  status: string;
+  category?: string;
+  notes?: string;
+  class_schedule_id?: {
+    _id: string;
+    date?: string;
+    start_time?: string;
+    end_time?: string;
+    class_id?: { name: string; instructor: string };
+  };
+};
 
 type Student = {
   _id: string;
@@ -56,6 +71,12 @@ export default function StudentsPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  // Attendance summary dialog
+  const [attendanceDialogOpen, setAttendanceDialogOpen] = useState(false);
+  const [attendanceStudent, setAttendanceStudent] = useState<Student | null>(null);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
 
   // Form state for create student
   const [createForm, setCreateForm] = useState({
@@ -241,6 +262,22 @@ export default function StudentsPage() {
   function openDeleteDialog(student: Student) {
     setSelectedStudent(student);
     setDeleteDialogOpen(true);
+  }
+
+  async function openAttendanceDialog(student: Student) {
+    setAttendanceStudent(student);
+    setAttendanceDialogOpen(true);
+    setAttendanceRecords([]);
+    setAttendanceLoading(true);
+    try {
+      const api = createApiClient((session as any)?.accessToken);
+      const data = await api.get(`/api/attendance/student/${student._id}`);
+      setAttendanceRecords(data.data || []);
+    } catch {
+      setAttendanceRecords([]);
+    } finally {
+      setAttendanceLoading(false);
+    }
   }
 
   return (
@@ -508,7 +545,12 @@ export default function StudentsPage() {
                   .filter(student => !showOnlyActive || student.active !== false)
                   .map((student) => (
                 <TableRow key={student._id}>
-                  <TableCell className="font-medium">{student.name}</TableCell>
+                  <TableCell
+                    className="font-medium cursor-pointer hover:text-primary hover:underline"
+                    onClick={() => openAttendanceDialog(student)}
+                  >
+                    {student.name}
+                  </TableCell>
                   <TableCell>
                     {student.categories?.join(", ") || "N/A"}
                   </TableCell>
@@ -518,6 +560,14 @@ export default function StudentsPage() {
                   <TableCell>{student.email || "N/A"}</TableCell>
                   <TableCell>{student.phone || "N/A"}</TableCell>
                   <TableCell className="text-right space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openAttendanceDialog(student)}
+                      title="View attendance"
+                    >
+                      <BarChart2 className="w-4 h-4" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -761,6 +811,108 @@ export default function StudentsPage() {
             >
               Delete
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Student Attendance Summary Dialog */}
+      <Dialog open={attendanceDialogOpen} onOpenChange={setAttendanceDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart2 className="w-5 h-5" />
+              Attendance – {attendanceStudent?.name}
+            </DialogTitle>
+            <DialogDescription>
+              All registered attendance records for this student.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            {attendanceLoading ? (
+              <p className="text-sm text-muted-foreground">Loading attendance...</p>
+            ) : attendanceRecords.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No attendance records found.</p>
+            ) : (() => {
+              const total = attendanceRecords.length;
+              const present = attendanceRecords.filter(a => a.status === 'present').length;
+              const late = attendanceRecords.filter(a => a.status === 'late').length;
+              const excused = attendanceRecords.filter(a => a.status === 'excused').length;
+              const absent = attendanceRecords.filter(a => a.status === 'absent').length;
+              const pct = total > 0 ? Math.round(((present + excused + late * 0.5) / total) * 100) : 0;
+
+              return (
+                <div className="space-y-4">
+                  {/* Stats row */}
+                  <div className="grid grid-cols-4 gap-2 text-center text-sm">
+                    <div className="rounded-md border p-2 bg-green-50">
+                      <p className="text-2xl font-bold text-green-700">{present}</p>
+                      <p className="text-xs text-muted-foreground">Present</p>
+                    </div>
+                    <div className="rounded-md border p-2 bg-yellow-50">
+                      <p className="text-2xl font-bold text-yellow-700">{late}</p>
+                      <p className="text-xs text-muted-foreground">Late</p>
+                    </div>
+                    <div className="rounded-md border p-2 bg-blue-50">
+                      <p className="text-2xl font-bold text-blue-700">{excused}</p>
+                      <p className="text-xs text-muted-foreground">Excused</p>
+                    </div>
+                    <div className="rounded-md border p-2 bg-red-50">
+                      <p className="text-2xl font-bold text-red-700">{absent}</p>
+                      <p className="text-xs text-muted-foreground">Absent</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Attendance rate: <strong>{pct}%</strong> ({total} sessions total)
+                  </p>
+
+                  {/* Records table */}
+                  <div className="rounded-md border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-medium">Date</th>
+                          <th className="text-left px-3 py-2 font-medium">Class</th>
+                          <th className="text-left px-3 py-2 font-medium">Time</th>
+                          <th className="text-left px-3 py-2 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attendanceRecords.map((a) => {
+                          const dateStr = a.date
+                            ? new Date(a.date).toLocaleDateString('sv-SE')
+                            : a.class_schedule_id?.date
+                              ? new Date(a.class_schedule_id.date).toLocaleDateString('sv-SE')
+                              : '—';
+                          const className = a.class_schedule_id?.class_id?.name || '—';
+                          const time = a.class_schedule_id?.start_time && a.class_schedule_id?.end_time
+                            ? `${a.class_schedule_id.start_time} – ${a.class_schedule_id.end_time}`
+                            : '—';
+                          return (
+                            <tr key={a._id} className="border-t">
+                              <td className="px-3 py-2">{dateStr}</td>
+                              <td className="px-3 py-2">{className}</td>
+                              <td className="px-3 py-2">{time}</td>
+                              <td className="px-3 py-2">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                  a.status === 'present' ? 'bg-green-100 text-green-800' :
+                                  a.status === 'absent' ? 'bg-red-100 text-red-800' :
+                                  a.status === 'late' ? 'bg-yellow-100 text-yellow-800' :
+                                  a.status === 'excused' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>{a.status}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAttendanceDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
