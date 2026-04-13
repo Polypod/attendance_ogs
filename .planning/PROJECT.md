@@ -18,11 +18,11 @@ Admin och instruktörer kan snabbt få fram korrekt närvarodata (rådata eller 
 - ✓ Närvaroregistrering per pass och elev, inkl. historikredigering — befintligt
 - ✓ Dashboard för dagens pass — befintligt
 
+- ✓ **Rapportsida (rådata)** för admin + instruktör — tabell (en rad per närvaro-registrering) med filter och paginering (Phase 1)
+
 ### Active
 
-- [ ] **Rapportsida** för admin + instruktör med två lägen:
-  - Rådata: tabell (t.ex. en rad per närvaro-registrering)
-  - Aggregerat: summeringar med standard-grupperingar (per student, per instruktör, per pass/session, per klass)
+- [ ] **Rapportsida (aggregerat läge)**: summeringar med standard-grupperingar (per student, per instruktör, per pass/session, per klass) och nyckeltal
 - [ ] **Kolumnhantering**: kunna visa/dölja valfria fält i tabellen
 - [ ] **Sortering + filtrering per fält** (inkl. datumintervall där relevant) samt **global fri-text-sök**
 - [ ] **Presets**: spara och återanvänd tabellinställningar server-side per användare, samt stöd för **delade presets**
@@ -80,4 +80,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-13 after initialization*
+*Last updated: 2026-04-13 after Phase 1 completion*

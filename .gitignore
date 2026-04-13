@@ -69,5 +69,5 @@ data/
 .fusebox/
 .gitnexus
 
-# GSD planning docs (local-only)
-.planning/
+# GSD planning docs
+# NOTE: These are versioned in this repo.
