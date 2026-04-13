@@ -709,6 +709,21 @@ export default function ReportsPage() {
                 <div className="p-6 text-muted-foreground">No results.</div>
               ) : (
                 <Table className="table-fixed">
+                  {mode === "raw" && (
+                    <colgroup>
+                      <col style={{ width: "6.5rem" }} />
+                      <col style={{ width: "4.5rem" }} />
+                      <col style={{ width: "4.5rem" }} />
+                      <col style={{ width: "12rem" }} />
+                      <col style={{ width: "16rem" }} />
+                      <col style={{ width: "12rem" }} />
+                      <col style={{ width: "6.5rem" }} />
+                      <col style={{ width: "7.5rem" }} />
+                      <col style={{ width: "18rem" }} />
+                      <col style={{ width: "14rem" }} />
+                      <col style={{ width: "11rem" }} />
+                    </colgroup>
+                  )}
                   <TableHeader>
                     <TableRow>
                       {mode === "raw" ? (
@@ -764,15 +779,23 @@ export default function ReportsPage() {
                             <TableCell>{formatDateSv(r.date)}</TableCell>
                             <TableCell>{r.start_time}</TableCell>
                             <TableCell>{r.end_time}</TableCell>
-                            <TableCell className="font-medium">{r.student_name}</TableCell>
-                            <TableCell>{r.class_name}</TableCell>
-                            <TableCell>{r.instructor}</TableCell>
+                            <TableCell className="font-medium truncate" title={r.student_name}>
+                              {r.student_name}
+                            </TableCell>
+                            <TableCell className="truncate" title={r.class_name}>
+                              {r.class_name}
+                            </TableCell>
+                            <TableCell className="truncate" title={r.instructor}>
+                              {r.instructor}
+                            </TableCell>
                             <TableCell className="capitalize">{r.status}</TableCell>
                             <TableCell>{r.category}</TableCell>
                             <TableCell className="max-w-[18rem] truncate" title={r.notes}>
                               {r.notes}
                             </TableCell>
-                            <TableCell>{r.recorded_by}</TableCell>
+                            <TableCell className="truncate" title={r.recorded_by}>
+                              {r.recorded_by}
+                            </TableCell>
                             <TableCell>{formatDateSv(r.recorded_at)}</TableCell>
                           </TableRow>
                         ))
