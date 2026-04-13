@@ -1,79 +1,5 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Project Overview
-
-This is a TypeScript Express.js backend for a karate school attendance management system. It uses MongoDB with Mongoose ODM and provides a REST API for managing students, classes, schedules, and attendance tracking.
-
-## Development Commands
-
-### Core Development
-
-- `pnpm run dev` - Start development server with hot reload using ts-node-dev
-- `pnpm run build` - Compile TypeScript to JavaScript in dist/ directory  
-- `pnpm start` - Start production server from compiled dist/index.js
-- `pnpm test` - Run Jest test suite with coverage reporting
-
-### Database
-
-- `docker-compose up -d` - Start MongoDB container on port 27018
-- MongoDB connection: localhost:27018 with credentials in docker-compose.yml
-
-## Architecture
-
-### Core Structure
-
-- **Models** (`src/models/`): Mongoose schemas with validation and indexing
-- **Services** (`src/services/`): Business logic layer (e.g., AttendanceService for complex attendance operations)  
-- **Controllers** (`src/controllers/`): HTTP request handlers that use services
-- **Routes** (`src/routes/`): Express route definitions
-- **Types** (`src/types/interfaces.ts`): TypeScript interfaces and enums for type safety
-
-### Key Design Patterns
-
-- **Multiple Categories**: Students and classes support multiple categories (kids, youth, adult, advanced)
-- **Category-specific Attendance**: Attendance tracked per category for mixed-level classes
-- **Separated Schedules**: Classes and ClassSchedules are separate entities for flexible scheduling
-- **Time-based Logic**: Automatic next class detection using moment.js
-- **Service Layer**: Complex business logic isolated in service classes
-
-### Database Schema
-
-- **Students**: Personal info, multiple categories, belt levels, emergency contacts
-- **Classes**: Class definitions with categories, instructor, capacity
-- **ClassSchedules**: Specific class instances with dates/times, recurring support  
-- **Attendance**: Individual records linking students to specific class schedules
-
-### Type System
-
-- Comprehensive TypeScript interfaces in `src/types/interfaces.ts`
-- Enums for categories, statuses, days of week
-- DTOs for API requests/responses
-- Extended interfaces for populated MongoDB documents
-
-## Testing
-
-- Jest configuration in `jest.config.js` with 80% coverage threshold
-- Test files in `src/__tests__/` directory
-- Setup file at `src/test/setup.ts`
-- In-memory MongoDB for testing using mongodb-memory-server
-
-## Path Aliases
-
-- `@/*` maps to `src/*` (configured in tsconfig.json)
-
-## Key Dependencies
-
-- **express**: Web framework
-- **mongoose**: MongoDB ODM with validation
-- **joi**: Additional request validation
-- **moment**: Date/time manipulation for class scheduling
-- **helmet**: Security middleware
-- **cors**: Cross-origin resource sharing
-
 <!-- gitnexus:start -->
-GitNexus — Code Intelligence
+# GitNexus — Code Intelligence
 
 This project is indexed by GitNexus as **attendance_ogs** (460 symbols, 1005 relationships, 32 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
@@ -110,7 +36,7 @@ This project is indexed by GitNexus as **attendance_ogs** (460 symbols, 1005 rel
 ## Tools Quick Reference
 
 | Tool | When to use | Command |
-| ---- | ----------- | ------- |
+|------|-------------|---------|
 | `query` | Find code by concept | `gitnexus_query({query: "auth validation"})` |
 | `context` | 360-degree view of one symbol | `gitnexus_context({name: "validateUser"})` |
 | `impact` | Blast radius before editing | `gitnexus_impact({target: "X", direction: "upstream"})` |
@@ -121,7 +47,7 @@ This project is indexed by GitNexus as **attendance_ogs** (460 symbols, 1005 rel
 ## Impact Risk Levels
 
 | Depth | Meaning | Action |
-| ------ | ------- | ------- |
+|-------|---------|--------|
 | d=1 | WILL BREAK — direct callers/importers | MUST update these |
 | d=2 | LIKELY AFFECTED — indirect deps | Should test |
 | d=3 | MAY NEED TESTING — transitive | Test if critical path |
@@ -129,7 +55,7 @@ This project is indexed by GitNexus as **attendance_ogs** (460 symbols, 1005 rel
 ## Resources
 
 | Resource | Use for |
-| -------- | ------- |
+|----------|---------|
 | `gitnexus://repo/attendance_ogs/context` | Codebase overview, check index freshness |
 | `gitnexus://repo/attendance_ogs/clusters` | All functional areas |
 | `gitnexus://repo/attendance_ogs/processes` | All execution flows |
@@ -138,7 +64,6 @@ This project is indexed by GitNexus as **attendance_ogs** (460 symbols, 1005 rel
 ## Self-Check Before Finishing
 
 Before completing any code modification task, verify:
-
 1. `gitnexus_impact` was run for all modified symbols
 2. No HIGH/CRITICAL risk warnings were ignored
 3. `gitnexus_detect_changes()` confirms changes match expected scope
