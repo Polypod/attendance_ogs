@@ -18,7 +18,22 @@ const handler = NextAuth({
         try {
           // Call backend login endpoint
           // Use BACKEND_URL for server-side requests (supports remote development)
-          const apiUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+          const envApiUrl =
+            process.env.BACKEND_URL?.trim() ||
+            process.env.NEXT_PUBLIC_API_URL?.trim();
+
+          // In dev, default backend is the Express server on :4000.
+          // In production, require an explicit env var to avoid accidentally calling the wrong host.
+          const apiUrl =
+            envApiUrl ||
+            (process.env.NODE_ENV === "production" ? "" : "http://localhost:4000");
+
+          if (!apiUrl) {
+            console.error(
+              "Missing BACKEND_URL/NEXT_PUBLIC_API_URL for NextAuth Credentials backend login"
+            );
+            return null;
+          }
           const res = await fetch(`${apiUrl}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -28,7 +43,13 @@ const handler = NextAuth({
             })
           });
 
-          const data = await res.json();
+          const responseText = await res.text();
+          let data: any = null;
+          try {
+            data = responseText ? JSON.parse(responseText) : null;
+          } catch {
+            data = null;
+          }
 
           if (res.ok && data.success && data.user) {
             // Return user object with tokens
