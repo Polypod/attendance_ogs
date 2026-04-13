@@ -205,7 +205,7 @@ export default function ReportsPage() {
       const dateLabel = s.date ? formatDateSv(s.date) : "";
       const start = s.start_time ?? "";
       const end = s.end_time ?? "";
-      const label = `${className} ${dateLabel} ${start}-${end}`.trim();
+      const label = `${dateLabel} ${start}-${end} ${className}`.trim();
 
       options.push({ key, classScheduleId, ymd, label });
     }
