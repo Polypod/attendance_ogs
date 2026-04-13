@@ -144,4 +144,44 @@ describe('ReportService', () => {
     expect(page2.total).toBe(2);
     expect(page2.rows).toHaveLength(1);
   });
+
+  it('aggregates by student and counts present/total', async () => {
+    const result = await reportService.getAggregatedAttendanceReport({
+      from: '2026-04-13',
+      to: '2026-04-14',
+      groupBy: 'student',
+      page: 1,
+      pageSize: 25
+    });
+
+    expect(result.total).toBe(2);
+    expect(result.rows).toHaveLength(2);
+
+    const aliceRow = result.rows.find((r) => r.student_id === studentAliceId.toString());
+    expect(aliceRow).toBeTruthy();
+    expect(aliceRow?.student_name).toBe('Alice Andersson');
+    expect(aliceRow?.presentCount).toBe(1);
+    expect(aliceRow?.totalCount).toBe(1);
+
+    const bobRow = result.rows.find((r) => r.student_id === studentBobId.toString());
+    expect(bobRow).toBeTruthy();
+    expect(bobRow?.student_name).toBe('Bob Berg');
+    expect(bobRow?.presentCount).toBe(0);
+    expect(bobRow?.totalCount).toBe(1);
+  });
+
+  it('aggregates by instructor and respects date filters', async () => {
+    const result = await reportService.getAggregatedAttendanceReport({
+      from: '2026-04-13',
+      to: '2026-04-14',
+      groupBy: 'instructor',
+      instructor: 'Instructor A'
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].instructor).toBe('Instructor A');
+    expect(result.rows[0].totalCount).toBe(2);
+    expect(result.rows[0].presentCount).toBe(1);
+  });
 });

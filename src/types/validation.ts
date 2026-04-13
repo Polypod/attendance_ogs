@@ -211,3 +211,22 @@ export const rawAttendanceReportQuerySchema = Joi.object({
     .min(1)
     .optional()
 }).options({ stripUnknown: true });
+
+export const aggregatedAttendanceReportQuerySchema = Joi.object({
+  from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+
+  groupBy: Joi.string().valid('student', 'instructor', 'session', 'class').required(),
+
+  page: Joi.number().integer().min(1).default(1),
+  pageSize: Joi.number().integer().min(1).max(100).default(25),
+
+  studentId: Joi.string().hex().length(24).optional(),
+  studentName: Joi.string().min(1).max(100).optional(),
+  classScheduleId: Joi.string().hex().length(24).optional(),
+  instructor: Joi.string().min(1).max(100).optional(),
+  status: Joi.array()
+    .items(Joi.string().valid(...Object.values(AttendanceStatusEnum)))
+    .min(1)
+    .optional()
+}).options({ stripUnknown: true });
