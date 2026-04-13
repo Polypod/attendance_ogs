@@ -1,7 +1,7 @@
 import moment from 'moment-timezone';
 import { PipelineStage, Types } from 'mongoose';
 import { AttendanceModel } from '@/models/Attendance';
-import { validateDateRange } from '@/utils/validators';
+import { ValidationError, validateDateRange } from '@/utils/validators';
 
 const REPORT_TIMEZONE = 'Europe/Stockholm';
 
@@ -10,6 +10,19 @@ export interface RawAttendanceReportQuery {
   to: string; // YYYY-MM-DD (Stockholm)
   page?: number;
   pageSize?: number;
+
+  sortBy?:
+    | 'date'
+    | 'start_time'
+    | 'end_time'
+    | 'student_name'
+    | 'class_name'
+    | 'instructor'
+    | 'status'
+    | 'category'
+    | 'recorded_by'
+    | 'recorded_at';
+  sortDir?: 'asc' | 'desc';
 
   onlyActiveStudents?: boolean;
 
@@ -33,6 +46,17 @@ export interface AggregatedAttendanceReportQuery {
   groupBy: AggregatedAttendanceGroupBy;
   page?: number;
   pageSize?: number;
+
+  sortBy?:
+    | 'date'
+    | 'start_time'
+    | 'end_time'
+    | 'student_name'
+    | 'class_name'
+    | 'instructor'
+    | 'presentCount'
+    | 'totalCount';
+  sortDir?: 'asc' | 'desc';
 
   onlyActiveStudents?: boolean;
 
@@ -224,40 +248,61 @@ export class ReportService {
       pipeline.push({ $match: postLookupMatch });
     }
 
-    pipeline.push(
-      { $sort: { date: -1, _id: -1 } },
-      {
-        $facet: {
-          rows: [
-            { $skip: skip },
-            { $limit: pageSize },
-            {
-              $project: {
-                attendance_id: { $toString: '$_id' },
-                date: '$date',
-                status: '$status',
-                category: '$category',
-                notes: '$notes',
-                recorded_by: '$recorded_by',
-                recorded_at: '$recorded_at',
+    const rawSortFieldMap: Record<NonNullable<RawAttendanceReportQuery['sortBy']>, string> = {
+      date: 'date',
+      start_time: 'schedule.start_time',
+      end_time: 'schedule.end_time',
+      student_name: 'student.name',
+      class_name: 'class.name',
+      instructor: 'class.instructor',
+      status: 'status',
+      category: 'category',
+      recorded_by: 'recorded_by',
+      recorded_at: 'recorded_at'
+    };
 
-                student_id: { $toString: '$student._id' },
-                student_name: '$student.name',
-
-                class_schedule_id: { $toString: '$schedule._id' },
-                start_time: '$schedule.start_time',
-                end_time: '$schedule.end_time',
-
-                class_id: { $toString: '$class._id' },
-                class_name: '$class.name',
-                instructor: '$class.instructor'
-              }
-            }
-          ],
-          totalCount: [{ $count: 'count' }]
-        }
+    const sortDir = query.sortDir === 'desc' ? -1 : 1;
+    if (query.sortBy) {
+      const mappedField = rawSortFieldMap[query.sortBy];
+      if (!mappedField) {
+        throw new ValidationError(`Unsupported sortBy for raw report: ${query.sortBy}`);
       }
-    );
+      pipeline.push({ $sort: { [mappedField]: sortDir, _id: -1 } });
+    } else {
+      pipeline.push({ $sort: { date: -1, _id: -1 } });
+    }
+
+    pipeline.push({
+      $facet: {
+        rows: [
+          { $skip: skip },
+          { $limit: pageSize },
+          {
+            $project: {
+              attendance_id: { $toString: '$_id' },
+              date: '$date',
+              status: '$status',
+              category: '$category',
+              notes: '$notes',
+              recorded_by: '$recorded_by',
+              recorded_at: '$recorded_at',
+
+              student_id: { $toString: '$student._id' },
+              student_name: '$student.name',
+
+              class_schedule_id: { $toString: '$schedule._id' },
+              start_time: '$schedule.start_time',
+              end_time: '$schedule.end_time',
+
+              class_id: { $toString: '$class._id' },
+              class_name: '$class.name',
+              instructor: '$class.instructor'
+            }
+          }
+        ],
+        totalCount: [{ $count: 'count' }]
+      }
+    });
 
     const result = await AttendanceModel.aggregate(pipeline).allowDiskUse(true);
     const facet = result[0] as { rows: RawAttendanceReportRow[]; totalCount: Array<{ count: number }> } | undefined;
@@ -410,8 +455,7 @@ export class ReportService {
             student_name: { $first: '$student.name' },
             ...commonSums
           }
-        },
-        { $sort: { totalCount: -1, student_name: 1, _id: 1 } }
+        }
       );
     } else if (groupBy === 'instructor') {
       pipeline.push(
@@ -421,8 +465,7 @@ export class ReportService {
             instructor: { $first: '$class.instructor' },
             ...commonSums
           }
-        },
-        { $sort: { totalCount: -1, instructor: 1, _id: 1 } }
+        }
       );
     } else if (groupBy === 'session') {
       pipeline.push(
@@ -438,8 +481,7 @@ export class ReportService {
             instructor: { $first: '$class.instructor' },
             ...commonSums
           }
-        },
-        { $sort: { date: -1, start_time: 1, _id: 1 } }
+        }
       );
     } else if (groupBy === 'class') {
       pipeline.push(
@@ -451,11 +493,46 @@ export class ReportService {
             instructor: { $first: '$class.instructor' },
             ...commonSums
           }
-        },
-        { $sort: { totalCount: -1, class_name: 1, _id: 1 } }
+        }
       );
     } else {
       throw new Error(`Unsupported groupBy: ${groupBy}`);
+    }
+
+    const aggregatedAllowedSortByByGroup: Record<AggregatedAttendanceGroupBy, Set<NonNullable<AggregatedAttendanceReportQuery['sortBy']>>> = {
+      student: new Set(['student_name', 'presentCount', 'totalCount']),
+      instructor: new Set(['instructor', 'presentCount', 'totalCount']),
+      session: new Set(['date', 'start_time', 'end_time', 'class_name', 'instructor', 'presentCount', 'totalCount']),
+      class: new Set(['class_name', 'instructor', 'presentCount', 'totalCount'])
+    };
+
+    const aggregatedDefaultSortByGroup: Record<AggregatedAttendanceGroupBy, Record<string, 1 | -1>> = {
+      student: { totalCount: -1, student_name: 1, _id: 1 },
+      instructor: { totalCount: -1, instructor: 1, _id: 1 },
+      session: { date: -1, start_time: 1, _id: 1 },
+      class: { totalCount: -1, class_name: 1, _id: 1 }
+    };
+
+    const aggregatedSortFieldMap: Record<NonNullable<AggregatedAttendanceReportQuery['sortBy']>, string> = {
+      date: 'date',
+      start_time: 'start_time',
+      end_time: 'end_time',
+      student_name: 'student_name',
+      class_name: 'class_name',
+      instructor: 'instructor',
+      presentCount: 'presentCount',
+      totalCount: 'totalCount'
+    };
+
+    const aggSortDir = query.sortDir === 'desc' ? -1 : 1;
+    if (query.sortBy) {
+      if (!aggregatedAllowedSortByByGroup[groupBy].has(query.sortBy)) {
+        throw new ValidationError(`Unsupported sortBy for aggregated report (groupBy=${groupBy}): ${query.sortBy}`);
+      }
+      const mappedField = aggregatedSortFieldMap[query.sortBy];
+      pipeline.push({ $sort: { [mappedField]: aggSortDir, _id: 1 } });
+    } else {
+      pipeline.push({ $sort: aggregatedDefaultSortByGroup[groupBy] });
     }
 
     pipeline.push({

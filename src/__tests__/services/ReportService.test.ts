@@ -220,6 +220,32 @@ describe('ReportService', () => {
     expect(page2.rows).toHaveLength(1);
   });
 
+  it('supports sorting raw report by student name', async () => {
+    const asc = await reportService.getRawAttendanceReport({
+      from: '2026-04-13',
+      to: '2026-04-14',
+      sortBy: 'student_name',
+      sortDir: 'asc'
+    });
+
+    expect(asc.total).toBe(2);
+    expect(asc.rows).toHaveLength(2);
+    expect(asc.rows[0].student_name).toBe('Alice Andersson');
+    expect(asc.rows[1].student_name).toBe('Bob Berg');
+
+    const desc = await reportService.getRawAttendanceReport({
+      from: '2026-04-13',
+      to: '2026-04-14',
+      sortBy: 'student_name',
+      sortDir: 'desc'
+    });
+
+    expect(desc.total).toBe(2);
+    expect(desc.rows).toHaveLength(2);
+    expect(desc.rows[0].student_name).toBe('Bob Berg');
+    expect(desc.rows[1].student_name).toBe('Alice Andersson');
+  });
+
   it('supports filtering by multiple class schedule IDs', async () => {
     const result = await reportService.getRawAttendanceReport({
       from: '2026-04-16',
@@ -299,6 +325,21 @@ describe('ReportService', () => {
     expect(bobRow?.student_name).toBe('Bob Berg');
     expect(bobRow?.presentCount).toBe(0);
     expect(bobRow?.totalCount).toBe(1);
+  });
+
+  it('supports sorting aggregated report by student name', async () => {
+    const result = await reportService.getAggregatedAttendanceReport({
+      from: '2026-04-13',
+      to: '2026-04-14',
+      groupBy: 'student',
+      sortBy: 'student_name',
+      sortDir: 'desc'
+    });
+
+    expect(result.total).toBe(2);
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows[0].student_name).toBe('Bob Berg');
+    expect(result.rows[1].student_name).toBe('Alice Andersson');
   });
 
   it('aggregates by instructor and respects date filters', async () => {

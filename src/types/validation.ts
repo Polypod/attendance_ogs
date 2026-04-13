@@ -202,6 +202,22 @@ export const rawAttendanceReportQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   pageSize: Joi.number().integer().min(1).max(100).default(25),
 
+  sortBy: Joi.string()
+    .valid(
+      'date',
+      'start_time',
+      'end_time',
+      'student_name',
+      'class_name',
+      'instructor',
+      'status',
+      'category',
+      'recorded_by',
+      'recorded_at'
+    )
+    .optional(),
+  sortDir: Joi.string().valid('asc', 'desc').optional(),
+
   onlyActiveStudents: Joi.boolean().optional(),
 
   studentId: Joi.string().hex().length(24).optional(),
@@ -235,6 +251,20 @@ export const aggregatedAttendanceReportQuerySchema = Joi.object({
 
   page: Joi.number().integer().min(1).default(1),
   pageSize: Joi.number().integer().min(1).max(100).default(25),
+
+  sortBy: Joi.string()
+    .valid(
+      'date',
+      'start_time',
+      'end_time',
+      'student_name',
+      'class_name',
+      'instructor',
+      'presentCount',
+      'totalCount'
+    )
+    .optional(),
+  sortDir: Joi.string().valid('asc', 'desc').optional(),
 
   onlyActiveStudents: Joi.boolean().optional(),
 

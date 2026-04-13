@@ -135,6 +135,25 @@ const addDaysIsoDate = (isoDate: string, days: number) => {
 
 const ATTENDANCE_STATUSES = ["present", "absent", "late", "excused"] as const;
 
+type SortDir = "asc" | "desc";
+
+type ColumnKey =
+  | "date"
+  | "start_time"
+  | "end_time"
+  | "student_name"
+  | "class_name"
+  | "instructor"
+  | "status"
+  | "category"
+  | "notes"
+  | "recorded_by"
+  | "recorded_at"
+  | "presentCount"
+  | "totalCount";
+
+type SortKey = Exclude<ColumnKey, "notes">;
+
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
   const { isAdmin, isInstructor } = useAuth();
@@ -152,6 +171,11 @@ export default function ReportsPage() {
   const [classIds, setClassIds] = useState<string[]>([]);
   const [instructorsSelected, setInstructorsSelected] = useState<string[]>([]);
   const [status, setStatus] = useState<string[]>(["present"]);
+
+  const [sortBy, setSortBy] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
 
   const [mode, setMode] = useState<ViewMode>("raw");
   const [groupBy, setGroupBy] = useState<AggregatedGroupBy>("student");
@@ -286,6 +310,8 @@ export default function ReportsPage() {
     classIds.join(","),
     instructorsSelected.join(","),
     status.join(","),
+    sortBy ?? "",
+    sortDir,
     mode,
     groupBy,
   ]);
@@ -306,6 +332,11 @@ export default function ReportsPage() {
           page,
           pageSize,
         };
+
+        if (sortBy) {
+          body.sortBy = sortBy;
+          body.sortDir = sortDir;
+        }
 
         if (onlyActiveStudents) body.onlyActiveStudents = true;
         if (studentIds.length > 0) body.studentIds = studentIds;
@@ -370,10 +401,89 @@ export default function ReportsPage() {
     pageSize,
     selectedSessionKeys.join(","),
     session,
+    sortBy ?? "",
+    sortDir,
     status.join(","),
     studentIds.join(","),
     to,
   ]);
+
+  const toggleSort = (key: SortKey) => {
+    setSortBy((prev) => {
+      if (prev === key) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        return prev;
+      }
+      setSortDir("asc");
+      return key;
+    });
+  };
+
+  const rawColumns = useMemo(
+    () =>
+      [
+        { key: "date", label: "Date", width: "6.5rem", sortable: true },
+        { key: "start_time", label: "Start", width: "4.5rem", sortable: true },
+        { key: "end_time", label: "End", width: "4.5rem", sortable: true },
+        { key: "student_name", label: "Student", width: "12rem", sortable: true },
+        { key: "class_name", label: "Class", width: "16rem", sortable: true },
+        { key: "instructor", label: "Instructor", width: "12rem", sortable: true },
+        { key: "status", label: "Status", width: "6.5rem", sortable: true },
+        { key: "category", label: "Category", width: "7.5rem", sortable: true },
+        { key: "notes", label: "Notes", width: "18rem", sortable: false },
+        { key: "recorded_by", label: "Recorded by", width: "14rem", sortable: true },
+        { key: "recorded_at", label: "Recorded at", width: "11rem", sortable: true },
+      ] as const,
+    []
+  );
+
+  const aggregatedColumns = useMemo(() => {
+    if (groupBy === "session") {
+      return [
+        { key: "date", label: "Date", sortable: true },
+        { key: "start_time", label: "Start", sortable: true },
+        { key: "end_time", label: "End", sortable: true },
+        { key: "class_name", label: "Class", sortable: true },
+        { key: "instructor", label: "Instructor", sortable: true },
+        { key: "presentCount", label: "Present", sortable: true },
+        { key: "totalCount", label: "Total", sortable: true },
+      ] as const;
+    }
+    if (groupBy === "student") {
+      return [
+        { key: "student_name", label: "Student", sortable: true },
+        { key: "presentCount", label: "Present", sortable: true },
+        { key: "totalCount", label: "Total", sortable: true },
+      ] as const;
+    }
+    if (groupBy === "instructor") {
+      return [
+        { key: "instructor", label: "Instructor", sortable: true },
+        { key: "presentCount", label: "Present", sortable: true },
+        { key: "totalCount", label: "Total", sortable: true },
+      ] as const;
+    }
+    return [
+      { key: "class_name", label: "Class", sortable: true },
+      { key: "instructor", label: "Instructor", sortable: true },
+      { key: "presentCount", label: "Present", sortable: true },
+      { key: "totalCount", label: "Total", sortable: true },
+    ] as const;
+  }, [groupBy]);
+
+  const currentColumns = mode === "raw" ? rawColumns : aggregatedColumns;
+  const visibleColumns = currentColumns.filter((c) => columnVisibility[c.key] !== false);
+
+  useEffect(() => {
+    if (!sortBy) return;
+    const sortableKeys = new Set<SortKey>(
+      currentColumns.filter((c) => c.sortable).map((c) => c.key as SortKey)
+    );
+    if (!sortableKeys.has(sortBy)) {
+      setSortBy(null);
+      setSortDir("asc");
+    }
+  }, [currentColumns, sortBy]);
 
   const currentReport = mode === "raw" ? rawReport : aggregatedReport;
   const canPrev = (currentReport?.page ?? 1) > 1;
@@ -478,6 +588,27 @@ export default function ReportsPage() {
                           }}
                         />
                         <span className="capitalize">{s}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2">Columns</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {currentColumns.map((c) => {
+                    const checked = columnVisibility[c.key] !== false;
+                    return (
+                      <label key={c.key} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => {
+                            const nextChecked = v === true;
+                            setColumnVisibility((prev) => ({ ...prev, [c.key]: nextChecked }));
+                          }}
+                        />
+                        <span>{c.label}</span>
                       </label>
                     );
                   })}
@@ -711,130 +842,119 @@ export default function ReportsPage() {
                 <Table className="table-fixed">
                   {mode === "raw" && (
                     <colgroup>
-                      <col style={{ width: "6.5rem" }} />
-                      <col style={{ width: "4.5rem" }} />
-                      <col style={{ width: "4.5rem" }} />
-                      <col style={{ width: "12rem" }} />
-                      <col style={{ width: "16rem" }} />
-                      <col style={{ width: "12rem" }} />
-                      <col style={{ width: "6.5rem" }} />
-                      <col style={{ width: "7.5rem" }} />
-                      <col style={{ width: "18rem" }} />
-                      <col style={{ width: "14rem" }} />
-                      <col style={{ width: "11rem" }} />
+                      {visibleColumns.map((c) => (
+                        <col key={c.key} style={{ width: (c as any).width ?? "auto" }} />
+                      ))}
                     </colgroup>
                   )}
                   <TableHeader>
                     <TableRow>
-                      {mode === "raw" ? (
-                        <>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Start</TableHead>
-                          <TableHead>End</TableHead>
-                          <TableHead>Student</TableHead>
-                          <TableHead>Class</TableHead>
-                          <TableHead>Instructor</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Category</TableHead>
-                          <TableHead>Notes</TableHead>
-                          <TableHead>Recorded by</TableHead>
-                          <TableHead>Recorded at</TableHead>
-                        </>
-                      ) : groupBy === "session" ? (
-                        <>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Start</TableHead>
-                          <TableHead>End</TableHead>
-                          <TableHead>Class</TableHead>
-                          <TableHead>Instructor</TableHead>
-                          <TableHead>Present</TableHead>
-                          <TableHead>Total</TableHead>
-                        </>
-                      ) : groupBy === "student" ? (
-                        <>
-                          <TableHead>Student</TableHead>
-                          <TableHead>Present</TableHead>
-                          <TableHead>Total</TableHead>
-                        </>
-                      ) : groupBy === "instructor" ? (
-                        <>
-                          <TableHead>Instructor</TableHead>
-                          <TableHead>Present</TableHead>
-                          <TableHead>Total</TableHead>
-                        </>
-                      ) : (
-                        <>
-                          <TableHead>Class</TableHead>
-                          <TableHead>Instructor</TableHead>
-                          <TableHead>Present</TableHead>
-                          <TableHead>Total</TableHead>
-                        </>
-                      )}
+                      {visibleColumns.map((c) => {
+                        const active = sortBy === c.key;
+                        const arrow = active ? (sortDir === "asc" ? " ▲" : " ▼") : "";
+                        return (
+                          <TableHead key={c.key}>
+                            {c.sortable ? (
+                              <button
+                                type="button"
+                                className="w-full text-left select-none"
+                                onClick={() => toggleSort(c.key as SortKey)}
+                              >
+                                {c.label}
+                                {arrow}
+                              </button>
+                            ) : (
+                              c.label
+                            )}
+                          </TableHead>
+                        );
+                      })}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {mode === "raw"
                       ? (rawReport?.rows ?? []).map((r) => (
                           <TableRow key={r.attendance_id}>
-                            <TableCell>{formatDateSv(r.date)}</TableCell>
-                            <TableCell>{r.start_time}</TableCell>
-                            <TableCell>{r.end_time}</TableCell>
-                            <TableCell className="font-medium truncate" title={r.student_name}>
-                              {r.student_name}
-                            </TableCell>
-                            <TableCell className="truncate" title={r.class_name}>
-                              {r.class_name}
-                            </TableCell>
-                            <TableCell className="truncate" title={r.instructor}>
-                              {r.instructor}
-                            </TableCell>
-                            <TableCell className="capitalize">{r.status}</TableCell>
-                            <TableCell>{r.category}</TableCell>
-                            <TableCell className="max-w-[18rem] truncate" title={r.notes}>
-                              {r.notes}
-                            </TableCell>
-                            <TableCell className="truncate" title={r.recorded_by}>
-                              {r.recorded_by}
-                            </TableCell>
-                            <TableCell>{formatDateSv(r.recorded_at)}</TableCell>
+                            {visibleColumns.map((c) => {
+                              switch (c.key) {
+                                case "date":
+                                  return <TableCell key={c.key}>{formatDateSv(r.date)}</TableCell>;
+                                case "start_time":
+                                  return <TableCell key={c.key}>{r.start_time}</TableCell>;
+                                case "end_time":
+                                  return <TableCell key={c.key}>{r.end_time}</TableCell>;
+                                case "student_name":
+                                  return (
+                                    <TableCell key={c.key} className="font-medium truncate" title={r.student_name}>
+                                      {r.student_name}
+                                    </TableCell>
+                                  );
+                                case "class_name":
+                                  return (
+                                    <TableCell key={c.key} className="truncate" title={r.class_name}>
+                                      {r.class_name}
+                                    </TableCell>
+                                  );
+                                case "instructor":
+                                  return (
+                                    <TableCell key={c.key} className="truncate" title={r.instructor}>
+                                      {r.instructor}
+                                    </TableCell>
+                                  );
+                                case "status":
+                                  return (
+                                    <TableCell key={c.key} className="capitalize">
+                                      {r.status}
+                                    </TableCell>
+                                  );
+                                case "category":
+                                  return <TableCell key={c.key}>{r.category}</TableCell>;
+                                case "notes":
+                                  return (
+                                    <TableCell key={c.key} className="truncate" title={r.notes}>
+                                      {r.notes}
+                                    </TableCell>
+                                  );
+                                case "recorded_by":
+                                  return (
+                                    <TableCell key={c.key} className="truncate" title={r.recorded_by}>
+                                      {r.recorded_by}
+                                    </TableCell>
+                                  );
+                                case "recorded_at":
+                                  return <TableCell key={c.key}>{formatDateSv(r.recorded_at)}</TableCell>;
+                                default:
+                                  return null;
+                              }
+                            })}
                           </TableRow>
                         ))
                       : (aggregatedReport?.rows ?? []).map((r, idx) => (
                           <TableRow
-                            key={
-                              r.student_id ?? r.class_schedule_id ?? r.class_id ?? r.instructor ?? `row-${idx}`
-                            }
+                            key={r.student_id ?? r.class_schedule_id ?? r.class_id ?? r.instructor ?? `row-${idx}`}
                           >
-                            {groupBy === "session" ? (
-                              <>
-                                <TableCell>{r.date ? formatDateSv(r.date) : ""}</TableCell>
-                                <TableCell>{r.start_time ?? ""}</TableCell>
-                                <TableCell>{r.end_time ?? ""}</TableCell>
-                                <TableCell>{r.class_name ?? ""}</TableCell>
-                                <TableCell>{r.instructor ?? ""}</TableCell>
-                                <TableCell>{r.presentCount}</TableCell>
-                                <TableCell>{r.totalCount}</TableCell>
-                              </>
-                            ) : groupBy === "student" ? (
-                              <>
-                                <TableCell className="font-medium">{r.student_name ?? ""}</TableCell>
-                                <TableCell>{r.presentCount}</TableCell>
-                                <TableCell>{r.totalCount}</TableCell>
-                              </>
-                            ) : groupBy === "instructor" ? (
-                              <>
-                                <TableCell className="font-medium">{r.instructor ?? ""}</TableCell>
-                                <TableCell>{r.presentCount}</TableCell>
-                                <TableCell>{r.totalCount}</TableCell>
-                              </>
-                            ) : (
-                              <>
-                                <TableCell className="font-medium">{r.class_name ?? ""}</TableCell>
-                                <TableCell>{r.instructor ?? ""}</TableCell>
-                                <TableCell>{r.presentCount}</TableCell>
-                                <TableCell>{r.totalCount}</TableCell>
-                              </>
-                            )}
+                            {visibleColumns.map((c) => {
+                              switch (c.key) {
+                                case "date":
+                                  return <TableCell key={c.key}>{r.date ? formatDateSv(r.date) : ""}</TableCell>;
+                                case "start_time":
+                                  return <TableCell key={c.key}>{r.start_time ?? ""}</TableCell>;
+                                case "end_time":
+                                  return <TableCell key={c.key}>{r.end_time ?? ""}</TableCell>;
+                                case "class_name":
+                                  return <TableCell key={c.key}>{r.class_name ?? ""}</TableCell>;
+                                case "student_name":
+                                  return <TableCell key={c.key}>{r.student_name ?? ""}</TableCell>;
+                                case "instructor":
+                                  return <TableCell key={c.key}>{r.instructor ?? ""}</TableCell>;
+                                case "presentCount":
+                                  return <TableCell key={c.key}>{r.presentCount}</TableCell>;
+                                case "totalCount":
+                                  return <TableCell key={c.key}>{r.totalCount}</TableCell>;
+                                default:
+                                  return null;
+                              }
+                            })}
                           </TableRow>
                         ))}
                   </TableBody>
