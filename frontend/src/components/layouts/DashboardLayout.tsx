@@ -15,6 +15,7 @@ const navLinks = [
   { href: "/dashboard/students", label: "Students", roles: ["admin", "instructor", "staff"] },
   { href: "/dashboard/classes", label: "Classes", roles: ["admin", "instructor", "staff", "student"] },
   { href: "/dashboard/calendar", label: "Calendar", roles: ["admin", "instructor", "staff", "student"] },
+  { href: "/dashboard/reports", label: "Reports", roles: ["admin", "instructor"] },
   { href: "/dashboard/users", label: "Users", roles: ["admin"] },
 ];
 
