@@ -39,6 +39,8 @@ type Schedule = {
     name: string;
     instructor?: string;
   };
+  _isRecurringInstance?: boolean;
+  _originalScheduleId?: string;
 };
 
 type RawAttendanceRow = {
@@ -113,6 +115,14 @@ const formatDateSv = (iso: string) => {
   }
 };
 
+const isoToYmd = (iso: string) => {
+  if (!iso) return "";
+  if (iso.length >= 10) return iso.slice(0, 10);
+  return iso;
+};
+
+const sessionKey = (classScheduleId: string, ymd: string) => `${classScheduleId}:${ymd}`;
+
 const getTodayIsoDate = () => new Date().toISOString().slice(0, 10);
 
 const addDaysIsoDate = (isoDate: string, days: number) => {
@@ -134,10 +144,11 @@ export default function ReportsPage() {
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(today);
 
-  const [studentId, setStudentId] = useState<string>("all");
+  const [studentIds, setStudentIds] = useState<string[]>([]);
   const [studentName, setStudentName] = useState<string>("");
-  const [classScheduleIds, setClassScheduleIds] = useState<string[]>([]);
-  const [instructor, setInstructor] = useState<string>("all");
+  const [selectedSessionKeys, setSelectedSessionKeys] = useState<string[]>([]);
+  const [classIds, setClassIds] = useState<string[]>([]);
+  const [instructorsSelected, setInstructorsSelected] = useState<string[]>([]);
   const [status, setStatus] = useState<string[]>([]);
 
   const [mode, setMode] = useState<ViewMode>("raw");
@@ -161,6 +172,49 @@ export default function ReportsPage() {
       if (name) unique.add(name);
     }
     return Array.from(unique).sort((a, b) => a.localeCompare(b));
+  }, [schedules]);
+
+  const classesInRange = useMemo(() => {
+    const byId = new Map<string, { id: string; name: string; instructor?: string }>();
+    for (const s of schedules) {
+      const cls = s.class_id;
+      if (!cls?._id) continue;
+      if (!byId.has(cls._id)) byId.set(cls._id, { id: cls._id, name: cls.name, instructor: cls.instructor });
+    }
+
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [schedules]);
+
+  const sessionOptions = useMemo(() => {
+    const options: Array<{ key: string; classScheduleId: string; ymd: string; label: string }> = [];
+    const seen = new Set<string>();
+
+    for (const s of schedules) {
+      if (!s.date) continue;
+      const ymd = isoToYmd(s.date);
+      if (!ymd) continue;
+
+      const classScheduleId = s._id;
+      const key = sessionKey(classScheduleId, ymd);
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const className = s.class_id?.name ?? "Class";
+      const dateLabel = s.date ? formatDateSv(s.date) : "";
+      const start = s.start_time ?? "";
+      const end = s.end_time ?? "";
+      const label = `${className} ${dateLabel} ${start}-${end}`.trim();
+
+      options.push({ key, classScheduleId, ymd, label });
+    }
+
+    options.sort((a, b) => {
+      const d = a.ymd.localeCompare(b.ymd);
+      if (d !== 0) return d;
+      return a.label.localeCompare(b.label);
+    });
+
+    return options;
   }, [schedules]);
 
   // Load students once
@@ -221,7 +275,18 @@ export default function ReportsPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [from, to, studentId, studentName, classScheduleIds.join(","), instructor, status.join(","), mode, groupBy]);
+  }, [
+    from,
+    to,
+    studentIds.join(","),
+    studentName,
+    selectedSessionKeys.join(","),
+    classIds.join(","),
+    instructorsSelected.join(","),
+    status.join(","),
+    mode,
+    groupBy,
+  ]);
 
   // Load report when query changes
   useEffect(() => {
@@ -240,10 +305,19 @@ export default function ReportsPage() {
           pageSize,
         };
 
-        if (studentId !== "all") body.studentId = studentId;
+        if (studentIds.length > 0) body.studentIds = studentIds;
         if (studentName.trim()) body.studentName = studentName.trim();
-        if (classScheduleIds.length > 0) body.classScheduleIds = classScheduleIds;
-        if (instructor !== "all") body.instructor = instructor;
+        if (selectedSessionKeys.length > 0) {
+          body.sessions = selectedSessionKeys
+            .map((k) => {
+              const [classScheduleId, ymd] = k.split(":");
+              if (!classScheduleId || !ymd) return null;
+              return { classScheduleId, date: ymd };
+            })
+            .filter(Boolean);
+        }
+        if (classIds.length > 0) body.classIds = classIds;
+        if (instructorsSelected.length > 0) body.instructors = instructorsSelected;
         if (status.length > 0) body.status = status;
 
         const api = createApiClient((session as any)?.accessToken);
@@ -281,7 +355,23 @@ export default function ReportsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [authStatus, classScheduleIds.join(","), from, groupBy, hasAccess, instructor, mode, page, pageSize, session, status.join(","), studentId, studentName, to]);
+  }, [
+    authStatus,
+    classIds.join(","),
+    from,
+    groupBy,
+    hasAccess,
+    instructorsSelected.join(","),
+    mode,
+    page,
+    pageSize,
+    selectedSessionKeys.join(","),
+    session,
+    status.join(","),
+    studentIds.join(","),
+    studentName,
+    to,
+  ]);
 
   const currentReport = mode === "raw" ? rawReport : aggregatedReport;
   const canPrev = (currentReport?.page ?? 1) > 1;
@@ -374,25 +464,46 @@ export default function ReportsPage() {
           </div>
 
           <div>
-            <label htmlFor="student" className="block text-sm font-medium mb-1">
-              Student
-            </label>
-            <Select value={studentId} onValueChange={setStudentId}>
-              <SelectTrigger id="student" className="w-full">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {students
-                  .slice()
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((s) => (
-                    <SelectItem key={s._id} value={s._id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium">Students</label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={studentIds.length === 0}
+                onClick={() => setStudentIds([])}
+              >
+                Clear
+              </Button>
+            </div>
+            <div className="rounded-md border p-2 max-h-40 overflow-auto space-y-2">
+              {students
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((s) => {
+                  const checked = studentIds.includes(s._id);
+                  return (
+                    <label key={s._id} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) => {
+                          const nextChecked = v === true;
+                          setStudentIds((prev) => {
+                            if (nextChecked) return Array.from(new Set([...prev, s._id]));
+                            return prev.filter((id) => id !== s._id);
+                          });
+                        }}
+                      />
+                      <span className="truncate" title={s.name}>
+                        {s.name}
+                      </span>
+                    </label>
+                  );
+                })}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {studentIds.length === 0 ? "All students" : `Selected: ${studentIds.length}`}
+            </div>
           </div>
 
           <div>
@@ -410,42 +521,79 @@ export default function ReportsPage() {
             />
           </div>
 
-          <div>
+          <div className="md:col-span-3">
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium">
-                Class schedule
-              </label>
+              <label className="block text-sm font-medium">Sessions</label>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={classScheduleIds.length === 0}
-                onClick={() => setClassScheduleIds([])}
+                disabled={selectedSessionKeys.length === 0}
+                onClick={() => setSelectedSessionKeys([])}
+              >
+                Clear
+              </Button>
+            </div>
+            <div className="rounded-md border p-2 max-h-48 overflow-auto space-y-2">
+              {sessionOptions.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No sessions in range.</div>
+              ) : (
+                sessionOptions.map((opt) => {
+                  const checked = selectedSessionKeys.includes(opt.key);
+                  return (
+                    <label key={opt.key} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) => {
+                          const nextChecked = v === true;
+                          setSelectedSessionKeys((prev) => {
+                            if (nextChecked) return Array.from(new Set([...prev, opt.key]));
+                            return prev.filter((k) => k !== opt.key);
+                          });
+                        }}
+                      />
+                      <span className="truncate" title={opt.label}>
+                        {opt.label}
+                      </span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {selectedSessionKeys.length === 0 ? "All sessions" : `Selected: ${selectedSessionKeys.length}`}
+            </div>
+          </div>
+
+          <div className="md:col-span-3">
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium">Classes</label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={classIds.length === 0}
+                onClick={() => setClassIds([])}
               >
                 Clear
               </Button>
             </div>
             <div className="rounded-md border p-2 max-h-40 overflow-auto space-y-2">
-              {schedules.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No schedules in range.</div>
+              {classesInRange.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No classes in range.</div>
               ) : (
-                schedules.map((s) => {
-                  const className = s.class_id?.name ?? "Class";
-                  const date = s.date ? formatDateSv(s.date) : "";
-                  const start = s.start_time ?? "";
-                  const end = s.end_time ?? "";
-                  const label = `${className} ${date} ${start}-${end}`.trim();
-                  const checked = classScheduleIds.includes(s._id);
-
+                classesInRange.map((c) => {
+                  const checked = classIds.includes(c.id);
+                  const label = c.instructor ? `${c.name} (${c.instructor})` : c.name;
                   return (
-                    <label key={s._id} className="flex items-center gap-2 text-sm">
+                    <label key={c.id} className="flex items-center gap-2 text-sm">
                       <Checkbox
                         checked={checked}
                         onCheckedChange={(v) => {
                           const nextChecked = v === true;
-                          setClassScheduleIds((prev) => {
-                            if (nextChecked) return Array.from(new Set([...prev, s._id]));
-                            return prev.filter((id) => id !== s._id);
+                          setClassIds((prev) => {
+                            if (nextChecked) return Array.from(new Set([...prev, c.id]));
+                            return prev.filter((id) => id !== c.id);
                           });
                         }}
                       />
@@ -458,32 +606,52 @@ export default function ReportsPage() {
               )}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {classScheduleIds.length === 0
-                ? "All schedules"
-                : `Selected: ${classScheduleIds.length}`}
+              {classIds.length === 0 ? "All classes" : `Selected: ${classIds.length}`}
             </div>
           </div>
 
-          <div>
-            <label
-              htmlFor="instructor"
-              className="block text-sm font-medium mb-1"
-            >
-              Instructor
-            </label>
-            <Select value={instructor} onValueChange={setInstructor}>
-              <SelectTrigger id="instructor" className="w-full">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {instructors.map((name) => (
-                  <SelectItem key={name} value={name}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="md:col-span-3">
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium">Instructors</label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={instructorsSelected.length === 0}
+                onClick={() => setInstructorsSelected([])}
+              >
+                Clear
+              </Button>
+            </div>
+            <div className="rounded-md border p-2 max-h-40 overflow-auto space-y-2">
+              {instructors.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No instructors in range.</div>
+              ) : (
+                instructors.map((name) => {
+                  const checked = instructorsSelected.includes(name);
+                  return (
+                    <label key={name} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) => {
+                          const nextChecked = v === true;
+                          setInstructorsSelected((prev) => {
+                            if (nextChecked) return Array.from(new Set([...prev, name]));
+                            return prev.filter((n) => n !== name);
+                          });
+                        }}
+                      />
+                      <span className="truncate" title={name}>
+                        {name}
+                      </span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {instructorsSelected.length === 0 ? "All instructors" : `Selected: ${instructorsSelected.length}`}
+            </div>
           </div>
 
           <div className="md:col-span-3">
@@ -518,10 +686,11 @@ export default function ReportsPage() {
             onClick={() => {
               setFrom(defaultFrom);
               setTo(today);
-              setStudentId("all");
+              setStudentIds([]);
               setStudentName("");
-              setClassScheduleIds([]);
-              setInstructor("all");
+              setSelectedSessionKeys([]);
+              setClassIds([]);
+              setInstructorsSelected([]);
               setStatus([]);
             }}
           >

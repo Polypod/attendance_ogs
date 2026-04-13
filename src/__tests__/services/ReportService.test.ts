@@ -181,6 +181,30 @@ describe('ReportService', () => {
     expect(result.rows[0].class_schedule_id).toBe(testSchedule2Id.toString());
   });
 
+  it('supports filtering by specific session instances (classScheduleId + date)', async () => {
+    const result = await reportService.getRawAttendanceReport({
+      from: '2026-04-13',
+      to: '2026-04-16',
+      sessions: [{ classScheduleId: testScheduleId.toString(), date: '2026-04-14' }]
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].student_name).toBe('Alice Andersson');
+  });
+
+  it('supports filtering by multiple student IDs', async () => {
+    const result = await reportService.getRawAttendanceReport({
+      from: '2026-04-13',
+      to: '2026-04-16',
+      studentIds: [studentBobId.toString()]
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].student_name).toBe('Bob Berg');
+  });
+
   it('aggregates by student and counts present/total', async () => {
     const result = await reportService.getAggregatedAttendanceReport({
       from: '2026-04-13',

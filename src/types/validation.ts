@@ -203,10 +203,22 @@ export const rawAttendanceReportQuerySchema = Joi.object({
   pageSize: Joi.number().integer().min(1).max(100).default(25),
 
   studentId: Joi.string().hex().length(24).optional(),
+  studentIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
   studentName: Joi.string().min(1).max(100).optional(),
   classScheduleId: Joi.string().hex().length(24).optional(),
   classScheduleIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
+  sessions: Joi.array()
+    .items(
+      Joi.object({
+        classScheduleId: Joi.string().hex().length(24).required(),
+        date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required()
+      })
+    )
+    .min(1)
+    .optional(),
+  classIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
   instructor: Joi.string().min(1).max(100).optional(),
+  instructors: Joi.array().items(Joi.string().min(1).max(100)).min(1).optional(),
   status: Joi.array()
     .items(Joi.string().valid(...Object.values(AttendanceStatusEnum)))
     .min(1)
@@ -223,10 +235,22 @@ export const aggregatedAttendanceReportQuerySchema = Joi.object({
   pageSize: Joi.number().integer().min(1).max(100).default(25),
 
   studentId: Joi.string().hex().length(24).optional(),
+  studentIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
   studentName: Joi.string().min(1).max(100).optional(),
   classScheduleId: Joi.string().hex().length(24).optional(),
   classScheduleIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
+  sessions: Joi.array()
+    .items(
+      Joi.object({
+        classScheduleId: Joi.string().hex().length(24).required(),
+        date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required()
+      })
+    )
+    .min(1)
+    .optional(),
+  classIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
   instructor: Joi.string().min(1).max(100).optional(),
+  instructors: Joi.array().items(Joi.string().min(1).max(100)).min(1).optional(),
   status: Joi.array()
     .items(Joi.string().valid(...Object.values(AttendanceStatusEnum)))
     .min(1)

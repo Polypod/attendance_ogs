@@ -12,10 +12,14 @@ export interface RawAttendanceReportQuery {
   pageSize?: number;
 
   studentId?: string;
+  studentIds?: string[];
   studentName?: string;
   classScheduleId?: string;
   classScheduleIds?: string[];
+  sessions?: Array<{ classScheduleId: string; date: string }>;
+  classIds?: string[];
   instructor?: string;
+  instructors?: string[];
   status?: string[];
 }
 
@@ -29,10 +33,14 @@ export interface AggregatedAttendanceReportQuery {
   pageSize?: number;
 
   studentId?: string;
+  studentIds?: string[];
   studentName?: string;
   classScheduleId?: string;
   classScheduleIds?: string[];
+  sessions?: Array<{ classScheduleId: string; date: string }>;
+  classIds?: string[];
   instructor?: string;
+  instructors?: string[];
   status?: string[];
 }
 
@@ -109,19 +117,38 @@ export class ReportService {
       date: { $gte: startDate, $lte: endDate }
     };
 
-    if (query.studentId) {
-      match.student_id = new Types.ObjectId(query.studentId);
+    const studentIds = [
+      ...(query.studentIds ?? []).filter((v) => typeof v === 'string' && v.length > 0),
+      ...(query.studentId ? [query.studentId] : [])
+    ];
+    const uniqueStudentIds = Array.from(new Set(studentIds));
+    if (uniqueStudentIds.length > 0) {
+      match.student_id = {
+        $in: uniqueStudentIds.map((id) => new Types.ObjectId(id))
+      };
     }
 
-    const scheduleIds = [
-      ...(query.classScheduleIds ?? []).filter((v) => typeof v === 'string' && v.length > 0),
-      ...(query.classScheduleId ? [query.classScheduleId] : [])
-    ];
-    const uniqueScheduleIds = Array.from(new Set(scheduleIds));
-    if (uniqueScheduleIds.length > 0) {
-      match.class_schedule_id = {
-        $in: uniqueScheduleIds.map((id) => new Types.ObjectId(id))
-      };
+    if (query.sessions?.length) {
+      match.$or = query.sessions.map((s) => {
+        const sessionStart = moment.tz(s.date, 'YYYY-MM-DD', REPORT_TIMEZONE).startOf('day').toDate();
+        const sessionEnd = moment.tz(s.date, 'YYYY-MM-DD', REPORT_TIMEZONE).endOf('day').toDate();
+
+        return {
+          class_schedule_id: new Types.ObjectId(s.classScheduleId),
+          date: { $gte: sessionStart, $lte: sessionEnd }
+        };
+      });
+    } else {
+      const scheduleIds = [
+        ...(query.classScheduleIds ?? []).filter((v) => typeof v === 'string' && v.length > 0),
+        ...(query.classScheduleId ? [query.classScheduleId] : [])
+      ];
+      const uniqueScheduleIds = Array.from(new Set(scheduleIds));
+      if (uniqueScheduleIds.length > 0) {
+        match.class_schedule_id = {
+          $in: uniqueScheduleIds.map((id) => new Types.ObjectId(id))
+        };
+      }
     }
 
     if (query.status?.length) {
@@ -161,8 +188,20 @@ export class ReportService {
 
     const postLookupMatch: Record<string, any> = {};
 
-    if (query.instructor) {
-      postLookupMatch['class.instructor'] = query.instructor;
+    const instructors = [
+      ...(query.instructors ?? []).filter((v) => typeof v === 'string' && v.trim().length > 0),
+      ...(query.instructor ? [query.instructor] : [])
+    ];
+    const uniqueInstructors = Array.from(new Set(instructors.map((v) => v.trim()))).filter((v) => v.length > 0);
+    if (uniqueInstructors.length === 1) {
+      postLookupMatch['class.instructor'] = uniqueInstructors[0];
+    } else if (uniqueInstructors.length > 1) {
+      postLookupMatch['class.instructor'] = { $in: uniqueInstructors };
+    }
+
+    if (query.classIds?.length) {
+      const uniqueClassIds = Array.from(new Set(query.classIds));
+      postLookupMatch['class._id'] = { $in: uniqueClassIds.map((id) => new Types.ObjectId(id)) };
     }
 
     if (query.studentName) {
@@ -239,19 +278,38 @@ export class ReportService {
       date: { $gte: startDate, $lte: endDate }
     };
 
-    if (query.studentId) {
-      match.student_id = new Types.ObjectId(query.studentId);
+    const studentIds = [
+      ...(query.studentIds ?? []).filter((v) => typeof v === 'string' && v.length > 0),
+      ...(query.studentId ? [query.studentId] : [])
+    ];
+    const uniqueStudentIds = Array.from(new Set(studentIds));
+    if (uniqueStudentIds.length > 0) {
+      match.student_id = {
+        $in: uniqueStudentIds.map((id) => new Types.ObjectId(id))
+      };
     }
 
-    const scheduleIds = [
-      ...(query.classScheduleIds ?? []).filter((v) => typeof v === 'string' && v.length > 0),
-      ...(query.classScheduleId ? [query.classScheduleId] : [])
-    ];
-    const uniqueScheduleIds = Array.from(new Set(scheduleIds));
-    if (uniqueScheduleIds.length > 0) {
-      match.class_schedule_id = {
-        $in: uniqueScheduleIds.map((id) => new Types.ObjectId(id))
-      };
+    if (query.sessions?.length) {
+      match.$or = query.sessions.map((s) => {
+        const sessionStart = moment.tz(s.date, 'YYYY-MM-DD', REPORT_TIMEZONE).startOf('day').toDate();
+        const sessionEnd = moment.tz(s.date, 'YYYY-MM-DD', REPORT_TIMEZONE).endOf('day').toDate();
+
+        return {
+          class_schedule_id: new Types.ObjectId(s.classScheduleId),
+          date: { $gte: sessionStart, $lte: sessionEnd }
+        };
+      });
+    } else {
+      const scheduleIds = [
+        ...(query.classScheduleIds ?? []).filter((v) => typeof v === 'string' && v.length > 0),
+        ...(query.classScheduleId ? [query.classScheduleId] : [])
+      ];
+      const uniqueScheduleIds = Array.from(new Set(scheduleIds));
+      if (uniqueScheduleIds.length > 0) {
+        match.class_schedule_id = {
+          $in: uniqueScheduleIds.map((id) => new Types.ObjectId(id))
+        };
+      }
     }
 
     if (query.status?.length) {
@@ -291,8 +349,20 @@ export class ReportService {
 
     const postLookupMatch: Record<string, any> = {};
 
-    if (query.instructor) {
-      postLookupMatch['class.instructor'] = query.instructor;
+    const instructors = [
+      ...(query.instructors ?? []).filter((v) => typeof v === 'string' && v.trim().length > 0),
+      ...(query.instructor ? [query.instructor] : [])
+    ];
+    const uniqueInstructors = Array.from(new Set(instructors.map((v) => v.trim()))).filter((v) => v.length > 0);
+    if (uniqueInstructors.length === 1) {
+      postLookupMatch['class.instructor'] = uniqueInstructors[0];
+    } else if (uniqueInstructors.length > 1) {
+      postLookupMatch['class.instructor'] = { $in: uniqueInstructors };
+    }
+
+    if (query.classIds?.length) {
+      const uniqueClassIds = Array.from(new Set(query.classIds));
+      postLookupMatch['class._id'] = { $in: uniqueClassIds.map((id) => new Types.ObjectId(id)) };
     }
 
     if (query.studentName) {

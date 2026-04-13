@@ -17,7 +17,7 @@
 - [x] **RPT-03**: Aggregerat läge erbjuder en **valbar aggregeringsnivå** (standard-grupperingar): **student**, **instruktör**, **tillfälle (pass/session)**, **klass**
 - [x] **RPT-04**: Aggregerat läge visar minst nyckeltalen **antal närvarande** och **total antal registreringar**
 - [ ] **RPT-05**: Användaren kan visa/dölja kolumner i listan; dolda kolumner ska inte exporteras
-- [x] **RPT-06**: Filtret **Class schedule** stödjer multi-val: användaren kan välja **ett eller flera tillfällen (sessions)** (inte bara ett värde i dropdown)
+- [x] **RPT-06**: Filtret **Sessions (Class schedule)** stödjer multi-val av **enskilda tillfällen** (classScheduleId + datum), inte bara ”alla liknande” via ett schedule-id
 
 ### Query (Filter, Sort, Sök)
 
@@ -26,8 +26,8 @@
 - [ ] **QRY-03**: Användaren kan sortera på valda kolumner genom att klicka på kolumnrubriken (server-side när relevant)
 - [ ] **QRY-04**: Användaren har global fri-text-sök som söker inom ett definierat fältset (minst namn/klass)
 - [x] **QRY-05**: Resultat listas med server-side paginering så att stora datamängder hanteras stabilt
-- [ ] **QRY-06**: Det ska vara möjligt att välja flera studenter, förslagsvis via checkbox
-- [ ] **QRY-07**: Det ska vara möjligt att välja flera instruktörer, förslagsvis via checkbox
+- [x] **QRY-06**: Det ska vara möjligt att välja flera studenter, förslagsvis via checkbox
+- [x] **QRY-07**: Det ska vara möjligt att välja flera instruktörer, förslagsvis via checkbox
 
 ### Presets (Privata + Delade)
 

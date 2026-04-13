@@ -31,4 +31,4 @@
 ## Session Continuity
 
 - **Next command**: `/gsd-plan-phase 3`
-- **Goal of next session**: Implementera kolumn visa/dölj, klick-sortering och global fri-text-sök, samt börja bygga ut multi-val (studenter/instruktörer).
+- **Goal of next session**: Implementera kolumn visa/dölj, klick-sortering och global fri-text-sök (multi-val för sessions/classes/students/instructors är på plats).
