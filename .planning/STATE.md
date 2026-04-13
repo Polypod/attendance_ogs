@@ -10,9 +10,9 @@
 
 ## Current Position
 
-- **Phase**: Phase 2: Aggregated Reporting
+- **Phase**: Phase 3: Column, Sort & Selection Controls
 - **Status**: Not started
-- **Progress**: 1/5 phases complete
+- **Progress**: 2/5 phases complete
 
 ## Performance Metrics (targets)
 
@@ -24,11 +24,11 @@
 
 - **Open decisions**:
   - Canonical tidszonsregel för datumintervall (ska dokumenteras och användas konsekvent i API + UI).
-  - Definition av “antal närvarande” (vilka statusar räknas in) för aggregerat läge.
+  - Definition av “antal närvarande” (vilka statusar räknas in) för aggregerat läge. (Nuvarande implementation räknar `present` + `late`.)
   - Behörighetsmodell för delade presets (rekommenderat: endast admin kan ändra/radera delade).
 - **Blockers**: None known
 
 ## Session Continuity
 
-- **Next command**: `/gsd-plan-phase 2`
-- **Goal of next session**: Planera och implementera aggregerat läge (valbar aggregeringsnivå) med nyckeltal och växling mellan rå/agg.
+- **Next command**: `/gsd-plan-phase 3`
+- **Goal of next session**: Implementera kolumn visa/dölj, klick-sortering och global fri-text-sök, samt börja bygga ut multi-val (studenter/instruktörer).

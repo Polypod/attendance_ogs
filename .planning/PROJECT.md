@@ -19,10 +19,10 @@ Admin och instruktörer kan snabbt få fram korrekt närvarodata (rådata eller 
 - ✓ Dashboard för dagens pass — befintligt
 
 - ✓ **Rapportsida (rådata)** för admin + instruktör — tabell (en rad per närvaro-registrering) med filter och paginering (Phase 1)
+- ✓ **Rapportsida (aggregerat läge)** — standard-grupperingar (student/instruktör/pass/klass) och nyckeltal (Phase 2)
 
 ### Active
 
-- [ ] **Rapportsida (aggregerat läge)**: summeringar med standard-grupperingar (per student, per instruktör, per pass/session, per klass) och nyckeltal
 - [ ] **Kolumnhantering**: kunna visa/dölja valfria fält i tabellen
 - [ ] **Sortering + filtrering per fält** (inkl. datumintervall där relevant) samt **global fri-text-sök**
 - [ ] **Presets**: spara och återanvänd tabellinställningar server-side per användare, samt stöd för **delade presets**
@@ -53,7 +53,7 @@ Admin och instruktörer kan snabbt få fram korrekt närvarodata (rådata eller 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Två rapportlägen (rådata + aggregerat) | Behöver både detaljgranskning och snabba sammanställningar | — Pending |
+| Två rapportlägen (rådata + aggregerat) | Behöver både detaljgranskning och snabba sammanställningar | Implemented (Phase 1–2) |
 | Admin + instruktör får åtkomst | Primära användare för uppföljning | — Pending |
 | Instruktörer ser all data initialt | Enklare regelverk, snabbare leverans | — Pending |
 | Presets sparas i DB per användare + delade presets | Återanvändning mellan enheter + teamstandard | — Pending |
@@ -80,4 +80,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-13 after Phase 1 completion*
+*Last updated: 2026-04-13 after Phase 2 completion*

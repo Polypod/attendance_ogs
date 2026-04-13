@@ -12,12 +12,12 @@
 
 ### Reporting Views (Rådata + Aggregerat)
 
-- [ ] **RPT-01**: Användaren kan växla mellan **Rådata** och **Aggregerat** läge
+- [x] **RPT-01**: Användaren kan växla mellan **Rådata** och **Aggregerat** läge
 - [x] **RPT-02**: Rådata-läget visar en tabell med en rad per närvaro-registrering
-- [ ] **RPT-03**: Aggregerat läge erbjuder en **valbar aggregeringsnivå** (standard-grupperingar): **student**, **instruktör**, **tillfälle (pass/session)**, **klass**
-- [ ] **RPT-04**: Aggregerat läge visar minst nyckeltalen **antal närvarande** och **total antal registreringar**
+- [x] **RPT-03**: Aggregerat läge erbjuder en **valbar aggregeringsnivå** (standard-grupperingar): **student**, **instruktör**, **tillfälle (pass/session)**, **klass**
+- [x] **RPT-04**: Aggregerat läge visar minst nyckeltalen **antal närvarande** och **total antal registreringar**
 - [ ] **RPT-05**: Användaren kan visa/dölja kolumner i listan; dolda kolumner ska inte exporteras
-- [ ] **RPT-06**: När listan visas **per tillfälle** kan användaren välja **ett eller flera tillfällen** via checkbox (val per rad)
+- [x] **RPT-06**: När listan visas **per tillfälle** kan användaren välja **ett eller flera tillfällen** via checkbox (val per rad)
 
 ### Query (Filter, Sort, Sök)
 
@@ -76,12 +76,12 @@
 |-------------|-------|--------|
 | SEC-01 | Phase 1 | Complete |
 | SEC-02 | Phase 1 | Complete |
-| RPT-01 | Phase 2 | Pending |
+| RPT-01 | Phase 2 | Complete |
 | RPT-02 | Phase 1 | Complete |
-| RPT-03 | Phase 2 | Pending |
-| RPT-04 | Phase 2 | Pending |
+| RPT-03 | Phase 2 | Complete |
+| RPT-04 | Phase 2 | Complete |
 | RPT-05 | Phase 3 | Pending |
-| RPT-06 | Phase 2 | Pending |
+| RPT-06 | Phase 2 | Complete |
 | QRY-01 | Phase 1 | Complete |
 | QRY-02 | Phase 1 | Complete |
 | QRY-03 | Phase 3 | Pending |

@@ -6,7 +6,7 @@
 ## Phases
 
 - [x] **Phase 1: Secure Raw Reporting** - Rapportsida + report-API för rådata med RBAC, datumintervall, fältfilter och server-side paginering.
-- [ ] **Phase 2: Aggregated Reporting** - Agg-läge med standard-grupperingar och nyckeltal, samt växling mellan rå/agg.
+- [x] **Phase 2: Aggregated Reporting** - Agg-läge med standard-grupperingar och nyckeltal, samt växling mellan rå/agg.
 - [ ] **Phase 3: Column, Sort & Selection Controls** - Kolumn visa/dölj, sortering (klick på rubrik), global fri-text-sök och förbättrade multi-val.
 - [ ] **Phase 4: Presets (Private + Shared)** - Spara/återanvänd presets server-side med delning, policy och versionering.
 - [ ] **Phase 5: CSV Export (Streaming + Safe)** - CSV-export som matchar vyn, streamar stora dataset och skyddar mot CSV-injektion.
@@ -79,7 +79,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Secure Raw Reporting | 2/2 | Complete | 2026-04-13 |
-| 2. Aggregated Reporting | 0/TBD | Not started | - |
+| 2. Aggregated Reporting | 0/TBD | Complete | 2026-04-13 |
 | 3. Column, Sort & Selection Controls | 0/TBD | Not started | - |
 | 4. Presets (Private + Shared) | 0/TBD | Not started | - |
 | 5. CSV Export (Streaming + Safe) | 0/TBD | Not started | - |
