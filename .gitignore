@@ -68,3 +68,6 @@ data/
 .serverless/
 .fusebox/
 .gitnexus
+
+# GSD planning docs (local-only)
+.planning/
