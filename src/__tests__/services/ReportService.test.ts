@@ -10,6 +10,7 @@ describe('ReportService', () => {
   let reportService: ReportService;
   let testClassId: mongoose.Types.ObjectId;
   let testScheduleId: mongoose.Types.ObjectId;
+  let testSchedule2Id: mongoose.Types.ObjectId;
   let studentAliceId: mongoose.Types.ObjectId;
   let studentBobId: mongoose.Types.ObjectId;
 
@@ -36,6 +37,17 @@ describe('ReportService', () => {
       recurring: false
     });
     testScheduleId = testSchedule._id;
+
+    const testSchedule2 = await ClassScheduleModel.create({
+      class_id: testClassId,
+      date: new Date('2026-04-16T00:00:00.000Z'),
+      start_time: '18:00',
+      end_time: '19:00',
+      status: 'scheduled',
+      day_of_week: 'thursday',
+      recurring: false
+    });
+    testSchedule2Id = testSchedule2._id;
 
     const alice = await StudentModel.create({
       name: 'Alice Andersson',
@@ -82,6 +94,18 @@ describe('ReportService', () => {
       recorded_by: 'admin@example.com',
       recorded_at: new Date('2026-04-13T12:00:00.000Z'),
       updated_at: new Date('2026-04-13T12:00:00.000Z')
+    });
+
+    await AttendanceModel.create({
+      student_id: studentAliceId,
+      class_schedule_id: testSchedule2Id,
+      date: new Date('2026-04-15T22:30:00.000Z'), // 2026-04-16 00:30 in Europe/Stockholm
+      status: AttendanceStatusEnum.PRESENT,
+      category: StudentCategoryEnum.KIDS,
+      notes: 'Second schedule record',
+      recorded_by: 'admin@example.com',
+      recorded_at: new Date('2026-04-16T08:00:00.000Z'),
+      updated_at: new Date('2026-04-16T08:00:00.000Z')
     });
   });
 
@@ -143,6 +167,18 @@ describe('ReportService', () => {
 
     expect(page2.total).toBe(2);
     expect(page2.rows).toHaveLength(1);
+  });
+
+  it('supports filtering by multiple class schedule IDs', async () => {
+    const result = await reportService.getRawAttendanceReport({
+      from: '2026-04-16',
+      to: '2026-04-16',
+      classScheduleIds: [testSchedule2Id.toString()]
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].class_schedule_id).toBe(testSchedule2Id.toString());
   });
 
   it('aggregates by student and counts present/total', async () => {

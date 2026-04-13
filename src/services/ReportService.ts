@@ -14,6 +14,7 @@ export interface RawAttendanceReportQuery {
   studentId?: string;
   studentName?: string;
   classScheduleId?: string;
+  classScheduleIds?: string[];
   instructor?: string;
   status?: string[];
 }
@@ -30,6 +31,7 @@ export interface AggregatedAttendanceReportQuery {
   studentId?: string;
   studentName?: string;
   classScheduleId?: string;
+  classScheduleIds?: string[];
   instructor?: string;
   status?: string[];
 }
@@ -111,8 +113,15 @@ export class ReportService {
       match.student_id = new Types.ObjectId(query.studentId);
     }
 
-    if (query.classScheduleId) {
-      match.class_schedule_id = new Types.ObjectId(query.classScheduleId);
+    const scheduleIds = [
+      ...(query.classScheduleIds ?? []).filter((v) => typeof v === 'string' && v.length > 0),
+      ...(query.classScheduleId ? [query.classScheduleId] : [])
+    ];
+    const uniqueScheduleIds = Array.from(new Set(scheduleIds));
+    if (uniqueScheduleIds.length > 0) {
+      match.class_schedule_id = {
+        $in: uniqueScheduleIds.map((id) => new Types.ObjectId(id))
+      };
     }
 
     if (query.status?.length) {
@@ -234,8 +243,15 @@ export class ReportService {
       match.student_id = new Types.ObjectId(query.studentId);
     }
 
-    if (query.classScheduleId) {
-      match.class_schedule_id = new Types.ObjectId(query.classScheduleId);
+    const scheduleIds = [
+      ...(query.classScheduleIds ?? []).filter((v) => typeof v === 'string' && v.length > 0),
+      ...(query.classScheduleId ? [query.classScheduleId] : [])
+    ];
+    const uniqueScheduleIds = Array.from(new Set(scheduleIds));
+    if (uniqueScheduleIds.length > 0) {
+      match.class_schedule_id = {
+        $in: uniqueScheduleIds.map((id) => new Types.ObjectId(id))
+      };
     }
 
     if (query.status?.length) {

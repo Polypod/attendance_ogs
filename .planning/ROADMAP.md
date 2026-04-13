@@ -35,6 +35,7 @@
   2. Aggregerat läge erbjuder standard-grupperingar: student, instruktör, pass/session och klass.
   3. Aggregerat läge visar minst nyckeltalen antal närvarande och total antal registreringar.
   4. Aggregerade resultat respekterar samma filter/datumintervall som rapportens query.
+  5. Filtret Class schedule stödjer multi-val av ett eller flera tillfällen (sessions).
 **Plans**: TBD
 **UI hint**: yes
 

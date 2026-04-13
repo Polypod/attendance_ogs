@@ -136,13 +136,12 @@ export default function ReportsPage() {
 
   const [studentId, setStudentId] = useState<string>("all");
   const [studentName, setStudentName] = useState<string>("");
-  const [classScheduleId, setClassScheduleId] = useState<string>("all");
+  const [classScheduleIds, setClassScheduleIds] = useState<string[]>([]);
   const [instructor, setInstructor] = useState<string>("all");
   const [status, setStatus] = useState<string[]>([]);
 
   const [mode, setMode] = useState<ViewMode>("raw");
   const [groupBy, setGroupBy] = useState<AggregatedGroupBy>("student");
-  const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
 
   const [students, setStudents] = useState<Student[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -222,14 +221,7 @@ export default function ReportsPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [from, to, studentId, studentName, classScheduleId, instructor, status.join(","), mode, groupBy]);
-
-  // Session selection only applies when grouping by session
-  useEffect(() => {
-    if (mode !== "aggregate" || groupBy !== "session") {
-      setSelectedSessionIds([]);
-    }
-  }, [groupBy, mode]);
+  }, [from, to, studentId, studentName, classScheduleIds.join(","), instructor, status.join(","), mode, groupBy]);
 
   // Load report when query changes
   useEffect(() => {
@@ -250,7 +242,7 @@ export default function ReportsPage() {
 
         if (studentId !== "all") body.studentId = studentId;
         if (studentName.trim()) body.studentName = studentName.trim();
-        if (classScheduleId !== "all") body.classScheduleId = classScheduleId;
+        if (classScheduleIds.length > 0) body.classScheduleIds = classScheduleIds;
         if (instructor !== "all") body.instructor = instructor;
         if (status.length > 0) body.status = status;
 
@@ -289,7 +281,7 @@ export default function ReportsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [authStatus, classScheduleId, from, groupBy, hasAccess, instructor, mode, page, pageSize, session, status.join(","), studentId, studentName, to]);
+  }, [authStatus, classScheduleIds.join(","), from, groupBy, hasAccess, instructor, mode, page, pageSize, session, status.join(","), studentId, studentName, to]);
 
   const currentReport = mode === "raw" ? rawReport : aggregatedReport;
   const canPrev = (currentReport?.page ?? 1) > 1;
@@ -419,29 +411,57 @@ export default function ReportsPage() {
           </div>
 
           <div>
-            <label htmlFor="schedule" className="block text-sm font-medium mb-1">
-              Class schedule
-            </label>
-            <Select value={classScheduleId} onValueChange={setClassScheduleId}>
-              <SelectTrigger id="schedule" className="w-full">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {schedules.map((s) => {
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium">
+                Class schedule
+              </label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={classScheduleIds.length === 0}
+                onClick={() => setClassScheduleIds([])}
+              >
+                Clear
+              </Button>
+            </div>
+            <div className="rounded-md border p-2 max-h-40 overflow-auto space-y-2">
+              {schedules.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No schedules in range.</div>
+              ) : (
+                schedules.map((s) => {
                   const className = s.class_id?.name ?? "Class";
                   const date = s.date ? formatDateSv(s.date) : "";
                   const start = s.start_time ?? "";
                   const end = s.end_time ?? "";
                   const label = `${className} ${date} ${start}-${end}`.trim();
+                  const checked = classScheduleIds.includes(s._id);
+
                   return (
-                    <SelectItem key={s._id} value={s._id}>
-                      {label}
-                    </SelectItem>
+                    <label key={s._id} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) => {
+                          const nextChecked = v === true;
+                          setClassScheduleIds((prev) => {
+                            if (nextChecked) return Array.from(new Set([...prev, s._id]));
+                            return prev.filter((id) => id !== s._id);
+                          });
+                        }}
+                      />
+                      <span className="truncate" title={label}>
+                        {label}
+                      </span>
+                    </label>
                   );
-                })}
-              </SelectContent>
-            </Select>
+                })
+              )}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {classScheduleIds.length === 0
+                ? "All schedules"
+                : `Selected: ${classScheduleIds.length}`}
+            </div>
           </div>
 
           <div>
@@ -500,7 +520,7 @@ export default function ReportsPage() {
               setTo(today);
               setStudentId("all");
               setStudentName("");
-              setClassScheduleId("all");
+              setClassScheduleIds([]);
               setInstructor("all");
               setStatus([]);
             }}
@@ -543,7 +563,6 @@ export default function ReportsPage() {
                   </>
                 ) : groupBy === "session" ? (
                   <>
-                    <TableHead className="w-[3rem]" />
                     <TableHead>Date</TableHead>
                     <TableHead>Start</TableHead>
                     <TableHead>End</TableHead>
@@ -601,22 +620,6 @@ export default function ReportsPage() {
                     >
                       {groupBy === "session" ? (
                         <>
-                          <TableCell>
-                            <Checkbox
-                              checked={
-                                !!r.class_schedule_id &&
-                                selectedSessionIds.includes(r.class_schedule_id)
-                              }
-                              onCheckedChange={(v) => {
-                                if (!r.class_schedule_id) return;
-                                const nextChecked = v === true;
-                                setSelectedSessionIds((prev) => {
-                                  if (nextChecked) return Array.from(new Set([...prev, r.class_schedule_id!]));
-                                  return prev.filter((id) => id !== r.class_schedule_id);
-                                });
-                              }}
-                            />
-                          </TableCell>
                           <TableCell>{r.date ? formatDateSv(r.date) : ""}</TableCell>
                           <TableCell>{r.start_time ?? ""}</TableCell>
                           <TableCell>{r.end_time ?? ""}</TableCell>

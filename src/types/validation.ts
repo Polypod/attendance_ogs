@@ -205,6 +205,7 @@ export const rawAttendanceReportQuerySchema = Joi.object({
   studentId: Joi.string().hex().length(24).optional(),
   studentName: Joi.string().min(1).max(100).optional(),
   classScheduleId: Joi.string().hex().length(24).optional(),
+  classScheduleIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
   instructor: Joi.string().min(1).max(100).optional(),
   status: Joi.array()
     .items(Joi.string().valid(...Object.values(AttendanceStatusEnum)))
@@ -224,6 +225,7 @@ export const aggregatedAttendanceReportQuerySchema = Joi.object({
   studentId: Joi.string().hex().length(24).optional(),
   studentName: Joi.string().min(1).max(100).optional(),
   classScheduleId: Joi.string().hex().length(24).optional(),
+  classScheduleIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
   instructor: Joi.string().min(1).max(100).optional(),
   status: Joi.array()
     .items(Joi.string().valid(...Object.values(AttendanceStatusEnum)))

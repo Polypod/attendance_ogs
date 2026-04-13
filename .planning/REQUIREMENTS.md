@@ -17,7 +17,7 @@
 - [x] **RPT-03**: Aggregerat läge erbjuder en **valbar aggregeringsnivå** (standard-grupperingar): **student**, **instruktör**, **tillfälle (pass/session)**, **klass**
 - [x] **RPT-04**: Aggregerat läge visar minst nyckeltalen **antal närvarande** och **total antal registreringar**
 - [ ] **RPT-05**: Användaren kan visa/dölja kolumner i listan; dolda kolumner ska inte exporteras
-- [x] **RPT-06**: När listan visas **per tillfälle** kan användaren välja **ett eller flera tillfällen** via checkbox (val per rad)
+- [x] **RPT-06**: Filtret **Class schedule** stödjer multi-val: användaren kan välja **ett eller flera tillfällen (sessions)** (inte bara ett värde i dropdown)
 
 ### Query (Filter, Sort, Sök)
 
