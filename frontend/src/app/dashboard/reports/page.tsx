@@ -67,6 +67,36 @@ type RawAttendanceReportResult = {
   totalPages: number;
 };
 
+type AggregatedGroupBy = "student" | "instructor" | "session" | "class";
+
+type AggregatedAttendanceRow = {
+  presentCount: number;
+  totalCount: number;
+
+  student_id?: string;
+  student_name?: string;
+
+  instructor?: string;
+
+  class_schedule_id?: string;
+  date?: string;
+  start_time?: string;
+  end_time?: string;
+
+  class_id?: string;
+  class_name?: string;
+};
+
+type AggregatedAttendanceReportResult = {
+  rows: AggregatedAttendanceRow[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+type ViewMode = "raw" | "aggregate";
+
 const normalizeApiErrorMessage = (message: string) => {
   const lower = message.toLowerCase();
   if (lower.includes("<html") || lower.includes("<!doctype html")) {
@@ -110,6 +140,9 @@ export default function ReportsPage() {
   const [instructor, setInstructor] = useState<string>("all");
   const [status, setStatus] = useState<string[]>([]);
 
+  const [mode, setMode] = useState<ViewMode>("raw");
+  const [groupBy, setGroupBy] = useState<AggregatedGroupBy>("student");
+
   const [students, setStudents] = useState<Student[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
 
@@ -118,7 +151,8 @@ export default function ReportsPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [report, setReport] = useState<RawAttendanceReportResult | null>(null);
+  const [rawReport, setRawReport] = useState<RawAttendanceReportResult | null>(null);
+  const [aggregatedReport, setAggregatedReport] = useState<AggregatedAttendanceReportResult | null>(null);
 
   const instructors = useMemo(() => {
     const unique = new Set<string>();
@@ -187,7 +221,7 @@ export default function ReportsPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [from, to, studentId, studentName, classScheduleId, instructor, status.join(",")]);
+  }, [from, to, studentId, studentName, classScheduleId, instructor, status.join(","), mode, groupBy]);
 
   // Load report when query changes
   useEffect(() => {
@@ -213,15 +247,29 @@ export default function ReportsPage() {
         if (status.length > 0) body.status = status;
 
         const api = createApiClient((session as any)?.accessToken);
-        const data = await api.post("/api/reports/attendance/raw", body);
-        const result: RawAttendanceReportResult = data?.data;
 
-        if (!isCancelled) setReport(result);
+        if (mode === "raw") {
+          const data = await api.post("/api/reports/attendance/raw", body);
+          const result: RawAttendanceReportResult = data?.data;
+          if (!isCancelled) {
+            setRawReport(result);
+            setAggregatedReport(null);
+          }
+        } else {
+          body.groupBy = groupBy;
+          const data = await api.post("/api/reports/attendance/aggregate", body);
+          const result: AggregatedAttendanceReportResult = data?.data;
+          if (!isCancelled) {
+            setAggregatedReport(result);
+            setRawReport(null);
+          }
+        }
       } catch (e: unknown) {
         if (!isCancelled) {
           if (e instanceof Error) setError(normalizeApiErrorMessage(e.message));
           else setError("Failed to fetch report");
-          setReport(null);
+          setRawReport(null);
+          setAggregatedReport(null);
         }
       } finally {
         if (!isCancelled) setLoading(false);
@@ -233,17 +281,18 @@ export default function ReportsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [authStatus, classScheduleId, from, hasAccess, instructor, page, pageSize, session, status.join(","), studentId, studentName, to]);
+  }, [authStatus, classScheduleId, from, groupBy, hasAccess, instructor, mode, page, pageSize, session, status.join(","), studentId, studentName, to]);
 
-  const canPrev = (report?.page ?? 1) > 1;
-  const canNext = report ? report.page < report.totalPages : false;
+  const currentReport = mode === "raw" ? rawReport : aggregatedReport;
+  const canPrev = (currentReport?.page ?? 1) > 1;
+  const canNext = currentReport ? currentReport.page < currentReport.totalPages : false;
 
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Reports</h1>
         <p className="text-muted-foreground mt-1">
-          Attendance raw report (Phase 1)
+          Attendance report (Raw / Aggregated)
         </p>
       </div>
 
@@ -266,6 +315,40 @@ export default function ReportsPage() {
       {authStatus === "authenticated" && hasAccess && (
       <Card className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="mode" className="block text-sm font-medium mb-1">
+              View
+            </label>
+            <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
+              <SelectTrigger id="mode" className="w-full">
+                <SelectValue placeholder="Raw" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="raw">Raw</SelectItem>
+                <SelectItem value="aggregate">Aggregated</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {mode === "aggregate" && (
+            <div>
+              <label htmlFor="groupBy" className="block text-sm font-medium mb-1">
+                Group by
+              </label>
+              <Select value={groupBy} onValueChange={(v) => setGroupBy(v as AggregatedGroupBy)}>
+                <SelectTrigger id="groupBy" className="w-full">
+                  <SelectValue placeholder="Student" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">Student</SelectItem>
+                  <SelectItem value="instructor">Instructor</SelectItem>
+                  <SelectItem value="session">Session</SelectItem>
+                  <SelectItem value="class">Class</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div>
             <label htmlFor="from" className="block text-sm font-medium mb-1">
               From
@@ -430,43 +513,115 @@ export default function ReportsPage() {
       <Card className="p-0 overflow-x-auto">
         {loading ? (
           <div className="p-6 text-muted-foreground">Loading report...</div>
-        ) : !report || report.rows.length === 0 ? (
+        ) : !currentReport || currentReport.rows.length === 0 ? (
           <div className="p-6 text-muted-foreground">No results.</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>End</TableHead>
-                <TableHead>Student</TableHead>
-                <TableHead>Class</TableHead>
-                <TableHead>Instructor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead>Recorded by</TableHead>
-                <TableHead>Recorded at</TableHead>
+                {mode === "raw" ? (
+                  <>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Start</TableHead>
+                    <TableHead>End</TableHead>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Instructor</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Notes</TableHead>
+                    <TableHead>Recorded by</TableHead>
+                    <TableHead>Recorded at</TableHead>
+                  </>
+                ) : groupBy === "session" ? (
+                  <>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Start</TableHead>
+                    <TableHead>End</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Instructor</TableHead>
+                    <TableHead>Present</TableHead>
+                    <TableHead>Total</TableHead>
+                  </>
+                ) : groupBy === "student" ? (
+                  <>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Present</TableHead>
+                    <TableHead>Total</TableHead>
+                  </>
+                ) : groupBy === "instructor" ? (
+                  <>
+                    <TableHead>Instructor</TableHead>
+                    <TableHead>Present</TableHead>
+                    <TableHead>Total</TableHead>
+                  </>
+                ) : (
+                  <>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Instructor</TableHead>
+                    <TableHead>Present</TableHead>
+                    <TableHead>Total</TableHead>
+                  </>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {report.rows.map((r) => (
-                <TableRow key={r.attendance_id}>
-                  <TableCell>{formatDateSv(r.date)}</TableCell>
-                  <TableCell>{r.start_time}</TableCell>
-                  <TableCell>{r.end_time}</TableCell>
-                  <TableCell className="font-medium">{r.student_name}</TableCell>
-                  <TableCell>{r.class_name}</TableCell>
-                  <TableCell>{r.instructor}</TableCell>
-                  <TableCell className="capitalize">{r.status}</TableCell>
-                  <TableCell>{r.category}</TableCell>
-                  <TableCell className="max-w-[18rem] truncate" title={r.notes}>
-                    {r.notes}
-                  </TableCell>
-                  <TableCell>{r.recorded_by}</TableCell>
-                  <TableCell>{formatDateSv(r.recorded_at)}</TableCell>
-                </TableRow>
-              ))}
+              {mode === "raw"
+                ? (rawReport?.rows ?? []).map((r) => (
+                    <TableRow key={r.attendance_id}>
+                      <TableCell>{formatDateSv(r.date)}</TableCell>
+                      <TableCell>{r.start_time}</TableCell>
+                      <TableCell>{r.end_time}</TableCell>
+                      <TableCell className="font-medium">{r.student_name}</TableCell>
+                      <TableCell>{r.class_name}</TableCell>
+                      <TableCell>{r.instructor}</TableCell>
+                      <TableCell className="capitalize">{r.status}</TableCell>
+                      <TableCell>{r.category}</TableCell>
+                      <TableCell className="max-w-[18rem] truncate" title={r.notes}>
+                        {r.notes}
+                      </TableCell>
+                      <TableCell>{r.recorded_by}</TableCell>
+                      <TableCell>{formatDateSv(r.recorded_at)}</TableCell>
+                    </TableRow>
+                  ))
+                : (aggregatedReport?.rows ?? []).map((r, idx) => (
+                    <TableRow
+                      key={
+                        r.student_id ?? r.class_schedule_id ?? r.class_id ?? r.instructor ?? `row-${idx}`
+                      }
+                    >
+                      {groupBy === "session" ? (
+                        <>
+                          <TableCell>{r.date ? formatDateSv(r.date) : ""}</TableCell>
+                          <TableCell>{r.start_time ?? ""}</TableCell>
+                          <TableCell>{r.end_time ?? ""}</TableCell>
+                          <TableCell>{r.class_name ?? ""}</TableCell>
+                          <TableCell>{r.instructor ?? ""}</TableCell>
+                          <TableCell>{r.presentCount}</TableCell>
+                          <TableCell>{r.totalCount}</TableCell>
+                        </>
+                      ) : groupBy === "student" ? (
+                        <>
+                          <TableCell className="font-medium">{r.student_name ?? ""}</TableCell>
+                          <TableCell>{r.presentCount}</TableCell>
+                          <TableCell>{r.totalCount}</TableCell>
+                        </>
+                      ) : groupBy === "instructor" ? (
+                        <>
+                          <TableCell className="font-medium">{r.instructor ?? ""}</TableCell>
+                          <TableCell>{r.presentCount}</TableCell>
+                          <TableCell>{r.totalCount}</TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell className="font-medium">{r.class_name ?? ""}</TableCell>
+                          <TableCell>{r.instructor ?? ""}</TableCell>
+                          <TableCell>{r.presentCount}</TableCell>
+                          <TableCell>{r.totalCount}</TableCell>
+                        </>
+                      )}
+                    </TableRow>
+                  ))}
             </TableBody>
           </Table>
         )}
@@ -476,9 +631,9 @@ export default function ReportsPage() {
       {authStatus === "authenticated" && hasAccess && (
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          {report ? (
+          {currentReport ? (
             <span>
-              Total: {report.total} · Page {report.page} / {report.totalPages || 1}
+              Total: {currentReport.total} · Page {currentReport.page} / {currentReport.totalPages || 1}
             </span>
           ) : (
             <span />
