@@ -202,6 +202,8 @@ export const rawAttendanceReportQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   pageSize: Joi.number().integer().min(1).max(100).default(25),
 
+  onlyActiveStudents: Joi.boolean().optional(),
+
   studentId: Joi.string().hex().length(24).optional(),
   studentIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
   studentName: Joi.string().min(1).max(100).optional(),
@@ -233,6 +235,8 @@ export const aggregatedAttendanceReportQuerySchema = Joi.object({
 
   page: Joi.number().integer().min(1).default(1),
   pageSize: Joi.number().integer().min(1).max(100).default(25),
+
+  onlyActiveStudents: Joi.boolean().optional(),
 
   studentId: Joi.string().hex().length(24).optional(),
   studentIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),

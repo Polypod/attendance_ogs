@@ -11,6 +11,8 @@ export interface RawAttendanceReportQuery {
   page?: number;
   pageSize?: number;
 
+  onlyActiveStudents?: boolean;
+
   studentId?: string;
   studentIds?: string[];
   studentName?: string;
@@ -31,6 +33,8 @@ export interface AggregatedAttendanceReportQuery {
   groupBy: AggregatedAttendanceGroupBy;
   page?: number;
   pageSize?: number;
+
+  onlyActiveStudents?: boolean;
 
   studentId?: string;
   studentIds?: string[];
@@ -187,6 +191,11 @@ export class ReportService {
     ];
 
     const postLookupMatch: Record<string, any> = {};
+
+    if (query.onlyActiveStudents) {
+      postLookupMatch['student.active'] = { $ne: false };
+      postLookupMatch['student.status'] = { $ne: 'inactive' };
+    }
 
     const instructors = [
       ...(query.instructors ?? []).filter((v) => typeof v === 'string' && v.trim().length > 0),
@@ -348,6 +357,11 @@ export class ReportService {
     ];
 
     const postLookupMatch: Record<string, any> = {};
+
+    if (query.onlyActiveStudents) {
+      postLookupMatch['student.active'] = { $ne: false };
+      postLookupMatch['student.status'] = { $ne: 'inactive' };
+    }
 
     const instructors = [
       ...(query.instructors ?? []).filter((v) => typeof v === 'string' && v.trim().length > 0),

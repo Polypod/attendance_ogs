@@ -4,15 +4,17 @@ import { AttendanceModel } from '../../models/Attendance';
 import { ClassScheduleModel } from '../../models/ClassSchedule';
 import { StudentModel } from '../../models/Student';
 import { ClassModel } from '../../models/Class';
-import { AttendanceStatusEnum, StudentCategoryEnum } from '../../types/interfaces';
+import { AttendanceStatusEnum, StudentCategoryEnum, StudentStatusEnum } from '../../types/interfaces';
 
 describe('ReportService', () => {
   let reportService: ReportService;
   let testClassId: mongoose.Types.ObjectId;
   let testScheduleId: mongoose.Types.ObjectId;
   let testSchedule2Id: mongoose.Types.ObjectId;
+  let testSchedule3Id: mongoose.Types.ObjectId;
   let studentAliceId: mongoose.Types.ObjectId;
   let studentBobId: mongoose.Types.ObjectId;
+  let studentCharlieId: mongoose.Types.ObjectId;
 
   beforeEach(async () => {
     reportService = new ReportService();
@@ -49,6 +51,17 @@ describe('ReportService', () => {
     });
     testSchedule2Id = testSchedule2._id;
 
+    const testSchedule3 = await ClassScheduleModel.create({
+      class_id: testClassId,
+      date: new Date('2026-04-20T00:00:00.000Z'),
+      start_time: '12:00',
+      end_time: '13:00',
+      status: 'scheduled',
+      day_of_week: 'monday',
+      recurring: false
+    });
+    testSchedule3Id = testSchedule3._id;
+
     const alice = await StudentModel.create({
       name: 'Alice Andersson',
       email: 'alice@example.com',
@@ -70,6 +83,19 @@ describe('ReportService', () => {
       emergency_contact: { name: 'Parent', phone: '1234567890' }
     });
     studentBobId = bob._id;
+
+    const charlie = await StudentModel.create({
+      name: 'Charlie Closed',
+      email: 'charlie@example.com',
+      categories: [StudentCategoryEnum.KIDS],
+      belt_level: '10kyu',
+      registration_date: new Date('2000-01-01'),
+      phone: '1234567890',
+      emergency_contact: { name: 'Parent', phone: '1234567890' },
+      status: StudentStatusEnum.INACTIVE,
+      active: false
+    });
+    studentCharlieId = charlie._id;
 
     // NOTE: date values are intentionally chosen to exercise Stockholm date boundaries
     await AttendanceModel.create({
@@ -106,6 +132,31 @@ describe('ReportService', () => {
       recorded_by: 'admin@example.com',
       recorded_at: new Date('2026-04-16T08:00:00.000Z'),
       updated_at: new Date('2026-04-16T08:00:00.000Z')
+    });
+
+    // Extra date range to test onlyActiveStudents filter without affecting existing tests
+    await AttendanceModel.create({
+      student_id: studentAliceId,
+      class_schedule_id: testSchedule3Id,
+      date: new Date('2026-04-19T22:30:00.000Z'), // 2026-04-20 00:30 in Europe/Stockholm
+      status: AttendanceStatusEnum.PRESENT,
+      category: StudentCategoryEnum.KIDS,
+      notes: 'Active student record',
+      recorded_by: 'admin@example.com',
+      recorded_at: new Date('2026-04-20T08:00:00.000Z'),
+      updated_at: new Date('2026-04-20T08:00:00.000Z')
+    });
+
+    await AttendanceModel.create({
+      student_id: studentCharlieId,
+      class_schedule_id: testSchedule3Id,
+      date: new Date('2026-04-19T22:30:00.000Z'), // 2026-04-20 00:30 in Europe/Stockholm
+      status: AttendanceStatusEnum.PRESENT,
+      category: StudentCategoryEnum.KIDS,
+      notes: 'Inactive student record',
+      recorded_by: 'admin@example.com',
+      recorded_at: new Date('2026-04-20T08:00:00.000Z'),
+      updated_at: new Date('2026-04-20T08:00:00.000Z')
     });
   });
 
@@ -205,6 +256,26 @@ describe('ReportService', () => {
     expect(result.rows[0].student_name).toBe('Bob Berg');
   });
 
+  it('supports onlyActiveStudents filter', async () => {
+    const all = await reportService.getRawAttendanceReport({
+      from: '2026-04-20',
+      to: '2026-04-20'
+    });
+
+    expect(all.total).toBe(2);
+    expect(all.rows).toHaveLength(2);
+
+    const activeOnly = await reportService.getRawAttendanceReport({
+      from: '2026-04-20',
+      to: '2026-04-20',
+      onlyActiveStudents: true
+    });
+
+    expect(activeOnly.total).toBe(1);
+    expect(activeOnly.rows).toHaveLength(1);
+    expect(activeOnly.rows[0].student_name).toBe('Alice Andersson');
+  });
+
   it('aggregates by student and counts present/total', async () => {
     const result = await reportService.getAggregatedAttendanceReport({
       from: '2026-04-13',
@@ -243,5 +314,18 @@ describe('ReportService', () => {
     expect(result.rows[0].instructor).toBe('Instructor A');
     expect(result.rows[0].totalCount).toBe(2);
     expect(result.rows[0].presentCount).toBe(1);
+  });
+
+  it('aggregates by student and supports onlyActiveStudents filter', async () => {
+    const result = await reportService.getAggregatedAttendanceReport({
+      from: '2026-04-20',
+      to: '2026-04-20',
+      groupBy: 'student',
+      onlyActiveStudents: true
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].student_name).toBe('Alice Andersson');
   });
 });

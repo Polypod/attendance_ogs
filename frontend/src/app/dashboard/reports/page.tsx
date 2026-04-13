@@ -27,6 +27,8 @@ import {
 type Student = {
   _id: string;
   name: string;
+  active?: boolean;
+  status?: string;
 };
 
 type Schedule = {
@@ -145,7 +147,7 @@ export default function ReportsPage() {
   const [to, setTo] = useState(today);
 
   const [studentIds, setStudentIds] = useState<string[]>([]);
-  const [studentName, setStudentName] = useState<string>("");
+  const [onlyActiveStudents, setOnlyActiveStudents] = useState(true);
   const [selectedSessionKeys, setSelectedSessionKeys] = useState<string[]>([]);
   const [classIds, setClassIds] = useState<string[]>([]);
   const [instructorsSelected, setInstructorsSelected] = useState<string[]>([]);
@@ -278,8 +280,8 @@ export default function ReportsPage() {
   }, [
     from,
     to,
+    onlyActiveStudents,
     studentIds.join(","),
-    studentName,
     selectedSessionKeys.join(","),
     classIds.join(","),
     instructorsSelected.join(","),
@@ -305,8 +307,8 @@ export default function ReportsPage() {
           pageSize,
         };
 
+        if (onlyActiveStudents) body.onlyActiveStudents = true;
         if (studentIds.length > 0) body.studentIds = studentIds;
-        if (studentName.trim()) body.studentName = studentName.trim();
         if (selectedSessionKeys.length > 0) {
           body.sessions = selectedSessionKeys
             .map((k) => {
@@ -363,13 +365,13 @@ export default function ReportsPage() {
     hasAccess,
     instructorsSelected.join(","),
     mode,
+    onlyActiveStudents,
     page,
     pageSize,
     selectedSessionKeys.join(","),
     session,
     status.join(","),
     studentIds.join(","),
-    studentName,
     to,
   ]);
 
@@ -461,18 +463,32 @@ export default function ReportsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium">Students</label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={studentIds.length === 0}
-                    onClick={() => setStudentIds([])}
-                  >
-                    Clear
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground select-none">
+                      <Checkbox
+                        checked={onlyActiveStudents}
+                        onCheckedChange={(v) => setOnlyActiveStudents(v === true)}
+                      />
+                      <span>Only active</span>
+                    </label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={studentIds.length === 0}
+                      onClick={() => setStudentIds([])}
+                    >
+                      Clear
+                    </Button>
+                  </div>
                 </div>
                 <div className="rounded-md border p-2 min-h-40 max-h-40 overflow-auto space-y-2">
                   {students
+                    .filter((s) => {
+                      if (!onlyActiveStudents) return true;
+                      const isActive = (s.active ?? true) !== false && (s.status ?? 'active') !== 'inactive';
+                      return isActive;
+                    })
                     .slice()
                     .sort((a, b) => a.name.localeCompare(b.name))
                     .map((s) => {
@@ -499,18 +515,6 @@ export default function ReportsPage() {
                 <div className="mt-1 text-xs text-muted-foreground">
                   {studentIds.length === 0 ? "All students" : `Selected: ${studentIds.length}`}
                 </div>
-              </div>
-
-              <div>
-                <label htmlFor="studentName" className="block text-sm font-medium mb-1">
-                  Student name contains
-                </label>
-                <Input
-                  id="studentName"
-                  value={studentName}
-                  onChange={(e) => setStudentName(e.target.value)}
-                  placeholder="e.g. Andersson"
-                />
               </div>
 
               <div>
@@ -678,7 +682,7 @@ export default function ReportsPage() {
                     setFrom(defaultFrom);
                     setTo(today);
                     setStudentIds([]);
-                    setStudentName("");
+                    setOnlyActiveStudents(true);
                     setSelectedSessionKeys([]);
                     setClassIds([]);
                     setInstructorsSelected([]);
