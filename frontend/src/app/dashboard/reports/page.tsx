@@ -175,7 +175,27 @@ export default function ReportsPage() {
   const [sortBy, setSortBy] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+  const defaultRawColumnVisibility = useMemo(
+    () =>
+      ({
+        date: true,
+        start_time: true,
+        end_time: true,
+        student_name: true,
+        class_name: true,
+        instructor: true,
+        status: true,
+
+        category: false,
+        notes: false,
+        recorded_by: false,
+        recorded_at: false,
+      }) satisfies Record<string, boolean>,
+    []
+  );
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(
+    () => defaultRawColumnVisibility
+  );
 
   const [mode, setMode] = useState<ViewMode>("raw");
   const [groupBy, setGroupBy] = useState<AggregatedGroupBy>("student");
@@ -595,27 +615,6 @@ export default function ReportsPage() {
               </div>
 
               <div>
-                <div className="text-sm font-medium mb-2">Columns</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {currentColumns.map((c) => {
-                    const checked = columnVisibility[c.key] !== false;
-                    return (
-                      <label key={c.key} className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) => {
-                            const nextChecked = v === true;
-                            setColumnVisibility((prev) => ({ ...prev, [c.key]: nextChecked }));
-                          }}
-                        />
-                        <span>{c.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium">Students</label>
                   <div className="flex items-center gap-2">
@@ -822,6 +821,27 @@ export default function ReportsPage() {
                 >
                   Reset
                 </Button>
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2">Columns</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {currentColumns.map((c) => {
+                    const checked = columnVisibility[c.key] !== false;
+                    return (
+                      <label key={c.key} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => {
+                            const nextChecked = v === true;
+                            setColumnVisibility((prev) => ({ ...prev, [c.key]: nextChecked }));
+                          }}
+                        />
+                        <span>{c.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </Card>
