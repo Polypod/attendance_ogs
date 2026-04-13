@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,62 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [rateLimitSecondsLeft, setRateLimitSecondsLeft] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const unlockAtRef = useRef<number>(0);
+
+  // On mount: ask the server if this IP is currently rate limited
+  useEffect(() => {
+    fetch("/api/auth/rate-limit-status")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.rateLimited && data.resetAt) {
+          const unlockAt = data.resetAt * 1000;
+          const remaining = Math.ceil((unlockAt - Date.now()) / 1000);
+          if (remaining > 0) {
+            unlockAtRef.current = unlockAt;
+            setRateLimitSecondsLeft(remaining);
+            setError("Too many login attempts. Please try again later after 15 minutes.");
+            startCountdown(unlockAt);
+          }
+        }
+      })
+      .catch(() => {});
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
+  const startCountdown = (unlockAt: number) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      const left = Math.max(0, Math.ceil((unlockAt - Date.now()) / 1000));
+      setRateLimitSecondsLeft(left);
+      if (left <= 0) {
+        clearInterval(timerRef.current!);
+        setError("");
+      }
+    }, 1000);
+  };
+
+  const startRateLimitTimer = (resetHeader: string | null) => {
+    let unlockAt: number;
+    if (resetHeader) {
+      unlockAt = parseInt(resetHeader, 10) * 1000;
+      if (isNaN(unlockAt) || unlockAt < Date.now()) {
+        unlockAt = Date.now() + 15 * 60 * 1000;
+      }
+    } else {
+      unlockAt = Date.now() + 15 * 60 * 1000;
+    }
+    unlockAtRef.current = unlockAt;
+    setRateLimitSecondsLeft(Math.ceil((unlockAt - Date.now()) / 1000));
+    startCountdown(unlockAt);
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -20,6 +76,23 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      // First call server-side proxy to get real error messages (e.g. rate limit)
+      const preCheck = await fetch("/api/auth/check-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const preData = await preCheck.json();
+
+      if (!preCheck.ok || !preData.success) {
+        setError(preData.message || "Invalid email or password");
+        if (preCheck.status === 429) {
+          startRateLimitTimer(preCheck.headers.get("RateLimit-Reset"));
+        }
+        return;
+      }
+
+      // Credentials are valid – establish NextAuth session
       const result = await signIn("credentials", {
         email,
         password,
@@ -27,7 +100,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError("Invalid email or password");
+        setError("An error occurred. Please try again.");
       } else if (result?.ok) {
         router.push("/dashboard");
         router.refresh();
@@ -51,6 +124,11 @@ export default function LoginPage() {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
+              {rateLimitSecondsLeft > 0 && (
+                <div className="mt-2 text-center font-mono text-lg font-bold">
+                  {formatTime(rateLimitSecondsLeft)}
+                </div>
+              )}
             </div>
           )}
 
@@ -88,7 +166,7 @@ export default function LoginPage() {
 
           <Button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || rateLimitSecondsLeft > 0}
             className="w-full"
           >
             {isLoading ? "Signing in..." : "Sign In"}
