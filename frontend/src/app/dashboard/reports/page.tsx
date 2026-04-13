@@ -381,9 +381,7 @@ export default function ReportsPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Reports</h1>
-        <p className="text-muted-foreground mt-1">
-          Attendance report (Raw / Aggregated)
-        </p>
+        <p className="text-muted-foreground mt-1">Attendance report (Raw / Aggregated)</p>
       </div>
 
       {authStatus === "loading" && (
@@ -403,459 +401,453 @@ export default function ReportsPage() {
       )}
 
       {authStatus === "authenticated" && hasAccess && (
-      <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label htmlFor="mode" className="block text-sm font-medium mb-1">
-              View
-            </label>
-            <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
-              <SelectTrigger id="mode" className="w-full">
-                <SelectValue placeholder="Raw" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="raw">Raw</SelectItem>
-                <SelectItem value="aggregate">Aggregated</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {mode === "aggregate" && (
-            <div>
-              <label htmlFor="groupBy" className="block text-sm font-medium mb-1">
-                Group by
-              </label>
-              <Select value={groupBy} onValueChange={(v) => setGroupBy(v as AggregatedGroupBy)}>
-                <SelectTrigger id="groupBy" className="w-full">
-                  <SelectValue placeholder="Student" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="student">Student</SelectItem>
-                  <SelectItem value="instructor">Instructor</SelectItem>
-                  <SelectItem value="session">Session</SelectItem>
-                  <SelectItem value="class">Class</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="from" className="block text-sm font-medium mb-1">
-              From
-            </label>
-            <Input
-              id="from"
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="to" className="block text-sm font-medium mb-1">
-              To
-            </label>
-            <Input
-              id="to"
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium">Students</label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={studentIds.length === 0}
-                onClick={() => setStudentIds([])}
-              >
-                Clear
-              </Button>
-            </div>
-            <div className="rounded-md border p-2 max-h-40 overflow-auto space-y-2">
-              {students
-                .slice()
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((s) => {
-                  const checked = studentIds.includes(s._id);
-                  return (
-                    <label key={s._id} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(v) => {
-                          const nextChecked = v === true;
-                          setStudentIds((prev) => {
-                            if (nextChecked) return Array.from(new Set([...prev, s._id]));
-                            return prev.filter((id) => id !== s._id);
-                          });
-                        }}
-                      />
-                      <span className="truncate" title={s.name}>
-                        {s.name}
-                      </span>
-                    </label>
-                  );
-                })}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {studentIds.length === 0 ? "All students" : `Selected: ${studentIds.length}`}
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="studentName"
-              className="block text-sm font-medium mb-1"
-            >
-              Student name contains
-            </label>
-            <Input
-              id="studentName"
-              value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
-              placeholder="e.g. Andersson"
-            />
-          </div>
-
-          <div className="md:col-span-3">
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium">Sessions</label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={selectedSessionKeys.length === 0}
-                onClick={() => setSelectedSessionKeys([])}
-              >
-                Clear
-              </Button>
-            </div>
-            <div className="rounded-md border p-2 max-h-48 overflow-auto space-y-2">
-              {sessionOptions.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No sessions in range.</div>
-              ) : (
-                sessionOptions.map((opt) => {
-                  const checked = selectedSessionKeys.includes(opt.key);
-                  return (
-                    <label key={opt.key} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(v) => {
-                          const nextChecked = v === true;
-                          setSelectedSessionKeys((prev) => {
-                            if (nextChecked) return Array.from(new Set([...prev, opt.key]));
-                            return prev.filter((k) => k !== opt.key);
-                          });
-                        }}
-                      />
-                      <span className="truncate" title={opt.label}>
-                        {opt.label}
-                      </span>
-                    </label>
-                  );
-                })
-              )}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {selectedSessionKeys.length === 0 ? "All sessions" : `Selected: ${selectedSessionKeys.length}`}
-            </div>
-          </div>
-
-          <div className="md:col-span-3">
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium">Classes</label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={classIds.length === 0}
-                onClick={() => setClassIds([])}
-              >
-                Clear
-              </Button>
-            </div>
-            <div className="rounded-md border p-2 max-h-40 overflow-auto space-y-2">
-              {classesInRange.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No classes in range.</div>
-              ) : (
-                classesInRange.map((c) => {
-                  const checked = classIds.includes(c.id);
-                  const label = c.instructor ? `${c.name} (${c.instructor})` : c.name;
-                  return (
-                    <label key={c.id} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(v) => {
-                          const nextChecked = v === true;
-                          setClassIds((prev) => {
-                            if (nextChecked) return Array.from(new Set([...prev, c.id]));
-                            return prev.filter((id) => id !== c.id);
-                          });
-                        }}
-                      />
-                      <span className="truncate" title={label}>
-                        {label}
-                      </span>
-                    </label>
-                  );
-                })
-              )}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {classIds.length === 0 ? "All classes" : `Selected: ${classIds.length}`}
-            </div>
-          </div>
-
-          <div className="md:col-span-3">
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium">Instructors</label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={instructorsSelected.length === 0}
-                onClick={() => setInstructorsSelected([])}
-              >
-                Clear
-              </Button>
-            </div>
-            <div className="rounded-md border p-2 max-h-40 overflow-auto space-y-2">
-              {instructors.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No instructors in range.</div>
-              ) : (
-                instructors.map((name) => {
-                  const checked = instructorsSelected.includes(name);
-                  return (
-                    <label key={name} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(v) => {
-                          const nextChecked = v === true;
-                          setInstructorsSelected((prev) => {
-                            if (nextChecked) return Array.from(new Set([...prev, name]));
-                            return prev.filter((n) => n !== name);
-                          });
-                        }}
-                      />
-                      <span className="truncate" title={name}>
-                        {name}
-                      </span>
-                    </label>
-                  );
-                })
-              )}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {instructorsSelected.length === 0 ? "All instructors" : `Selected: ${instructorsSelected.length}`}
-            </div>
-          </div>
-
-          <div className="md:col-span-3">
-            <div className="text-sm font-medium mb-2">Status</div>
-            <div className="flex flex-wrap gap-4">
-              {ATTENDANCE_STATUSES.map((s) => {
-                const checked = status.includes(s);
-                return (
-                  <label key={s} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={checked}
-                      onCheckedChange={(v) => {
-                        const nextChecked = v === true;
-                        setStatus((prev) => {
-                          if (nextChecked) return Array.from(new Set([...prev, s]));
-                          return prev.filter((x) => x !== s);
-                        });
-                      }}
-                    />
-                    <span className="capitalize">{s}</span>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <Card className="p-4 md:col-span-4 md:sticky md:top-6 md:max-h-[calc(100vh-6rem)] md:overflow-auto">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="mode" className="block text-sm font-medium mb-1">
+                    View
                   </label>
-                );
-              })}
+                  <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
+                    <SelectTrigger id="mode" className="w-full">
+                      <SelectValue placeholder="Raw" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="raw">Raw</SelectItem>
+                      <SelectItem value="aggregate">Aggregated</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label htmlFor="groupBy" className="block text-sm font-medium mb-1">
+                    Group by
+                  </label>
+                  <Select
+                    value={groupBy}
+                    onValueChange={(v) => setGroupBy(v as AggregatedGroupBy)}
+                    disabled={mode !== "aggregate"}
+                  >
+                    <SelectTrigger id="groupBy" className="w-full">
+                      <SelectValue placeholder="Student" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="instructor">Instructor</SelectItem>
+                      <SelectItem value="session">Session</SelectItem>
+                      <SelectItem value="class">Class</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="from" className="block text-sm font-medium mb-1">
+                    From
+                  </label>
+                  <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+                </div>
+
+                <div>
+                  <label htmlFor="to" className="block text-sm font-medium mb-1">
+                    To
+                  </label>
+                  <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium">Students</label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={studentIds.length === 0}
+                    onClick={() => setStudentIds([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                <div className="rounded-md border p-2 min-h-40 max-h-40 overflow-auto space-y-2">
+                  {students
+                    .slice()
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((s) => {
+                      const checked = studentIds.includes(s._id);
+                      return (
+                        <label key={s._id} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              const nextChecked = v === true;
+                              setStudentIds((prev) => {
+                                if (nextChecked) return Array.from(new Set([...prev, s._id]));
+                                return prev.filter((id) => id !== s._id);
+                              });
+                            }}
+                          />
+                          <span className="truncate" title={s.name}>
+                            {s.name}
+                          </span>
+                        </label>
+                      );
+                    })}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {studentIds.length === 0 ? "All students" : `Selected: ${studentIds.length}`}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="studentName" className="block text-sm font-medium mb-1">
+                  Student name contains
+                </label>
+                <Input
+                  id="studentName"
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  placeholder="e.g. Andersson"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium">Sessions</label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={selectedSessionKeys.length === 0}
+                    onClick={() => setSelectedSessionKeys([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                <div className="rounded-md border p-2 min-h-48 max-h-48 overflow-auto space-y-2">
+                  {sessionOptions.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No sessions in range.</div>
+                  ) : (
+                    sessionOptions.map((opt) => {
+                      const checked = selectedSessionKeys.includes(opt.key);
+                      return (
+                        <label key={opt.key} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              const nextChecked = v === true;
+                              setSelectedSessionKeys((prev) => {
+                                if (nextChecked) return Array.from(new Set([...prev, opt.key]));
+                                return prev.filter((k) => k !== opt.key);
+                              });
+                            }}
+                          />
+                          <span className="truncate" title={opt.label}>
+                            {opt.label}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {selectedSessionKeys.length === 0 ? "All sessions" : `Selected: ${selectedSessionKeys.length}`}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium">Classes</label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={classIds.length === 0}
+                    onClick={() => setClassIds([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                <div className="rounded-md border p-2 min-h-40 max-h-40 overflow-auto space-y-2">
+                  {classesInRange.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No classes in range.</div>
+                  ) : (
+                    classesInRange.map((c) => {
+                      const checked = classIds.includes(c.id);
+                      const label = c.instructor ? `${c.name} (${c.instructor})` : c.name;
+                      return (
+                        <label key={c.id} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              const nextChecked = v === true;
+                              setClassIds((prev) => {
+                                if (nextChecked) return Array.from(new Set([...prev, c.id]));
+                                return prev.filter((id) => id !== c.id);
+                              });
+                            }}
+                          />
+                          <span className="truncate" title={label}>
+                            {label}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {classIds.length === 0 ? "All classes" : `Selected: ${classIds.length}`}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium">Instructors</label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={instructorsSelected.length === 0}
+                    onClick={() => setInstructorsSelected([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                <div className="rounded-md border p-2 min-h-40 max-h-40 overflow-auto space-y-2">
+                  {instructors.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No instructors in range.</div>
+                  ) : (
+                    instructors.map((name) => {
+                      const checked = instructorsSelected.includes(name);
+                      return (
+                        <label key={name} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              const nextChecked = v === true;
+                              setInstructorsSelected((prev) => {
+                                if (nextChecked) return Array.from(new Set([...prev, name]));
+                                return prev.filter((n) => n !== name);
+                              });
+                            }}
+                          />
+                          <span className="truncate" title={name}>
+                            {name}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {instructorsSelected.length === 0 ? "All instructors" : `Selected: ${instructorsSelected.length}`}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2">Status</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {ATTENDANCE_STATUSES.map((s) => {
+                    const checked = status.includes(s);
+                    return (
+                      <label key={s} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => {
+                            const nextChecked = v === true;
+                            setStatus((prev) => {
+                              if (nextChecked) return Array.from(new Set([...prev, s]));
+                              return prev.filter((x) => x !== s);
+                            });
+                          }}
+                        />
+                        <span className="capitalize">{s}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setFrom(defaultFrom);
+                    setTo(today);
+                    setStudentIds([]);
+                    setStudentName("");
+                    setSelectedSessionKeys([]);
+                    setClassIds([]);
+                    setInstructorsSelected([]);
+                    setStatus([]);
+                  }}
+                >
+                  Reset
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
+          </Card>
 
-        <div className="mt-4 flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setFrom(defaultFrom);
-              setTo(today);
-              setStudentIds([]);
-              setStudentName("");
-              setSelectedSessionKeys([]);
-              setClassIds([]);
-              setInstructorsSelected([]);
-              setStatus([]);
-            }}
-          >
-            Reset
-          </Button>
-        </div>
-      </Card>
-      )}
+          <div className="md:col-span-8 space-y-4">
+            {error && (
+              <Card className="p-4 border border-destructive/30 bg-destructive/10">
+                <p className="text-sm">{error}</p>
+              </Card>
+            )}
 
-      {error && (
-        <Card className="p-4 border border-destructive/30 bg-destructive/10">
-          <p className="text-sm">{error}</p>
-        </Card>
-      )}
-
-      {authStatus === "authenticated" && hasAccess && (
-      <Card className="p-0 overflow-x-auto">
-        {loading ? (
-          <div className="p-6 text-muted-foreground">Loading report...</div>
-        ) : !currentReport || currentReport.rows.length === 0 ? (
-          <div className="p-6 text-muted-foreground">No results.</div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {mode === "raw" ? (
-                  <>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Start</TableHead>
-                    <TableHead>End</TableHead>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Instructor</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead>Recorded by</TableHead>
-                    <TableHead>Recorded at</TableHead>
-                  </>
-                ) : groupBy === "session" ? (
-                  <>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Start</TableHead>
-                    <TableHead>End</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Instructor</TableHead>
-                    <TableHead>Present</TableHead>
-                    <TableHead>Total</TableHead>
-                  </>
-                ) : groupBy === "student" ? (
-                  <>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Present</TableHead>
-                    <TableHead>Total</TableHead>
-                  </>
-                ) : groupBy === "instructor" ? (
-                  <>
-                    <TableHead>Instructor</TableHead>
-                    <TableHead>Present</TableHead>
-                    <TableHead>Total</TableHead>
-                  </>
-                ) : (
-                  <>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Instructor</TableHead>
-                    <TableHead>Present</TableHead>
-                    <TableHead>Total</TableHead>
-                  </>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mode === "raw"
-                ? (rawReport?.rows ?? []).map((r) => (
-                    <TableRow key={r.attendance_id}>
-                      <TableCell>{formatDateSv(r.date)}</TableCell>
-                      <TableCell>{r.start_time}</TableCell>
-                      <TableCell>{r.end_time}</TableCell>
-                      <TableCell className="font-medium">{r.student_name}</TableCell>
-                      <TableCell>{r.class_name}</TableCell>
-                      <TableCell>{r.instructor}</TableCell>
-                      <TableCell className="capitalize">{r.status}</TableCell>
-                      <TableCell>{r.category}</TableCell>
-                      <TableCell className="max-w-[18rem] truncate" title={r.notes}>
-                        {r.notes}
-                      </TableCell>
-                      <TableCell>{r.recorded_by}</TableCell>
-                      <TableCell>{formatDateSv(r.recorded_at)}</TableCell>
-                    </TableRow>
-                  ))
-                : (aggregatedReport?.rows ?? []).map((r, idx) => (
-                    <TableRow
-                      key={
-                        r.student_id ?? r.class_schedule_id ?? r.class_id ?? r.instructor ?? `row-${idx}`
-                      }
-                    >
-                      {groupBy === "session" ? (
+            <Card className="p-0 overflow-x-auto min-h-[20rem]">
+              {loading ? (
+                <div className="p-6 text-muted-foreground">Loading report...</div>
+              ) : !currentReport || currentReport.rows.length === 0 ? (
+                <div className="p-6 text-muted-foreground">No results.</div>
+              ) : (
+                <Table className="table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      {mode === "raw" ? (
                         <>
-                          <TableCell>{r.date ? formatDateSv(r.date) : ""}</TableCell>
-                          <TableCell>{r.start_time ?? ""}</TableCell>
-                          <TableCell>{r.end_time ?? ""}</TableCell>
-                          <TableCell>{r.class_name ?? ""}</TableCell>
-                          <TableCell>{r.instructor ?? ""}</TableCell>
-                          <TableCell>{r.presentCount}</TableCell>
-                          <TableCell>{r.totalCount}</TableCell>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Start</TableHead>
+                          <TableHead>End</TableHead>
+                          <TableHead>Student</TableHead>
+                          <TableHead>Class</TableHead>
+                          <TableHead>Instructor</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Notes</TableHead>
+                          <TableHead>Recorded by</TableHead>
+                          <TableHead>Recorded at</TableHead>
+                        </>
+                      ) : groupBy === "session" ? (
+                        <>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Start</TableHead>
+                          <TableHead>End</TableHead>
+                          <TableHead>Class</TableHead>
+                          <TableHead>Instructor</TableHead>
+                          <TableHead>Present</TableHead>
+                          <TableHead>Total</TableHead>
                         </>
                       ) : groupBy === "student" ? (
                         <>
-                          <TableCell className="font-medium">{r.student_name ?? ""}</TableCell>
-                          <TableCell>{r.presentCount}</TableCell>
-                          <TableCell>{r.totalCount}</TableCell>
+                          <TableHead>Student</TableHead>
+                          <TableHead>Present</TableHead>
+                          <TableHead>Total</TableHead>
                         </>
                       ) : groupBy === "instructor" ? (
                         <>
-                          <TableCell className="font-medium">{r.instructor ?? ""}</TableCell>
-                          <TableCell>{r.presentCount}</TableCell>
-                          <TableCell>{r.totalCount}</TableCell>
+                          <TableHead>Instructor</TableHead>
+                          <TableHead>Present</TableHead>
+                          <TableHead>Total</TableHead>
                         </>
                       ) : (
                         <>
-                          <TableCell className="font-medium">{r.class_name ?? ""}</TableCell>
-                          <TableCell>{r.instructor ?? ""}</TableCell>
-                          <TableCell>{r.presentCount}</TableCell>
-                          <TableCell>{r.totalCount}</TableCell>
+                          <TableHead>Class</TableHead>
+                          <TableHead>Instructor</TableHead>
+                          <TableHead>Present</TableHead>
+                          <TableHead>Total</TableHead>
                         </>
                       )}
                     </TableRow>
-                  ))}
-            </TableBody>
-          </Table>
-        )}
-      </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {mode === "raw"
+                      ? (rawReport?.rows ?? []).map((r) => (
+                          <TableRow key={r.attendance_id}>
+                            <TableCell>{formatDateSv(r.date)}</TableCell>
+                            <TableCell>{r.start_time}</TableCell>
+                            <TableCell>{r.end_time}</TableCell>
+                            <TableCell className="font-medium">{r.student_name}</TableCell>
+                            <TableCell>{r.class_name}</TableCell>
+                            <TableCell>{r.instructor}</TableCell>
+                            <TableCell className="capitalize">{r.status}</TableCell>
+                            <TableCell>{r.category}</TableCell>
+                            <TableCell className="max-w-[18rem] truncate" title={r.notes}>
+                              {r.notes}
+                            </TableCell>
+                            <TableCell>{r.recorded_by}</TableCell>
+                            <TableCell>{formatDateSv(r.recorded_at)}</TableCell>
+                          </TableRow>
+                        ))
+                      : (aggregatedReport?.rows ?? []).map((r, idx) => (
+                          <TableRow
+                            key={
+                              r.student_id ?? r.class_schedule_id ?? r.class_id ?? r.instructor ?? `row-${idx}`
+                            }
+                          >
+                            {groupBy === "session" ? (
+                              <>
+                                <TableCell>{r.date ? formatDateSv(r.date) : ""}</TableCell>
+                                <TableCell>{r.start_time ?? ""}</TableCell>
+                                <TableCell>{r.end_time ?? ""}</TableCell>
+                                <TableCell>{r.class_name ?? ""}</TableCell>
+                                <TableCell>{r.instructor ?? ""}</TableCell>
+                                <TableCell>{r.presentCount}</TableCell>
+                                <TableCell>{r.totalCount}</TableCell>
+                              </>
+                            ) : groupBy === "student" ? (
+                              <>
+                                <TableCell className="font-medium">{r.student_name ?? ""}</TableCell>
+                                <TableCell>{r.presentCount}</TableCell>
+                                <TableCell>{r.totalCount}</TableCell>
+                              </>
+                            ) : groupBy === "instructor" ? (
+                              <>
+                                <TableCell className="font-medium">{r.instructor ?? ""}</TableCell>
+                                <TableCell>{r.presentCount}</TableCell>
+                                <TableCell>{r.totalCount}</TableCell>
+                              </>
+                            ) : (
+                              <>
+                                <TableCell className="font-medium">{r.class_name ?? ""}</TableCell>
+                                <TableCell>{r.instructor ?? ""}</TableCell>
+                                <TableCell>{r.presentCount}</TableCell>
+                                <TableCell>{r.totalCount}</TableCell>
+                              </>
+                            )}
+                          </TableRow>
+                        ))}
+                  </TableBody>
+                </Table>
+              )}
+            </Card>
+
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                {currentReport ? (
+                  <span>
+                    Total: {currentReport.total} · Page {currentReport.page} / {currentReport.totalPages || 1}
+                  </span>
+                ) : (
+                  <span />
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!canPrev}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!canNext}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
-      {authStatus === "authenticated" && hasAccess && (
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          {currentReport ? (
-            <span>
-              Total: {currentReport.total} · Page {currentReport.page} / {currentReport.totalPages || 1}
-            </span>
-          ) : (
-            <span />
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!canPrev}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Previous
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!canNext}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
-      )}
     </div>
   );
 }
