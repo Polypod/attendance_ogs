@@ -4,6 +4,9 @@ import { ConfigService } from '../services/ConfigService';
 
 let mongoServer: MongoMemoryServer;
 
+// MongoMemoryServer startup can exceed Jest's default 5s timeout in CI/containers
+jest.setTimeout(30000);
+
 // Set up in-memory MongoDB for testing
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -33,5 +36,7 @@ afterEach(async () => {
 // Close the connection and stop the server
 afterAll(async () => {
   await mongoose.disconnect();
-  await mongoServer.stop();
+  if (mongoServer) {
+    await mongoServer.stop();
+  }
 });

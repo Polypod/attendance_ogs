@@ -4,7 +4,7 @@ import { Schema } from 'joi';
 
 export const validateRequest = (schema: Schema) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const { error } = schema.validate(req.body);
+    const { error, value } = schema.validate(req.body);
 
     if (error) {
       return res.status(400).json({
@@ -13,6 +13,9 @@ export const validateRequest = (schema: Schema) => {
         details: error.details.map(detail => detail.message)
       });
     }
+
+    // Use the validated value (applies defaults and stripUnknown, if configured)
+    req.body = value;
 
     next();
   };

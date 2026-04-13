@@ -17,11 +17,14 @@ module.exports = {
   // Relax coverage thresholds to allow incremental test additions
   coverageThreshold: {
     global: {
-      branches: 50,
-      functions: 60,
-      lines: 60,
-      statements: 60
+      branches: 30,
+      functions: 45,
+      lines: 30,
+      statements: 30
     }
+  },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1'
   },
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts']
 };

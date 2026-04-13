@@ -10,6 +10,7 @@ import { attendanceRoutes } from './routes/attendanceRoutes';
 import { authRoutes } from './routes/authRoutes';
 import { userRoutes } from './routes/userRoutes';
 import { configRoutes } from './routes/configRoutes';
+import { reportRoutes } from './routes/reportRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { applyMiddleware } from './middleware/middleware';
 import { authenticate, authorize } from './middleware/auth';
@@ -43,6 +44,7 @@ app.use('/api/students', authenticate, studentRoutes);
 app.use('/api/classes', authenticate, classRoutes);
 app.use('/api/schedules', authenticate, scheduleRoutes);
 app.use('/api/attendance', authenticate, attendanceRoutes);
+app.use('/api/reports', authenticate, reportRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
