@@ -151,7 +151,7 @@ export default function ReportsPage() {
   const [selectedSessionKeys, setSelectedSessionKeys] = useState<string[]>([]);
   const [classIds, setClassIds] = useState<string[]>([]);
   const [instructorsSelected, setInstructorsSelected] = useState<string[]>([]);
-  const [status, setStatus] = useState<string[]>([]);
+  const [status, setStatus] = useState<string[]>(["present"]);
 
   const [mode, setMode] = useState<ViewMode>("raw");
   const [groupBy, setGroupBy] = useState<AggregatedGroupBy>("student");
@@ -461,6 +461,30 @@ export default function ReportsPage() {
               </div>
 
               <div>
+                <div className="text-sm font-medium mb-2">Status</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {ATTENDANCE_STATUSES.map((s) => {
+                    const checked = status.includes(s);
+                    return (
+                      <label key={s} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => {
+                            const nextChecked = v === true;
+                            setStatus((prev) => {
+                              if (nextChecked) return Array.from(new Set([...prev, s]));
+                              return prev.filter((x) => x !== s);
+                            });
+                          }}
+                        />
+                        <span className="capitalize">{s}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium">Students</label>
                   <div className="flex items-center gap-2">
@@ -519,6 +543,51 @@ export default function ReportsPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium">Classes</label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={classIds.length === 0}
+                    onClick={() => setClassIds([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                <div className="rounded-md border p-2 min-h-32 max-h-32 overflow-auto space-y-2">
+                  {classesInRange.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No classes in range.</div>
+                  ) : (
+                    classesInRange.map((c) => {
+                      const checked = classIds.includes(c.id);
+                      const label = c.instructor ? `${c.name} (${c.instructor})` : c.name;
+                      return (
+                        <label key={c.id} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              const nextChecked = v === true;
+                              setClassIds((prev) => {
+                                if (nextChecked) return Array.from(new Set([...prev, c.id]));
+                                return prev.filter((id) => id !== c.id);
+                              });
+                            }}
+                          />
+                          <span className="truncate" title={label}>
+                            {label}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {classIds.length === 0 ? "All classes" : `Selected: ${classIds.length}`}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium">Sessions</label>
                   <Button
                     type="button"
@@ -563,51 +632,6 @@ export default function ReportsPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium">Classes</label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={classIds.length === 0}
-                    onClick={() => setClassIds([])}
-                  >
-                    Clear
-                  </Button>
-                </div>
-                <div className="rounded-md border p-2 min-h-40 max-h-40 overflow-auto space-y-2">
-                  {classesInRange.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">No classes in range.</div>
-                  ) : (
-                    classesInRange.map((c) => {
-                      const checked = classIds.includes(c.id);
-                      const label = c.instructor ? `${c.name} (${c.instructor})` : c.name;
-                      return (
-                        <label key={c.id} className="flex items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(v) => {
-                              const nextChecked = v === true;
-                              setClassIds((prev) => {
-                                if (nextChecked) return Array.from(new Set([...prev, c.id]));
-                                return prev.filter((id) => id !== c.id);
-                              });
-                            }}
-                          />
-                          <span className="truncate" title={label}>
-                            {label}
-                          </span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {classIds.length === 0 ? "All classes" : `Selected: ${classIds.length}`}
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium">Instructors</label>
                   <Button
                     type="button"
@@ -619,7 +643,7 @@ export default function ReportsPage() {
                     Clear
                   </Button>
                 </div>
-                <div className="rounded-md border p-2 min-h-40 max-h-40 overflow-auto space-y-2">
+                <div className="rounded-md border p-2 min-h-32 max-h-32 overflow-auto space-y-2">
                   {instructors.length === 0 ? (
                     <div className="text-sm text-muted-foreground">No instructors in range.</div>
                   ) : (
@@ -650,30 +674,6 @@ export default function ReportsPage() {
                 </div>
               </div>
 
-              <div>
-                <div className="text-sm font-medium mb-2">Status</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {ATTENDANCE_STATUSES.map((s) => {
-                    const checked = status.includes(s);
-                    return (
-                      <label key={s} className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) => {
-                            const nextChecked = v === true;
-                            setStatus((prev) => {
-                              if (nextChecked) return Array.from(new Set([...prev, s]));
-                              return prev.filter((x) => x !== s);
-                            });
-                          }}
-                        />
-                        <span className="capitalize">{s}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
               <div className="flex items-center gap-2 pt-2">
                 <Button
                   type="button"
@@ -686,7 +686,7 @@ export default function ReportsPage() {
                     setSelectedSessionKeys([]);
                     setClassIds([]);
                     setInstructorsSelected([]);
-                    setStatus([]);
+                    setStatus(["present"]);
                   }}
                 >
                   Reset
