@@ -27,15 +27,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Trash2, Edit, Plus, Calendar as CalendarIcon } from "lucide-react";
+import { Trash2, Edit, Plus, Calendar as CalendarIcon, Users, Clock, MapPin, Info } from "lucide-react";
 
 type ClassInfo = {
   _id: string;
   name: string;
   instructor: string;
+};
+
+type AttendanceRecord = {
+  _id: string;
+  student?: { _id: string; name: string };
+  status: string;
+  date?: string;
+  category?: string;
+  notes?: string;
 };
 
 type ClassScheduleSession = {
@@ -96,6 +106,12 @@ export default function CalendarPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+
+  // Summary dialog state
+  const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
+  const [summarySchedule, setSummarySchedule] = useState<Schedule | null>(null);
+  const [summaryAttendance, setSummaryAttendance] = useState<AttendanceRecord[]>([]);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   // Form states
   const [createForm, setCreateForm] = useState({
@@ -339,6 +355,28 @@ export default function CalendarPage() {
     setDeleteDialogOpen(true);
   }
 
+  async function openSummaryDialog(schedule: Schedule) {
+    setSummarySchedule(schedule);
+    setSummaryDialogOpen(true);
+    setSummaryAttendance([]);
+    setSummaryLoading(true);
+    try {
+      const api = createApiClient((session as any)?.accessToken);
+      const attendanceData = await api.get(`/api/attendance/class/${schedule._id}`);
+      const attendanceList: AttendanceRecord[] = attendanceData.data || [];
+      const scheduleDate = schedule.date.split('T')[0];
+      const filtered = attendanceList.filter((a) => {
+        if (!a.date) return true;
+        return a.date.split('T')[0] === scheduleDate;
+      });
+      setSummaryAttendance(filtered);
+    } catch {
+      setSummaryAttendance([]);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }
+
   function getClassName(classId: ClassInfo | string): string {
     if (typeof classId === 'object') return classId.name;
     const cls = classes.find(c => c._id === classId);
@@ -549,19 +587,39 @@ export default function CalendarPage() {
                 const attendanceKey = `${schedule._id}-${scheduleDate}`;
                 return (
                   <TableRow key={`${schedule._id}-${scheduleDate}-${index}`}>
-                    <TableCell>{new Date(schedule.date).toLocaleDateString('sv-SE')}</TableCell>
-                    <TableCell>{getDayOfWeekName(schedule.date)}</TableCell>
-                    <TableCell className="font-medium">{schedule.start_time} - {schedule.end_time}</TableCell>
+                    <TableCell
+                      className="cursor-pointer hover:text-primary hover:underline"
+                      onClick={() => openSummaryDialog(schedule)}
+                    >
+                      {new Date(schedule.date).toLocaleDateString('sv-SE')}
+                    </TableCell>
+                    <TableCell
+                      className="cursor-pointer hover:text-primary hover:underline"
+                      onClick={() => openSummaryDialog(schedule)}
+                    >
+                      {getDayOfWeekName(schedule.date)}
+                    </TableCell>
+                    <TableCell
+                      className="font-medium cursor-pointer hover:text-primary hover:underline"
+                      onClick={() => openSummaryDialog(schedule)}
+                    >
+                      {schedule.start_time} - {schedule.end_time}
+                    </TableCell>
                     <TableCell>{getClassName(schedule.class_id)}</TableCell>
                     <TableCell>{getInstructorName(schedule.class_id, schedule)}</TableCell>
                     <TableCell className="text-center">{attendanceCounts[attendanceKey] || 0}</TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                        schedule.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        schedule.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                        schedule.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>{schedule.status}</span>
+                      <Link
+                        href={`/dashboard/attendance/${schedule._id}?date=${scheduleDate}`}
+                        className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium hover:opacity-80 transition-opacity ${
+                          schedule.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          schedule.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          schedule.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {schedule.status}
+                      </Link>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -712,6 +770,131 @@ export default function CalendarPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDeleteSchedule}>Delete Schedule</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Session Summary Dialog */}
+      <Dialog open={summaryDialogOpen} onOpenChange={setSummaryDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info className="w-5 h-5" />
+              Sessionssammanfattning
+            </DialogTitle>
+            {summarySchedule && (
+              <DialogDescription>
+                {getClassName(summarySchedule.class_id)} &mdash; {new Date(summarySchedule.date).toLocaleDateString('sv-SE')}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {summarySchedule && (
+            <div className="space-y-4 py-2">
+              {/* Basic info grid */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-start gap-2">
+                  <CalendarIcon className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground text-xs">Datum</p>
+                    <p className="font-medium">{new Date(summarySchedule.date).toLocaleDateString('sv-SE')}</p>
+                    <p className="text-muted-foreground">{getDayOfWeekName(summarySchedule.date)}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Clock className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground text-xs">Tid</p>
+                    <p className="font-medium">{summarySchedule.start_time} &ndash; {summarySchedule.end_time}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground text-xs">Klass</p>
+                    <p className="font-medium">{getClassName(summarySchedule.class_id)}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Users className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground text-xs">Instruktör</p>
+                    <p className="font-medium">{getInstructorName(summarySchedule.class_id, summarySchedule)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Status:</span>
+                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                  summarySchedule.status === 'completed' ? 'bg-green-100 text-green-800' :
+                  summarySchedule.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                  summarySchedule.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>{summarySchedule.status}</span>
+              </div>
+
+              {/* Session notes */}
+              {(() => {
+                const sd = summarySchedule.date.split('T')[0];
+                const sess = summarySchedule.sessions?.find(s => s.date.split('T')[0] === sd);
+                return sess?.notes ? (
+                  <div className="rounded-md border p-3 bg-muted/40 text-sm">
+                    <p className="text-xs text-muted-foreground mb-1">Anteckningar</p>
+                    <p>{sess.notes}</p>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Attendance list */}
+              <div>
+                <p className="text-sm font-medium mb-2 flex items-center gap-1">
+                  <Users className="w-4 h-4" />
+                  Närvaro
+                </p>
+                {summaryLoading ? (
+                  <p className="text-sm text-muted-foreground">Hämtar närvaro...</p>
+                ) : summaryAttendance.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Ingen närvaro registrerad.</p>
+                ) : (
+                  <div className="rounded-md border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-medium">Elev</th>
+                          <th className="text-left px-3 py-2 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...summaryAttendance].sort((a, b) => {
+                            const order: Record<string, number> = { present: 0, late: 1, excused: 2, absent: 3 };
+                            return (order[a.status] ?? 4) - (order[b.status] ?? 4);
+                          }).map((a) => (
+                          <tr key={a._id} className="border-t">
+                            <td className="px-3 py-2">{a.student?.name || '—'}</td>
+                            <td className="px-3 py-2">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                a.status === 'present' ? 'bg-green-100 text-green-800' :
+                                a.status === 'absent' ? 'bg-red-100 text-red-800' :
+                                a.status === 'late' ? 'bg-yellow-100 text-yellow-800' :
+                                a.status === 'excused' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>{a.status}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="px-3 py-2 bg-muted/30 text-xs text-muted-foreground border-t">
+                      {summaryAttendance.filter(a => a.status === 'present').length} av {summaryAttendance.length} närvarande
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSummaryDialogOpen(false)}>Stäng</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
