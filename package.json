@@ -7,7 +7,7 @@
         "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
         "dev:frontend": "cd frontend && export $(grep -v '^#' .env.local | xargs) && pnpm run dev",
         "dev:all": "pnpm run dev & pnpm run dev:frontend",
-        "build": "tsc",
+        "build": "tsc -p tsconfig.build.json",
         "start": "node dist/index.js",
         "test": "jest",
         "lint:frontend": "cd frontend && npx eslint . --ext .ts,.tsx,.js,.jsx || true",
