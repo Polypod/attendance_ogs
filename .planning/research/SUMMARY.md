@@ -20,17 +20,19 @@ Största riskerna är (1) otydlig rapportsemantik (”vad betyder siffran?”), 
 Stacken kan hållas helt inom befintlig repo: Next.js App Router + React + shadcn/ui i frontend och Express + Mongoose i backend. För tabellfunktionalitet rekommenderas TanStack Table v8 (shadcn Data Table-guiden är byggd runt detta), med optional `@tanstack/react-virtual` om rådata kan bli stora mängder. För export rekommenderas server-side streaming CSV med `csv-stringify`.
 
 **Core technologies:**
-- **Next.js (App Router)**: rapportsida UI — redan i repo och passar dashboard-strukturen.
-- **React**: kontrollerad tabell-state (filter/sort/kolumner/presets) — redan i repo.
-- **shadcn/ui (Radix + Tailwind)**: UI-primitiver för tabell/controls — konsekvent med övriga appen.
-- **TanStack Table (`@tanstack/react-table`)**: tabellmotor (sorting/filtering/visibility/pagination, controlled/manual) — headless och flexibel.
-- **Express + Mongoose**: rapport-API, preset-persistens och export — följer repo-lager (routes → controllers → services → models).
+
+- Next.js (App Router): rapportsida UI — redan i repo och passar dashboard-strukturen.
+- React: kontrollerad tabell-state (filter/sort/kolumner/presets) — redan i repo.
+- shadcn/ui (Radix + Tailwind): UI-primitiver för tabell/controls — konsekvent med övriga appen.
+- TanStack Table (`@tanstack/react-table`): tabellmotor (sorting/filtering/visibility/pagination, controlled/manual) — headless och flexibel.
+- Express + Mongoose: rapport-API, preset-persistens och export — följer repo-lager (routes → controllers → services → models).
 
 ### Expected Features
 
 Funktionerna som uppfattas som “måste” för att rapportsidan ska kännas komplett är: två lägen (rådata + aggregerat), datumintervall, fältfilter, sortering, kolumn visa/dölj, server-side paginering, presets (privata + delade) och CSV-export som matchar “synliga värden” och exporterar hela filtrerade datasetet.
 
 **Must have (table stakes):**
+
 - Rådata + aggregerat läge — både detaljgranskning och överblick.
 - Datumintervall-filter — central för rapporter (med tydlig tidszonsregel).
 - Kolumnfilter + sortering — standardbeteende i rapporttabeller.
@@ -40,11 +42,13 @@ Funktionerna som uppfattas som “måste” för att rapportsidan ska kännas ko
 - CSV-export av hela filtrerade resultatet med aktiva kolumner — praktiskt workflow.
 
 **Should have (competitive):**
+
 - Drill-down från agg → rådata (agg-rad genererar motsvarande rådata-filter) — bygger förtroende.
 - Snabbfilterchips (”senaste 7 dagar”, ”endast frånvaro”) — friktion bort.
 - ”Explain this number” (definition av nyckeltal + aktiva filter) — minskar tolkningstvister.
 
 **Defer (v2+):**
+
 - Pivot-/BI-byggare och diagram/dashboards — scope-explosion.
 - Excel (XLSX) / PDF-export — CSV räcker initialt.
 - Fri group-by (“semi-pivot”) — först när standardgrupperingar inte räcker.
@@ -54,6 +58,7 @@ Funktionerna som uppfattas som “måste” för att rapportsidan ska kännas ko
 Arkitekturen bör spegla befintlig clean architecture: nya routes/controllers för reports och presets, ett `ReportService` som bygger whitelists + aggregation pipelines ($match tidigt, $lookup där behövs, $facet för `items + total`), och ett `ReportPresetService` + `ReportPreset`-model för persistens och access policy.
 
 **Major components:**
+
 1. **ReportsPage (Next.js client)** — state för mode (raw/agg), filter/sort/kolumner, presets, export.
 2. **ReportController + ReportService (Express)** — validerar DTO, bygger pipeline, returnerar `{ items, total }`.
 3. **ReportPresetController + ReportPresetService + ReportPreset model** — CRUD presets + policy (privat/delad, admin-regler).
@@ -71,36 +76,42 @@ Arkitekturen bör spegla befintlig clean architecture: nya routes/controllers f�
 Based on research, suggested phase structure:
 
 ### Phase 1: Report Contract & Semantik (R1)
+
 **Rationale:** Allt annat (agg, export, presets) blir dyrt att göra om ifall definitioner/tidszon är oklara.
 **Delivers:** Tydligt kontrakt för rapport: mode (raw/agg), dimensioner, nyckeltal, canonical datumintervall-regel, kolumn- och filter-whitelists.
 **Addresses:** Datumintervall, standard-grupperingar, grundnyckeltal.
 **Avoids:** Semantik-misstro och tidszonsbuggar.
 
 ### Phase 2: Backend Query Engine + Säkerhet (R2)
+
 **Rationale:** UI ska inte bära filtrering/sortering för stora dataset; backend måste vara källan till sanning och säkert byggd.
 **Delivers:** `POST /api/reports/query` med server-side filtering/sorting/pagination och agg-varianten med standard-grupperingar. Joi-validering och RBAC (`ADMIN`, `INSTRUCTOR`). Index-plan för vanligaste filter.
 **Uses:** Express + Mongoose aggregation + `$facet`.
 **Implements:** Whitelistad query-DSL → pipeline builder.
 
 ### Phase 3: Presets (Persistens + Delning) (R3)
+
 **Rationale:** Presets är central UX och bäst att få på plats tidigt, men måste vara robust (policy + versionering).
 **Delivers:** `ReportPreset`-model + CRUD endpoints, access policy (owner vs shared; delade rekommenderat admin-only för ändring), `schemaVersion` + validering/migration vid load.
 **Addresses:** Privata + delade presets.
 **Avoids:** Sköra presets och IDOR/behörighetsproblem.
 
 ### Phase 4: UI — Tabell + State (R4)
+
 **Rationale:** När backend-kontrakt och presets finns kan UI implementeras som kontrollerad state-maskin utan omtag.
 **Delivers:** ReportsPage med två lägen (rå/agg), filter/sort/kolumnvisa/dölj, paginering, preset-meny. TanStack Table i controlled/manual mode. Touch-vänliga kontroller.
 **Addresses:** “Teacher-friendly” UX, tomlägen, laddningstillstånd.
 **Avoids:** Klient-side “hämta allt och filtrera” anti-pattern.
 
 ### Phase 5: Export — CSV (Streaming + Säkerhet) (R5)
+
 **Rationale:** Export är ett primärt workflow och måste matcha vyn exakt, samt skala utan OOM/timeouts.
 **Delivers:** `POST /api/reports/export` som streamar hela filtrerade resultatet med aktiva kolumner. CSV-injection-mitigering (Excel/Sheets) och robust streaming (backpressure).
 **Addresses:** CSV-export av “synliga värden” och hela filtrerade datasetet.
 **Avoids:** Export=current-page, OOM/timeouts, CSV-formelinjektion.
 
 ### Phase 6: Verifiering & Hårdning (R6)
+
 **Rationale:** Rapporter tappar snabbt förtroende om de är långsamma eller inkorrekta vid gränsfall.
 **Delivers:** Service-layer tester för query/pipelines (inkl. datumgränser), prestandamätning (p95) för agg, indexverifiering, regressionstest att tabell och export ger samma totals.
 **Addresses:** Korrekthet, stabilitet och skala.
@@ -116,17 +127,19 @@ Based on research, suggested phase structure:
 ### Research Flags
 
 Phases likely needing deeper research during planning:
+
 - **Phase 2 (Backend query + säkerhet):** exakt whitelist/DSL-design (vilka filter/ops), indexering, samt hur global search ska avgränsas utan full scans.
 - **Phase 5 (CSV export):** streaming genom eventuell reverse proxy (timeouts/buffering), samt robust backpressure-hantering och CSV-injection-sanitization policy.
 
 Phases with standard patterns (skip research-phase):
+
 - **Phase 4 (UI tabell/state):** TanStack Table + shadcn Data Table-mönster är väldokumenterat.
 - **Phase 3 (Presets CRUD):** klassisk Mongoose CRUD + RBAC/policy.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
-|------|------------|-------|
+| ---- | ---------- | ----- |
 | Stack | MEDIUM | Bygger på repo-kontext + etablerade guider (shadcn/TanStack), men React 19 peer deps bör verifieras vid install. |
 | Features | MEDIUM | Tydligt från PROJECT.md + branschmönster; exakta “nyckeltal” kan kräva domänbeslut. |
 | Architecture | MEDIUM | Följer repo:s lager/patterns och Mongo aggregation best practice; detaljer i pipeline/lookup kräver implementationstest. |
@@ -144,16 +157,18 @@ Phases with standard patterns (skip research-phase):
 ## Sources
 
 ### Primary (HIGH confidence)
-- https://ui.shadcn.com/docs/components/data-table — mönster för TanStack Table + shadcn table UI.
-- https://tanstack.com/table/latest — tabellfunktioner och controlled/manual patterns.
-- https://nodejs.org/api/stream.html — streaming/backpressure och pipeline.
-- https://owasp.org/www-community/attacks/CSV_Injection — CSV/formula injection och mitigations.
-- https://www.mongodb.com/docs/manual/core/aggregation-pipeline/ — aggregation pipeline best practice.
+
+- <https://ui.shadcn.com/docs/components/data-table> — mönster för TanStack Table + shadcn table UI.
+- <https://tanstack.com/table/latest> — tabellfunktioner och controlled/manual patterns.
+- <https://nodejs.org/api/stream.html> — streaming/backpressure och pipeline.
+- <https://owasp.org/www-community/attacks/CSV_Injection> — CSV/formula injection och mitigations.
+- <https://www.mongodb.com/docs/manual/core/aggregation-pipeline/> — aggregation pipeline best practice.
 
 ### Secondary (MEDIUM confidence)
-- https://csv.js.org/stringify/ — server-side CSV generation (streaming).
-- https://mongoosejs.com/docs/api/aggregate.html — aggregation cursors i Mongoose.
-- https://nextjs.org/docs/app — App Router patterns.
+
+- <https://csv.js.org/stringify/> — server-side CSV generation (streaming).
+- <https://mongoosejs.com/docs/api/aggregate.html> — aggregation cursors i Mongoose.
+- <https://nextjs.org/docs/app> — App Router patterns.
 - .planning/research/STACK.md — stackval och alternativ.
 - .planning/research/FEATURES.md — feature-prioritering och MVP.
 - .planning/research/ARCHITECTURE.md — rekommenderad modulstruktur + endpoint-förslag.

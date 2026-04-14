@@ -65,7 +65,7 @@
 ## Out of Scope
 
 | Feature | Reason |
-|---------|--------|
+| ------- | ------ |
 | Pivot/BI-byggare (fri group-by/pivot) | Scope-explosion och hög komplexitet |
 | Diagram/BI-dashboard i v1 | Kräver fler semantikbeslut; fokus på korrekt tabell/agg först |
 | PDF-export i v1 | Underhållstungt; CSV räcker initialt |
@@ -73,7 +73,7 @@
 ## Traceability
 
 | Requirement | Phase | Status |
-|-------------|-------|--------|
+| ----------- | ----- | ------ |
 | SEC-01 | Phase 1 | Complete |
 | SEC-02 | Phase 1 | Complete |
 | RPT-01 | Phase 2 | Complete |
@@ -101,6 +101,7 @@
 | EXP-04 | Phase 5 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 25 total
 - Mapped to phases: 25
 - Unmapped: 0 ✓

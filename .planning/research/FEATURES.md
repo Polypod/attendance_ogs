@@ -11,7 +11,7 @@
 Features users assume exist. Missing these = product feels incomplete.
 
 | Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
+| ------- | ------------ | ---------- | ----- |
 | Två lägen: **Rådata** + **Aggregerat** | Användare behöver både detaljgranskning och överblick | MEDIUM | Rådata = en rad per registrering. Aggregerat = fördefinierade grupperingar/nyckeltal. |
 | Datumintervall-filter (”från–till”) | Rapporter handlar nästan alltid om perioder | MEDIUM | Tidszon + ”daggräns” måste vara konsekvent (server- vs klienttolkning). |
 | Fältfilter per kolumn | Standard i alla moderna rapporttabeller | MEDIUM | Stöd för enum-filter (status), relationsfilter (klass/elev/instruktör), multi-select där relevant. |
@@ -33,7 +33,7 @@ Features users assume exist. Missing these = product feels incomplete.
 Features that set the product apart. Not required, but valuable.
 
 | Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
+| ------- | ----------------- | ---------- | ----- |
 | Drill-down från agg → rådata (”klicka på en grupp och se raderna”) | Gör agg-läge granskningsbart och ökar förtroende | MEDIUM | Implementera som att agg-raden genererar ett filter som öppnar rådata med samma period/urval. |
 | Period-jämförelse (t.ex. ”denna månad vs förra”) | Snabb trendanalys utan export | MEDIUM | Kräver tydliga definitioner (kalendermånad/vecka) och normalisering. |
 | Metriker som ”närvarograd”, ”streak”, ”unika deltagare” | Mer värde än rena counts | MEDIUM/HIGH | Behöver definierade nämnare (planerade pass? registrerade elever? valbara). |
@@ -50,7 +50,7 @@ Features that set the product apart. Not required, but valuable.
 Features that seem good but create problems.
 
 | Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
+| ------- | ------------- | --------------- | ----------- |
 | ”Bygg din egen pivot/BI” (fri pivot builder) | Känns flexibelt och ”proffsigt” | Exploderar scope, kräver semantiskt lager, svår support | Fördefinierade grupperingar + ev. ett fåtal valbara group-by i v2. |
 | Diagram/BI-dashboard i v1 | ”Det ser snyggt ut” | Tar fokus från korrekt data, kräver fler beslut (axlar, normalisering) | Lägg som v2+ när tabell/agg är stabilt. |
 | Klient-side filtrering av hela datasetet | Snabbt att bygga initialt | Skalar dåligt, tungt på surfplatta, risk för att PII laddas i onödan | Server-side filtrering/paginering + index i DB. |
@@ -61,7 +61,7 @@ Features that seem good but create problems.
 
 ## Feature Dependencies
 
-```
+```text
 Server-side filtrering/sort/paginering
     └──requires──> Rapporterings-API med stabil query-modell
                        └──requires──> Indexering/optimering i DB för vanliga filter
@@ -123,7 +123,7 @@ Features to defer until product-market fit is established.
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
+| ------- | ---------- | ------------------- | -------- |
 | Rådata-tabell: filter/sort/paginering | HIGH | MEDIUM | P1 |
 | Aggregerat läge: standardgrupperingar + nyckeltal | HIGH | MEDIUM | P1 |
 | Kolumn visa/dölj (inkl. export) | HIGH | MEDIUM | P1 |
@@ -136,6 +136,7 @@ Features to defer until product-market fit is established.
 | Data quality-indikatorer | MEDIUM | MEDIUM | P3 |
 
 **Priority key:**
+
 - P1: Must have for launch
 - P2: Should have, add when possible
 - P3: Nice to have, future consideration
@@ -143,7 +144,7 @@ Features to defer until product-market fit is established.
 ## Competitor Feature Analysis
 
 | Feature | Competitor A (Spreadsheets: Excel/Sheets) | Competitor B (”typiskt medlems-/klubbadmin-system”) | Our Approach |
-|---------|-------------------------------------------|-----------------------------------------------------|-------------|
+| ------- | ----------------------------------------- | --------------------------------------------------- | ----------- |
 | Rådata + egna filter/sort | Mycket starkt när datan väl är exporterad | Ofta begränsat eller ”fast” | Bygg bra tabell i appen så export inte är enda vägen. |
 | Aggregeringar/nyckeltal | Kräver manuellt arbete (pivot/formler) | Ofta enkla sammanställningar | Fördefinierade summeringar som matchar karate-skolans behov. |
 | Sparade vyer/presets | Möjligt via delade ark/flikar | Varierar | Presets i DB: privata + delade standardvyer. |

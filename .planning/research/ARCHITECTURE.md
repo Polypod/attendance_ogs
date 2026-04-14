@@ -8,7 +8,7 @@
 
 ### System Overview
 
-```
+```text
 ┌───────────────────────────────────────────────────────────────────────────┐
 │                         Frontend (Next.js App Router)                     │
 ├───────────────────────────────────────────────────────────────────────────┤
@@ -53,7 +53,7 @@
 ### Component Responsibilities
 
 | Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
+| --------- | -------------- | ---------------------- |
 | ReportsPage | UI för rå/agg, filter/sort, kolumner, presets, export | Next.js client component + shadcn table |
 | API client | Standardiserar anrop, injectar Bearer-token | `frontend/src/lib/api.ts` |
 | ReportController | Tar emot query/export, sätter headers, svarar JSON/CSV | Express controller (ingen affärslogik) |
@@ -63,7 +63,7 @@
 
 ## Recommended Project Structure
 
-```
+```text
 src/
 ├── controllers/
 │   ├── ReportController.ts              # Query + export endpoints
@@ -149,33 +149,33 @@ Rekommenderad ordning för att minimera omtag och möjliggöra tidig testning:
 **Reports (data):**
 
 - `POST /api/reports/query`
-   - Body: `ReportQueryDto`
-   - Return: `{ success: true, data: { items: any[]; total: number } }`
-   - Syfte: tabellresultat (rå eller aggregerat) med pagination.
+  - Body: `ReportQueryDto`
+  - Return: `{ success: true, data: { items: any[]; total: number } }`
+  - Syfte: tabellresultat (rå eller aggregerat) med pagination.
 
 - `POST /api/reports/export`
-   - Body: `ReportQueryDto` (samma som `/query`, men paging ignoreras)
-   - Return: `text/csv` stream (attachment)
-   - Syfte: exportera *hela filtrerade resultatet* med valda kolumner.
+  - Body: `ReportQueryDto` (samma som `/query`, men paging ignoreras)
+  - Return: `text/csv` stream (attachment)
+  - Syfte: exportera *hela filtrerade resultatet* med valda kolumner.
 
 **Presets (vy-inställningar):**
 
 - `GET /api/report-presets?view=attendance`
-   - Return: privata presets (owner = req.user) + delade presets.
+  - Return: privata presets (owner = req.user) + delade presets.
 
 - `POST /api/report-presets`
-   - Body: `{ name, is_shared, view, definition: ReportQueryDto | ReportPresetDefinition }`
+  - Body: `{ name, is_shared, view, definition: ReportQueryDto | ReportPresetDefinition }`
 
 - `PUT /api/report-presets/:presetId`
-   - Policy: owner kan ändra privat; delad kräver admin (rekommenderat).
+  - Policy: owner kan ändra privat; delad kräver admin (rekommenderat).
 
 - `DELETE /api/report-presets/:presetId`
-   - Policy: owner eller admin.
+  - Policy: owner eller admin.
 
 **Bakåtkompatibilitet (befintligt):**
 
 - `GET /api/attendance/reports/:dateRange`
-   - Kan ligga kvar som “legacy report” tills reports-sidan går på nya API:t.
+  - Kan ligga kvar som “legacy report” tills reports-sidan går på nya API:t.
 
 ## Architectural Patterns
 
@@ -186,11 +186,13 @@ Rekommenderad ordning för att minimera omtag och möjliggöra tidig testning:
 **When to use:** Alltid när UI har dynamiska filter/sort/kolumner.
 
 **Trade-offs:**
-- + Förhindrar query-injection och “field path spelunking”.
-- + Stabilt kontrakt mellan UI och backend.
-- − Kräver explicit mapping och lite mer kod än “skicka direkt Mongo query”.
+
+- Fördel: Förhindrar query-injection och “field path spelunking”.
+- Fördel: Stabilt kontrakt mellan UI och backend.
+- Nackdel: Kräver explicit mapping och lite mer kod än “skicka direkt Mongo query”.
 
 **Example:**
+
 ```typescript
 export type ReportMode = 'raw' | 'aggregate';
 
@@ -239,11 +241,13 @@ const RAW_FIELD_MAP: Record<string, string> = {
 **When to use:** Raw-tabell och aggregerad tabell där UI behöver pagination.
 
 **Trade-offs:**
-- + En roundtrip och konsekvent total.
-- + Undviker N+1 populates.
-- − Aggregations kan bli dyra utan index/avgränsning.
+
+- Fördel: En roundtrip och konsekvent total.
+- Fördel: Undviker N+1 populates.
+- Nackdel: Aggregations kan bli dyra utan index/avgränsning.
 
 **Example:**
+
 ```typescript
 const pipeline = [
   { $match: { /* date/status/category etc */ } },
@@ -277,11 +281,13 @@ const pipeline = [
 **When to use:** Alltid när export kan bli större än enstaka sidor.
 
 **Trade-offs:**
-- + Minneseffektivt och robust.
-- + Samma filter/sort/columns som vyn.
-- − Kräver lite mer omsorg kring backpressure och korrekt CSV-escaping.
+
+- Fördel: Minneseffektivt och robust.
+- Fördel: Samma filter/sort/columns som vyn.
+- Nackdel: Kräver lite mer omsorg kring backpressure och korrekt CSV-escaping.
 
 **Example:**
+
 ```typescript
 // Mongoose stödjer aggregation cursors för stora resultat
 const cursor = AttendanceModel
@@ -304,7 +310,7 @@ res.end();
 
 ### Request Flow
 
-```
+```text
 [User justerar filter/sort/kolumner/preset]
     ↓
 [ReportsPage state → ReportQueryDto]
@@ -320,7 +326,7 @@ JSON response → UI renderar tabell
 
 ### State Management
 
-```
+```text
 (React state / useReducer)
     ↓
 ReportQueryDto (single source of truth för vyn)
@@ -339,7 +345,7 @@ Persistens:
 ## Scaling Considerations
 
 | Scale | Architecture Adjustments |
-|-------|--------------------------|
+| ----- | ------------------------ |
 | 0-1k users / små datamängder | Monolit + aggregation pipelines räcker. CSV kan genereras on-demand. |
 | 1k-100k users / växande data | Lägg index på Attendance (date/status/category/student_id/class_schedule_id). Undvik “contains” regex på joinade fält. Inför strikt paging i UI. |
 | 100k+ / stor historik | Överväg denormaliserade “report fields” (student_name, class_name, instructor) på Attendance, eller en materialiserad “ReportFact” collection per dag/pass. |
@@ -383,13 +389,13 @@ Persistens:
 ### External Services
 
 | Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
+| ------- | ------------------- | ----- |
 | (none) | — | Rapporter är intern DB-query + export. |
 
 ### Internal Boundaries
 
 | Boundary | Communication | Notes |
-|----------|---------------|-------|
+| -------- | ------------- | ----- |
 | Reports UI ↔ Backend API | REST (`POST /api/reports/query`, `POST /api/reports/export`) | Använd samma `ReportQueryDto` för båda. |
 | Presets UI ↔ Preset API | REST CRUD | Policy: privat alltid, delad endast om `is_shared=true` och behörighet. |
 | ReportService ↔ MongoDB | Mongoose `aggregate()` + cursor | Mongoose castar inte pipeline stages automatiskt → manuellt `ObjectId` där det behövs. |
@@ -398,9 +404,9 @@ Persistens:
 
 ## Sources
 
-- MongoDB Manual — Aggregation Pipeline: https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
-- Mongoose docs — Aggregate + cursor(): https://mongoosejs.com/docs/api/aggregate.html
-- Next.js docs — App Router: https://nextjs.org/docs/app
+- MongoDB Manual — Aggregation Pipeline: <https://www.mongodb.com/docs/manual/core/aggregation-pipeline/>
+- Mongoose docs — Aggregate + cursor(): <https://mongoosejs.com/docs/api/aggregate.html>
+- Next.js docs — App Router: <https://nextjs.org/docs/app>
 
 ---
 *Architecture research for: reporting i attendance_ogs*

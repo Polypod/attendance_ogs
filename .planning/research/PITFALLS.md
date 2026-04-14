@@ -5,6 +5,7 @@
 **Confidence:** MEDIUM
 
 > **Fas-legend (för roadmap-mappning):**
+>
 > - **Fas R1 — Report contract & semantik:** definiera fält, tidszon, “närvarande”-definitioner, vilka dimensioner som är tillåtna.
 > - **Fas R2 — Backend query + säkerhet:** API-kontrakt, whitelists, validering, RBAC, index-plan, aggregeringar.
 > - **Fas R3 — Presets (persistens + delning):** datamodell, ägarskap, versionering/migration, delningsregler.
@@ -23,11 +24,13 @@ Användare får olika svar beroende på vy-läge, filterkombination eller tolkni
 Rapportfunktioner byggs ofta som UI-först (“lägg till filter + group-by”) utan att först definiera domänens mått, tidszon och normalisering.
 
 **How to avoid:**
+
 - Definiera en liten “report contract”: fält, datatyper, vilka statusar ingår i nyckeltal, och vilka standard-grupperingar som finns.
 - Skriv ner tidszonregeln: *vilken zon används för datumintervall och dagsgränser?* (serverzon vs användarzon).
 - Lägg in en tydlig “definition”-yta i UI (tooltip/sektion) som visar: aktiva filter + vad nyckeltalen betyder.
 
 **Warning signs:**
+
 - Frågor som “varför skiljer exporten från tabellen?” eller “varför är totalsumman annan än jag räknar manuellt?”
 - Fler och fler specialfall i kod: “om groupBy==X och filter==Y så…”
 
@@ -45,11 +48,13 @@ Rapporter visar fel dag, missar sena pass, eller inkluderar/utesluter registreri
 Datumintervall implementeras i flera lager (frontend, backend, DB) och blandar lokala datum (”2026-04-13”) med timestamps utan tydlig normalisering.
 
 **How to avoid:**
+
 - Välj en canonical representation för filter: t.ex. skicka ISO-tidsstämplar med explicit tidszon/offset, eller skicka datum + explicit zon och låt backend expandera till [start,end).
 - Standardisera intervall som *inklusive start, exklusiv slut* ($[from, to)$) för att undvika dubbeltolkning.
 - Lägg testfall för gränser: midnatt, sommartidsskifte, och “sen kväll” pass.
 
 **Warning signs:**
+
 - Supportärenden kring “fel dag” eller “saknar gårdagens sista pass”.
 - Man ser `new Date('YYYY-MM-DD')` i frontend (tolkas ofta som UTC på många plattformar) utan tydlig zon-hantering.
 
@@ -67,11 +72,13 @@ UI tillåter filter/sort som backend inte stöder (eller tolkar annorlunda). Res
 Filter byggs ad hoc i UI och backend tolkar query-parametrar som fria strängar. Ingen strikt, versionsbar query-modell.
 
 **How to avoid:**
+
 - Definiera en whitelista över filterbara/sorterbara fält per report-typ (rå vs agg).
 - Validera alla filter i backend (Joi) och returnera 400 med begripligt fel vid ogiltiga kombinationer.
 - Versionera query-kontraktet (minst implicit via “reportType”) så presets kan migreras.
 
 **Warning signs:**
+
 - Man “skickar igenom” `{ sortBy: req.query.sortBy }` direkt in i Mongo/Mongoose.
 - “Det funkar i UI men exporten blir annorlunda” (export endpoint använder annan kodväg).
 
@@ -89,11 +96,13 @@ Efter en liten ändring (ny kolumn, omdöpt fält, ny groupBy) slutar gamla pres
 Presets sparar “rå” tabell-state utan versionsfält och utan tydlig ägarskaps-/publiceringsmodell.
 
 **How to avoid:**
+
 - Spara presets med `schemaVersion` + `reportType` och en tydlig modell: `ownerUserId`, `isShared`, `name`, `state`.
 - Vid laddning: validera och migrera state (best-effort) eller flagga som “behöver uppdateras”.
 - För delade presets: använd “publicera”-flöde (t.ex. admin-only) eller “klona till egen” istället för att alla kan ändra samma.
 
 **Warning signs:**
+
 - Presets sparar bara en blob utan metadata.
 - Nya kolumner bryter rendering (undefined access) när preset laddas.
 
@@ -111,11 +120,13 @@ Användaren tror att exporten innehåller allt filtrerat resultat, men får bara
 Tabeller byggs med paginering; export kopplas till UI:s nuvarande data-array istället för att köra samma filter på serversidan.
 
 **How to avoid:**
+
 - Gör exporten till ett separat backend-endpoint som tar exakt samma filter/sort/kolumnval som vyn.
 - I UI: visa tydligt “Exporterar alla X matchande rader” (om X finns) eller “Exporterar alla matchande rader”.
 - Se till att exporten använder samma query-builder som tabellen (delad service).
 
 **Warning signs:**
+
 - Export-knappen serialiserar bara “currentRows”.
 - Buggrapporter som “export saknar data jag ser i tabellen” eller tvärtom.
 
@@ -133,12 +144,14 @@ CSV-export för större datumintervall kraschar (OOM), hänger, eller timear ut 
 Man genererar CSV genom att hämta alla rader till minnet och sedan `res.send(csvString)`; eller man skriver för snabbt till `res.write()` utan att respektera backpressure.
 
 **How to avoid:**
+
 - Streama exporten (cursor/iterator) och skriv rad för rad.
 - Respektera backpressure/`drain` eller använd `stream.pipeline()`/`node:stream/promises`.
 - Sätt realistiska gränser: max-datumspann för interaktiv export, eller implementera bakgrundsjobb senare om behövs.
 - Beakta reverse proxy timeouts/buffering för långa svar.
 
 **Warning signs:**
+
 - “JavaScript heap out of memory” vid export.
 - Export funkar lokalt men inte i prod (504, proxy buffers).
 
@@ -156,10 +169,12 @@ Om någon elev/klass/instruktörsnamn börjar med `=`, `+`, `-`, `@` kan Excel/S
 CSV ses som “bara text” och exporten innehåller användargenererade fält utan sanering.
 
 **How to avoid:**
+
 - Sanera CSV-fält för spreadsheet-konsumtion: prefixa risk-prefix (`=`, `+`, `-`, `@`) enligt etablerad mitigation, och citera alltid fält.
 - Dokumentera trade-off: sanering kan påverka maskinimport (men är rätt val om mål är Excel).
 
 **Warning signs:**
+
 - Exporter används rutinmässigt i Excel.
 - Inga tester för att exporten hanterar “farliga” cellprefix.
 
@@ -177,12 +192,14 @@ Agg-läget blir långsamt eller instabilt, särskilt när man kombinerar många 
 Man bygger en “generisk” aggregation pipeline som försöker stödja allt, utan att designa för index och utan att begränsa kombinationer.
 
 **How to avoid:**
+
 - Ha få, fördefinierade agg-varianter (en per standard-gruppering) och bygg pipeline explicit.
 - Placera `$match` tidigt och `$project` för att minska payload.
 - Säkerställ indexes som matchar vanligaste `$match` + `$sort`.
 - Om pipeline kan bli stor: utvärdera `allowDiskUse` och/eller mer begränsade exportgränser.
 
 **Warning signs:**
+
 - Agg endpoints har lång tail-latency (p95/p99) och CPU spikes.
 - Man använder `$lookup`/`populate` i stora volymer utan att mäta.
 
@@ -200,11 +217,13 @@ En användare kan läsa/ändra presets de inte ska se (t.ex. genom att gissa ID)
 Preset-resurser behandlas som “ofarliga” och skyddas inte lika strikt som rapportdata.
 
 **How to avoid:**
+
 - Kör RBAC/ägarskapskontroller på preset CRUD: owner kan hantera egna, delade kräver explicit policy.
 - Lagra endast state; bestäm på serversidan vilka kolumner som överhuvudtaget får användas i export.
 - Logga och överväg audit för exporthändelser (åtminstone server-side logging).
 
 **Warning signs:**
+
 - Preset endpoints saknar auth-middleware.
 - “shared=true” gör att alla kan skriva.
 
@@ -222,11 +241,13 @@ Global fri-text-sök tar för lång tid (full collection scan), eller ger ovänt
 Global search implementeras som “regex över allt” eller som eftertanke utan definierade fält.
 
 **How to avoid:**
+
 - Definiera exakt vilka fält som ingår (t.ex. studentnamn, klassnamn, instruktör).
 - För rådata: överväg pre-indexerad sökbar field (t.ex. `searchText`) eller Mongo text index om det passar.
 - Begränsa global search i agg-läge (ofta meningslöst).
 
 **Warning signs:**
+
 - Sök = `$or` med många regexer.
 - Sök orsakar timeouts när dataset växer.
 
@@ -240,7 +261,7 @@ Fas R2 — Backend query + säkerhet
 Shortcuts that seem reasonable but create long-term problems.
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
+| -------- | ----------------- | -------------- | --------------- |
 | Klient-side filtrering/sortering på hela datasetet | Snabbt att bygga | Skalar dåligt, PII laddas i onödan, segt på surfplatta | Endast om dataset är strikt litet (t.ex. hårt datumintervall) och kan garanteras |
 | “Generic report endpoint” med fria fält/ops | Max flexibilitet | Svår att säkra/validera, svår att indexera, presets bryts ofta | Nästan aldrig i v1; hellre whitelists per report |
 | Preset = rå TanStack state utan schemaVersion | Spara snabbt | Bryts vid minsta kolumnändring, svårt att migrera | Endast som prototyp; inte om presets ska vara “riktiga” |
@@ -252,7 +273,7 @@ Shortcuts that seem reasonable but create long-term problems.
 Common mistakes when connecting to external services.
 
 | Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
+| ----------- | -------------- | ---------------- |
 | Spreadsheet-program (Excel/Sheets) | Tror att CSV är “passivt” textformat | Hantera CSV-injection, citera fält, testa med riktiga verktyg |
 | Reverse proxy (Apache/Nginx) | Default timeouts/buffering dödar lång export | Säkerställ timeouts/buffering för streaming endpoints, eller begränsa exportstorlek |
 | Auth (NextAuth/JWT) + filnedladdning | Export endpoint anropas utan rätt token/headers | Återanvänd `fetchWithAuth()`-mönster och testa download-flödet i browser |
@@ -263,7 +284,7 @@ Common mistakes when connecting to external services.
 Patterns that work at small scale but fail as usage grows.
 
 | Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
+| ---- | -------- | ---------- | -------------- |
 | Saknade/olämpliga MongoDB-index för vanliga filter/sort | P95 latens sticker, CPU spikes | Indexplan utifrån report contract; mät med explain/profiling | När historik växer (månader→år) |
 | Sorting på beräknade/lookup:ade fält | Sort blir extremt dyr, tar disk | Begränsa sorterbara fält; precompute vid behov | Redan vid tusentals rader om pipeline blir tung |
 | UI renderar för många rader utan virtualisering | Scroll hackar, iPad blir varm | Paginering + row-virtualization i rådata | 1k–10k+ DOM-rader |
@@ -274,7 +295,7 @@ Patterns that work at small scale but fail as usage grows.
 Domain-specific security issues beyond general web security.
 
 | Mistake | Risk | Prevention |
-|---------|------|------------|
+| ------- | ---- | ---------- |
 | CSV-injection (formel-injektion) | Exfiltration/attack när CSV öppnas i Excel | Sanera celler, citera fält, testa med farliga prefix |
 | Whitelist saknas för sort/filter | NoSQL-injection-liknande risk + DoS (dyr query) | Tillåt endast kända fält/ops och validera payload |
 | Delade presets utan ägarskap/policy | Obehörig läs/skriv (IDOR) | Access-kontroller och audit, begränsa vad delade får ändra |
@@ -285,7 +306,7 @@ Domain-specific security issues beyond general web security.
 Common user experience mistakes in this domain.
 
 | Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
+| ------- | ----------- | --------------- |
 | Oklart “vad är aktivt” (filter/sort/kolumner) | Användaren tror data är fel | Visa aktiva filterchips + “reset all” + tydlig sortindikator |
 | Agg-läge utan drill-down | Misstro mot totals, svårt att verifiera | Låt agg-rader skapa motsvarande rådata-filter (drill-down) |
 | För små touch-targets och popovers | Frustration på surfplatta | Större controls, förenkla filter UI, undvik tät tabell på iPad |
@@ -307,7 +328,7 @@ Common user experience mistakes in this domain.
 When pitfalls occur despite prevention, how to recover.
 
 | Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
+| ------- | ------------- | -------------- |
 | Otydlig semantik → fel siffror | HIGH | Frys rapportdefinition, skriv “contract”, backfill tester, kommunicera ändring, migrera presets |
 | Tidszonsbuggar | MEDIUM/HIGH | Lägg canonical filterrepresentation, migrera UI, backfill regressiontester (DST/midnatt) |
 | Presets bruten efter release | MEDIUM | Lägg schemaVersion+migrator, auto-fixa eller markera presets som “kräver uppdatering” |
@@ -319,7 +340,7 @@ When pitfalls occur despite prevention, how to recover.
 How roadmap phases should address these pitfalls.
 
 | Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
+| ------- | ---------------- | ------------ |
 | Otydlig rapportsemantik | Fas R1 | Nyckeltal har dokumenterad definition; drill-down ger samma totals |
 | Tidszon/off-by-one | Fas R1 | Testfall för midnatt/DST; UI och export matchar |
 | UI/backend mismatch | Fas R2 | Backend validerar och returnerar 400 för ogiltiga filter; export/tabell delar query-builder |
@@ -333,9 +354,9 @@ How roadmap phases should address these pitfalls.
 
 ## Sources
 
-- https://owasp.org/www-community/attacks/CSV_Injection — CSV/Formula Injection och mitigations (inkl. Excel-beteenden).
-- https://nodejs.org/api/stream.html — Node streams, backpressure och `pipeline()` (relevant för streaming-export).
-- https://www.mongodb.com/docs/manual/core/aggregation-pipeline/ — MongoDB aggregation pipeline och begränsningar.
+- <https://owasp.org/www-community/attacks/CSV_Injection> — CSV/Formula Injection och mitigations (inkl. Excel-beteenden).
+- <https://nodejs.org/api/stream.html> — Node streams, backpressure och `pipeline()` (relevant för streaming-export).
+- <https://www.mongodb.com/docs/manual/core/aggregation-pipeline/> — MongoDB aggregation pipeline och begränsningar.
 
 ---
 *Pitfalls research for: reporting UI + presets + CSV export (attendance domain)*
