@@ -171,6 +171,7 @@ export default function ReportsPage() {
   const [classIds, setClassIds] = useState<string[]>([]);
   const [instructorsSelected, setInstructorsSelected] = useState<string[]>([]);
   const [status, setStatus] = useState<string[]>(["present"]);
+  const [search, setSearch] = useState("");
 
   const [sortBy, setSortBy] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -325,13 +326,12 @@ export default function ReportsPage() {
     from,
     to,
     onlyActiveStudents,
+    search,
     studentIds.join(","),
     selectedSessionKeys.join(","),
     classIds.join(","),
     instructorsSelected.join(","),
     status.join(","),
-    sortBy ?? "",
-    sortDir,
     mode,
     groupBy,
   ]);
@@ -352,6 +352,9 @@ export default function ReportsPage() {
           page,
           pageSize,
         };
+
+        const trimmedSearch = search.trim();
+        if (trimmedSearch) body.search = trimmedSearch;
 
         if (sortBy) {
           body.sortBy = sortBy;
@@ -420,6 +423,7 @@ export default function ReportsPage() {
     page,
     pageSize,
     selectedSessionKeys.join(","),
+    search,
     session,
     sortBy ?? "",
     sortDir,
@@ -588,6 +592,18 @@ export default function ReportsPage() {
                   </label>
                   <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="search" className="block text-sm font-medium mb-1">
+                  Search
+                </label>
+                <Input
+                  id="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search students, classes, instructors..."
+                />
               </div>
 
               <div>
@@ -817,6 +833,7 @@ export default function ReportsPage() {
                     setClassIds([]);
                     setInstructorsSelected([]);
                     setStatus(["present"]);
+                    setSearch("");
                   }}
                 >
                   Reset
