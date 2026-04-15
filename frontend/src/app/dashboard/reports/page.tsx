@@ -194,8 +194,26 @@ export default function ReportsPage() {
       }) satisfies Record<string, boolean>,
     []
   );
-  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(
+  const defaultAggregatedColumnVisibility = useMemo(
+    () =>
+      ({
+        date: true,
+        start_time: true,
+        end_time: true,
+        student_name: true,
+        class_name: true,
+        instructor: true,
+        presentCount: true,
+        totalCount: true,
+      }) satisfies Record<string, boolean>,
+    []
+  );
+
+  const [rawColumnVisibility, setRawColumnVisibility] = useState<Record<string, boolean>>(
     () => defaultRawColumnVisibility
+  );
+  const [aggregatedColumnVisibility, setAggregatedColumnVisibility] = useState<Record<string, boolean>>(
+    () => defaultAggregatedColumnVisibility
   );
 
   const [mode, setMode] = useState<ViewMode>("raw");
@@ -496,7 +514,9 @@ export default function ReportsPage() {
   }, [groupBy]);
 
   const currentColumns = mode === "raw" ? rawColumns : aggregatedColumns;
-  const visibleColumns = currentColumns.filter((c) => columnVisibility[c.key] !== false);
+  const activeColumnVisibility = mode === "raw" ? rawColumnVisibility : aggregatedColumnVisibility;
+  const setActiveColumnVisibility = mode === "raw" ? setRawColumnVisibility : setAggregatedColumnVisibility;
+  const visibleColumns = currentColumns.filter((c) => activeColumnVisibility[c.key] !== false);
 
   useEffect(() => {
     if (!sortBy) return;
@@ -844,14 +864,14 @@ export default function ReportsPage() {
                 <div className="text-sm font-medium mb-2">Columns</div>
                 <div className="grid grid-cols-2 gap-2">
                   {currentColumns.map((c) => {
-                    const checked = columnVisibility[c.key] !== false;
+                    const checked = activeColumnVisibility[c.key] !== false;
                     return (
                       <label key={c.key} className="flex items-center gap-2 text-sm">
                         <Checkbox
                           checked={checked}
                           onCheckedChange={(v) => {
                             const nextChecked = v === true;
-                            setColumnVisibility((prev) => ({ ...prev, [c.key]: nextChecked }));
+                            setActiveColumnVisibility((prev) => ({ ...prev, [c.key]: nextChecked }));
                           }}
                         />
                         <span>{c.label}</span>
