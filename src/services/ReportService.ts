@@ -8,6 +8,7 @@ const REPORT_TIMEZONE = 'Europe/Stockholm';
 export interface RawAttendanceReportQuery {
   from: string; // YYYY-MM-DD (Stockholm)
   to: string; // YYYY-MM-DD (Stockholm)
+  search?: string;
   page?: number;
   pageSize?: number;
 
@@ -20,6 +21,7 @@ export interface RawAttendanceReportQuery {
     | 'instructor'
     | 'status'
     | 'category'
+    | 'notes'
     | 'recorded_by'
     | 'recorded_at';
   sortDir?: 'asc' | 'desc';
@@ -43,6 +45,7 @@ export type AggregatedAttendanceGroupBy = 'student' | 'instructor' | 'session' |
 export interface AggregatedAttendanceReportQuery {
   from: string; // YYYY-MM-DD (Stockholm)
   to: string; // YYYY-MM-DD (Stockholm)
+  search?: string;
   groupBy: AggregatedAttendanceGroupBy;
   page?: number;
   pageSize?: number;
@@ -244,8 +247,25 @@ export class ReportService {
       };
     }
 
+    const searchValue = query.search?.trim();
+    const postLookupAnd: Record<string, any>[] = [];
     if (Object.keys(postLookupMatch).length > 0) {
-      pipeline.push({ $match: postLookupMatch });
+      postLookupAnd.push(postLookupMatch);
+    }
+    if (searchValue) {
+      const escaped = escapeRegExp(searchValue);
+      postLookupAnd.push({
+        $or: [
+          { 'student.name': { $regex: escaped, $options: 'i' } },
+          { 'class.name': { $regex: escaped, $options: 'i' } },
+          { 'class.instructor': { $regex: escaped, $options: 'i' } }
+        ]
+      });
+    }
+    if (postLookupAnd.length === 1) {
+      pipeline.push({ $match: postLookupAnd[0] });
+    } else if (postLookupAnd.length > 1) {
+      pipeline.push({ $match: { $and: postLookupAnd } });
     }
 
     const rawSortFieldMap: Record<NonNullable<RawAttendanceReportQuery['sortBy']>, string> = {
@@ -257,9 +277,22 @@ export class ReportService {
       instructor: 'class.instructor',
       status: 'status',
       category: 'category',
+      notes: 'notes',
       recorded_by: 'recorded_by',
       recorded_at: 'recorded_at'
     };
+
+    const rawStringSortKeys = new Set<NonNullable<RawAttendanceReportQuery['sortBy']>>([
+      'start_time',
+      'end_time',
+      'student_name',
+      'class_name',
+      'instructor',
+      'status',
+      'category',
+      'notes',
+      'recorded_by'
+    ]);
 
     const sortDir = query.sortDir === 'desc' ? -1 : 1;
     if (query.sortBy) {
@@ -267,7 +300,24 @@ export class ReportService {
       if (!mappedField) {
         throw new ValidationError(`Unsupported sortBy for raw report: ${query.sortBy}`);
       }
-      pipeline.push({ $sort: { [mappedField]: sortDir, _id: -1 } });
+
+      if (rawStringSortKeys.has(query.sortBy)) {
+        const sortValueExpr = `$${mappedField}`;
+        pipeline.push({
+          $addFields: {
+            __sortEmpty: {
+              $cond: [
+                { $or: [{ $eq: [sortValueExpr, null] }, { $eq: [sortValueExpr, ''] }] },
+                1,
+                0
+              ]
+            }
+          }
+        });
+        pipeline.push({ $sort: { __sortEmpty: 1, [mappedField]: sortDir, _id: -1 } });
+      } else {
+        pipeline.push({ $sort: { [mappedField]: sortDir, _id: -1 } });
+      }
     } else {
       pipeline.push({ $sort: { date: -1, _id: -1 } });
     }
@@ -304,7 +354,9 @@ export class ReportService {
       }
     });
 
-    const result = await AttendanceModel.aggregate(pipeline).allowDiskUse(true);
+    const result = await AttendanceModel.aggregate(pipeline)
+      .collation({ locale: 'sv', strength: 2 })
+      .allowDiskUse(true);
     const facet = result[0] as { rows: RawAttendanceReportRow[]; totalCount: Array<{ count: number }> } | undefined;
 
     const total = facet?.totalCount?.[0]?.count ?? 0;
@@ -431,8 +483,25 @@ export class ReportService {
       };
     }
 
+    const searchValue = query.search?.trim();
+    const postLookupAnd: Record<string, any>[] = [];
     if (Object.keys(postLookupMatch).length > 0) {
-      pipeline.push({ $match: postLookupMatch });
+      postLookupAnd.push(postLookupMatch);
+    }
+    if (searchValue) {
+      const escaped = escapeRegExp(searchValue);
+      postLookupAnd.push({
+        $or: [
+          { 'student.name': { $regex: escaped, $options: 'i' } },
+          { 'class.name': { $regex: escaped, $options: 'i' } },
+          { 'class.instructor': { $regex: escaped, $options: 'i' } }
+        ]
+      });
+    }
+    if (postLookupAnd.length === 1) {
+      pipeline.push({ $match: postLookupAnd[0] });
+    } else if (postLookupAnd.length > 1) {
+      pipeline.push({ $match: { $and: postLookupAnd } });
     }
 
     const presentStatuses = ['present', 'late'];
@@ -507,10 +576,10 @@ export class ReportService {
     };
 
     const aggregatedDefaultSortByGroup: Record<AggregatedAttendanceGroupBy, Record<string, 1 | -1>> = {
-      student: { totalCount: -1, student_name: 1, _id: 1 },
-      instructor: { totalCount: -1, instructor: 1, _id: 1 },
+      student: { presentCount: -1, totalCount: -1, student_name: 1, _id: 1 },
+      instructor: { presentCount: -1, totalCount: -1, instructor: 1, _id: 1 },
       session: { date: -1, start_time: 1, _id: 1 },
-      class: { totalCount: -1, class_name: 1, _id: 1 }
+      class: { presentCount: -1, totalCount: -1, class_name: 1, _id: 1 }
     };
 
     const aggregatedSortFieldMap: Record<NonNullable<AggregatedAttendanceReportQuery['sortBy']>, string> = {
@@ -524,13 +593,38 @@ export class ReportService {
       totalCount: 'totalCount'
     };
 
+    const aggregatedStringSortKeys = new Set<NonNullable<AggregatedAttendanceReportQuery['sortBy']>>([
+      'start_time',
+      'end_time',
+      'student_name',
+      'class_name',
+      'instructor'
+    ]);
+
     const aggSortDir = query.sortDir === 'desc' ? -1 : 1;
     if (query.sortBy) {
       if (!aggregatedAllowedSortByByGroup[groupBy].has(query.sortBy)) {
         throw new ValidationError(`Unsupported sortBy for aggregated report (groupBy=${groupBy}): ${query.sortBy}`);
       }
       const mappedField = aggregatedSortFieldMap[query.sortBy];
-      pipeline.push({ $sort: { [mappedField]: aggSortDir, _id: 1 } });
+
+      if (aggregatedStringSortKeys.has(query.sortBy)) {
+        const sortValueExpr = `$${mappedField}`;
+        pipeline.push({
+          $addFields: {
+            __sortEmpty: {
+              $cond: [
+                { $or: [{ $eq: [sortValueExpr, null] }, { $eq: [sortValueExpr, ''] }] },
+                1,
+                0
+              ]
+            }
+          }
+        });
+        pipeline.push({ $sort: { __sortEmpty: 1, [mappedField]: aggSortDir, _id: 1 } });
+      } else {
+        pipeline.push({ $sort: { [mappedField]: aggSortDir, _id: 1 } });
+      }
     } else {
       pipeline.push({ $sort: aggregatedDefaultSortByGroup[groupBy] });
     }
@@ -564,7 +658,9 @@ export class ReportService {
       }
     });
 
-    const result = await AttendanceModel.aggregate(pipeline).allowDiskUse(true);
+    const result = await AttendanceModel.aggregate(pipeline)
+      .collation({ locale: 'sv', strength: 2 })
+      .allowDiskUse(true);
     const facet = result[0] as { rows: AggregatedAttendanceReportRow[]; totalCount: Array<{ count: number }> } | undefined;
 
     const total = facet?.totalCount?.[0]?.count ?? 0;
