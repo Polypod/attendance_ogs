@@ -152,7 +152,7 @@ type ColumnKey =
   | "presentCount"
   | "totalCount";
 
-type SortKey = Exclude<ColumnKey, "notes">;
+type SortKey = ColumnKey;
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -472,7 +472,7 @@ export default function ReportsPage() {
         { key: "instructor", label: "Instructor", width: "12rem", sortable: true },
         { key: "status", label: "Status", width: "6.5rem", sortable: true },
         { key: "category", label: "Category", width: "7.5rem", sortable: true },
-        { key: "notes", label: "Notes", width: "18rem", sortable: false },
+        { key: "notes", label: "Notes", width: "18rem", sortable: true },
         { key: "recorded_by", label: "Recorded by", width: "14rem", sortable: true },
         { key: "recorded_at", label: "Recorded at", width: "11rem", sortable: true },
       ] as const,
