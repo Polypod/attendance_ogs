@@ -199,6 +199,8 @@ export const rawAttendanceReportQuerySchema = Joi.object({
   from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
   to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
 
+  search: Joi.string().trim().min(1).max(100).optional(),
+
   page: Joi.number().integer().min(1).default(1),
   pageSize: Joi.number().integer().min(1).max(100).default(25),
 
@@ -212,6 +214,7 @@ export const rawAttendanceReportQuerySchema = Joi.object({
       'instructor',
       'status',
       'category',
+      'notes',
       'recorded_by',
       'recorded_at'
     )
@@ -246,6 +249,8 @@ export const rawAttendanceReportQuerySchema = Joi.object({
 export const aggregatedAttendanceReportQuerySchema = Joi.object({
   from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
   to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+
+  search: Joi.string().trim().min(1).max(100).optional(),
 
   groupBy: Joi.string().valid('student', 'instructor', 'session', 'class').required(),
 
