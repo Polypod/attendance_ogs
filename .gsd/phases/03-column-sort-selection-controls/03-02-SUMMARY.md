@@ -56,11 +56,13 @@ completed: 2026-04-15
 - Lade till global fri-text-sök och skickar `search` i request body (raw + aggregated)
 - Justerade page-reset så att sort inte hoppar till sida 1
 - Delade upp kolumn-visibility state för raw och aggregated utan persistens
+- Gjorde Notes-kolumnen sorterbar i Raw-läget (UI-stöd för `sortBy=notes`)
 
 ## Task Commits
 
 1. **Task 1: Lägg till global fri-text-sök i Reports UI och skicka `search` till API** - `088d210`
 2. **Task 2: Kolumn-visa/dölj separat för Raw och Aggregated (utan persistens)** - `6c06b23`
+3. **Follow-up fix: Tillåt sortering på Notes i Raw** - `1eb9729`
 
 ## Files Created/Modified
 
@@ -93,6 +95,7 @@ None - no external service configuration required.
 - Task commits:
   - `088d210`
   - `6c06b23`
+  - `1eb9729`
 
 ---
 
