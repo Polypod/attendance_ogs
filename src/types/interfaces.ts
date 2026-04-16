@@ -254,3 +254,69 @@ export interface AuthResponse {
   refreshToken?: string;
   user: Omit<User, 'password'>;
 }
+
+// Report presets (private + shared)
+export type ReportViewMode = 'raw' | 'aggregate';
+
+export type AggregatedGroupBy = 'student' | 'instructor' | 'session' | 'class';
+
+export type ReportSortDir = 'asc' | 'desc';
+
+export type ReportSortBy =
+  | 'date'
+  | 'start_time'
+  | 'end_time'
+  | 'student_name'
+  | 'class_name'
+  | 'instructor'
+  | 'status'
+  | 'category'
+  | 'notes'
+  | 'recorded_by'
+  | 'recorded_at'
+  | 'presentCount'
+  | 'totalCount';
+
+export interface ReportPresetSessionFilter {
+  classScheduleId: string;
+  date: string; // YYYY-MM-DD
+}
+
+export interface ReportPresetState {
+  mode: ReportViewMode;
+  groupBy?: AggregatedGroupBy;
+
+  from: string; // YYYY-MM-DD
+  to: string; // YYYY-MM-DD
+
+  search?: string;
+
+  pageSize?: number;
+
+  sortBy?: ReportSortBy;
+  sortDir?: ReportSortDir;
+
+  studentIds?: string[];
+  classIds?: string[];
+  instructors?: string[];
+  status?: AttendanceStatusEnum[];
+  sessions?: ReportPresetSessionFilter[];
+  onlyActiveStudents?: boolean;
+
+  rawColumnVisibility?: Record<string, boolean>;
+  aggregatedColumnVisibility?: Record<string, boolean>;
+}
+
+export interface CreateReportPresetDto {
+  name: string;
+  shared?: boolean;
+  schemaVersion?: number;
+  state: ReportPresetState;
+}
+
+export interface UpdateReportPresetDto {
+  name?: string;
+  shared?: boolean;
+  schemaVersion?: number;
+  state?: ReportPresetState;
+}
