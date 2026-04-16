@@ -101,6 +101,44 @@ type AggregatedAttendanceReportResult = {
 
 type ViewMode = "raw" | "aggregate";
 
+type ReportPresetSessionFilter = {
+  classScheduleId: string;
+  date: string; // YYYY-MM-DD
+};
+
+type ReportPresetState = {
+  mode: ViewMode;
+  groupBy?: AggregatedGroupBy;
+
+  from: string;
+  to: string;
+
+  search?: string;
+
+  pageSize?: number;
+
+  sortBy?: SortKey;
+  sortDir?: SortDir;
+
+  studentIds?: string[];
+  classIds?: string[];
+  instructors?: string[];
+  status?: string[];
+  sessions?: ReportPresetSessionFilter[];
+  onlyActiveStudents?: boolean;
+
+  rawColumnVisibility?: Record<string, boolean>;
+  aggregatedColumnVisibility?: Record<string, boolean>;
+};
+
+type ReportPreset = {
+  _id: string;
+  name: string;
+  shared: boolean;
+  schemaVersion: number;
+  state: ReportPresetState;
+};
+
 const normalizeApiErrorMessage = (message: string) => {
   const lower = message.toLowerCase();
   if (lower.includes("<html") || lower.includes("<!doctype html")) {
@@ -230,6 +268,20 @@ export default function ReportsPage() {
   const [rawReport, setRawReport] = useState<RawAttendanceReportResult | null>(null);
   const [aggregatedReport, setAggregatedReport] = useState<AggregatedAttendanceReportResult | null>(null);
 
+  const [presets, setPresets] = useState<ReportPreset[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("");
+  const [presetNameDraft, setPresetNameDraft] = useState("");
+  const [presetSharedDraft, setPresetSharedDraft] = useState(false);
+  const [presetBusy, setPresetBusy] = useState(false);
+  const [presetError, setPresetError] = useState<string | null>(null);
+
+  const selectedPreset = useMemo(
+    () => presets.find((p) => p._id === selectedPresetId) ?? null,
+    [presets, selectedPresetId]
+  );
+
+  const instructorEditingShared = isInstructor && !!selectedPreset?.shared;
+
   const instructors = useMemo(() => {
     const unique = new Set<string>();
     for (const s of schedules) {
@@ -336,6 +388,35 @@ export default function ReportsPage() {
       isCancelled = true;
     };
   }, [authStatus, from, hasAccess, session, to]);
+
+  // Load presets whenever auth becomes available
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadPresets() {
+      if (!hasAccess) return;
+      if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+
+      try {
+        setPresetError(null);
+        const api = createApiClient((session as any)?.accessToken);
+        const data = await api.get("/api/report-presets");
+        const list: ReportPreset[] = data?.data ?? [];
+        if (!isCancelled) setPresets(list);
+      } catch (e: unknown) {
+        if (!isCancelled) {
+          if (e instanceof Error) setPresetError(normalizeApiErrorMessage(e.message));
+          else setPresetError("Failed to fetch presets");
+        }
+      }
+    }
+
+    loadPresets();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [authStatus, hasAccess, session]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -449,6 +530,178 @@ export default function ReportsPage() {
     studentIds.join(","),
     to,
   ]);
+
+  const buildPresetState = (): ReportPresetState => {
+    const sessions = selectedSessionKeys
+      .map((k) => {
+        const [classScheduleId, ymd] = k.split(":");
+        if (!classScheduleId || !ymd) return null;
+        return { classScheduleId, date: ymd } satisfies ReportPresetSessionFilter;
+      })
+      .filter(Boolean) as ReportPresetSessionFilter[];
+
+    const trimmedSearch = search.trim();
+
+    return {
+      mode,
+      groupBy,
+      from,
+      to,
+      search: trimmedSearch ? trimmedSearch : undefined,
+      pageSize,
+      sortBy: sortBy ?? undefined,
+      sortDir: sortBy ? sortDir : undefined,
+      studentIds: studentIds.length > 0 ? studentIds : undefined,
+      classIds: classIds.length > 0 ? classIds : undefined,
+      instructors: instructorsSelected.length > 0 ? instructorsSelected : undefined,
+      status: status.length > 0 ? status : undefined,
+      sessions: sessions.length > 0 ? sessions : undefined,
+      onlyActiveStudents,
+      rawColumnVisibility,
+      aggregatedColumnVisibility,
+    };
+  };
+
+  const applyPresetState = (state: ReportPresetState) => {
+    // Presets should never apply pagination state
+    setPage(1);
+
+    if (state.mode === "aggregate") {
+      setGroupBy((state.groupBy ?? "student") as AggregatedGroupBy);
+      setMode("aggregate");
+    } else {
+      setMode("raw");
+      if (state.groupBy) setGroupBy(state.groupBy as AggregatedGroupBy);
+    }
+
+    setFrom(state.from);
+    setTo(state.to);
+
+    setSearch(state.search ?? "");
+
+    setOnlyActiveStudents(state.onlyActiveStudents ?? true);
+    setStudentIds(state.studentIds ?? []);
+    setClassIds(state.classIds ?? []);
+    setInstructorsSelected(state.instructors ?? []);
+    setStatus(state.status ?? []);
+
+    setSelectedSessionKeys((state.sessions ?? []).map((s) => sessionKey(s.classScheduleId, s.date)));
+
+    setRawColumnVisibility(state.rawColumnVisibility ?? defaultRawColumnVisibility);
+    setAggregatedColumnVisibility(state.aggregatedColumnVisibility ?? defaultAggregatedColumnVisibility);
+
+    if (state.sortBy) {
+      setSortBy(state.sortBy as SortKey);
+      setSortDir((state.sortDir as SortDir) ?? "asc");
+    } else {
+      setSortBy(null);
+      setSortDir("asc");
+    }
+  };
+
+  const reloadPresets = async (nextSelectedId?: string) => {
+    if (!hasAccess) return;
+    if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+
+    const api = createApiClient((session as any)?.accessToken);
+    const data = await api.get("/api/report-presets");
+    const list: ReportPreset[] = data?.data ?? [];
+    setPresets(list);
+
+    if (nextSelectedId !== undefined) {
+      setSelectedPresetId(nextSelectedId);
+    }
+  };
+
+  const handleSavePreset = async () => {
+    const name = presetNameDraft.trim();
+    if (!name) {
+      setPresetError("Preset name is required");
+      return;
+    }
+
+    if (!hasAccess) return;
+    if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+
+    setPresetBusy(true);
+    setPresetError(null);
+
+    try {
+      const api = createApiClient((session as any)?.accessToken);
+      const body: any = {
+        name,
+        schemaVersion: 1,
+        state: buildPresetState(),
+      };
+
+      if (isAdmin) body.shared = presetSharedDraft;
+
+      const data = await api.post("/api/report-presets", body);
+      const created: ReportPreset | undefined = data?.data;
+      await reloadPresets(created?._id);
+    } catch (e: unknown) {
+      if (e instanceof Error) setPresetError(normalizeApiErrorMessage(e.message));
+      else setPresetError("Failed to save preset");
+    } finally {
+      setPresetBusy(false);
+    }
+  };
+
+  const handleUpdatePreset = async () => {
+    if (!selectedPresetId) return;
+
+    if (!hasAccess) return;
+    if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+
+    setPresetBusy(true);
+    setPresetError(null);
+
+    try {
+      const api = createApiClient((session as any)?.accessToken);
+      const body: any = {
+        schemaVersion: 1,
+        state: buildPresetState(),
+      };
+
+      const name = presetNameDraft.trim();
+      if (name) body.name = name;
+      if (isAdmin) body.shared = presetSharedDraft;
+
+      await api.put(`/api/report-presets/${selectedPresetId}`, body);
+      await reloadPresets(selectedPresetId);
+    } catch (e: unknown) {
+      if (e instanceof Error) setPresetError(normalizeApiErrorMessage(e.message));
+      else setPresetError("Failed to update preset");
+    } finally {
+      setPresetBusy(false);
+    }
+  };
+
+  const handleDeletePreset = async () => {
+    if (!selectedPresetId) return;
+
+    if (!hasAccess) return;
+    if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+
+    setPresetBusy(true);
+    setPresetError(null);
+
+    try {
+      const api = createApiClient((session as any)?.accessToken);
+      await api.delete(`/api/report-presets/${selectedPresetId}`);
+
+      setSelectedPresetId("");
+      setPresetNameDraft("");
+      setPresetSharedDraft(false);
+
+      await reloadPresets("");
+    } catch (e: unknown) {
+      if (e instanceof Error) setPresetError(normalizeApiErrorMessage(e.message));
+      else setPresetError("Failed to delete preset");
+    } finally {
+      setPresetBusy(false);
+    }
+  };
 
   const toggleSort = (key: SortKey) => {
     setSortBy((prev) => {
@@ -596,6 +849,96 @@ export default function ReportsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="rounded-md border p-3 space-y-3">
+                <div className="text-sm font-medium">Presets</div>
+
+                <div>
+                  <label htmlFor="preset" className="block text-sm font-medium mb-1">
+                    Select preset
+                  </label>
+                  <Select
+                    value={selectedPresetId ? selectedPresetId : "__none"}
+                    onValueChange={(v) => {
+                      if (v === "__none") {
+                        setSelectedPresetId("");
+                        return;
+                      }
+
+                      const preset = presets.find((p) => p._id === v);
+                      setSelectedPresetId(v);
+
+                      if (preset) {
+                        setPresetError(null);
+                        setPresetNameDraft(preset.name);
+                        setPresetSharedDraft(preset.shared);
+                        applyPresetState(preset.state);
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="preset" className="w-full">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">None</SelectItem>
+                      {presets.map((p) => (
+                        <SelectItem key={p._id} value={p._id}>
+                          {p.shared ? `Shared: ${p.name}` : `My: ${p.name}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label htmlFor="presetName" className="block text-sm font-medium mb-1">
+                    Preset name
+                  </label>
+                  <Input
+                    id="presetName"
+                    value={presetNameDraft}
+                    onChange={(e) => setPresetNameDraft(e.target.value)}
+                    placeholder="e.g. My weekly view"
+                  />
+                </div>
+
+                {isAdmin && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={presetSharedDraft} onCheckedChange={(v) => setPresetSharedDraft(v === true)} />
+                    <span>Shared</span>
+                  </label>
+                )}
+
+                {instructorEditingShared && (
+                  <p className="text-xs text-muted-foreground">
+                    Shared presets are read-only for instructors.
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" onClick={handleSavePreset} disabled={presetBusy || presetNameDraft.trim().length < 1}>
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleUpdatePreset}
+                    disabled={presetBusy || !selectedPresetId || instructorEditingShared}
+                  >
+                    Update
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDeletePreset}
+                    disabled={presetBusy || !selectedPresetId || instructorEditingShared}
+                  >
+                    Delete
+                  </Button>
+                </div>
+
+                {presetError && <p className="text-xs text-destructive">{presetError}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
