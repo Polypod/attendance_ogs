@@ -298,7 +298,7 @@ export default function StudentsPage() {
               Create Student
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleCreateStudent}>
               <DialogHeader>
                 <DialogTitle>Create New Student</DialogTitle>
@@ -593,7 +593,7 @@ export default function StudentsPage() {
 
       {/* Edit Student Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleEditStudent}>
             <DialogHeader>
               <DialogTitle>Edit Student</DialogTitle>
