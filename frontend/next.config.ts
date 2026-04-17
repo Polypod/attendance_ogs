@@ -37,6 +37,10 @@ const nextConfig: NextConfig = {
           source: "/api/reports/:path*",
           destination: `${backendUrl}/api/reports/:path*`,
         },
+        {
+          source: "/api/report-presets/:path*",
+          destination: `${backendUrl}/api/report-presets/:path*`,
+        },
       ],
     };
   },
