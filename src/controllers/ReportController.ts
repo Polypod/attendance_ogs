@@ -60,6 +60,7 @@ export class ReportController {
       res.status(200);
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Cache-Control', 'no-store');
 
       const headerLabels: Record<string, string> = {
         date: 'Date',
@@ -82,11 +83,14 @@ export class ReportController {
 
       const writeLine = async (line: string) => {
         if (aborted || res.writableEnded) return;
-        if (!res.write(`${line}\n`)) {
+        if (!res.write(`${line}\r\n`)) {
           await once(res, 'drain');
         }
       };
 
+      if (!res.write('\uFEFF')) {
+        await once(res, 'drain');
+      }
       await writeLine(encodeCsvRow(columns.map((c) => headerLabels[c] ?? c)));
 
       for await (const row of cursor as any) {
@@ -144,6 +148,7 @@ export class ReportController {
       res.status(200);
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Cache-Control', 'no-store');
 
       const headerLabels: Record<string, string> = {
         date: 'Date',
@@ -163,11 +168,14 @@ export class ReportController {
 
       const writeLine = async (line: string) => {
         if (aborted || res.writableEnded) return;
-        if (!res.write(`${line}\n`)) {
+        if (!res.write(`${line}\r\n`)) {
           await once(res, 'drain');
         }
       };
 
+      if (!res.write('\uFEFF')) {
+        await once(res, 'drain');
+      }
       await writeLine(encodeCsvRow(columns.map((c) => headerLabels[c] ?? c)));
 
       for await (const row of cursor as any) {
