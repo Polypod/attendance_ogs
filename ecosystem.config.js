@@ -76,7 +76,7 @@ module.exports = {
       repo: 'https://github.com/Polypod/attendance_ogs.git',
       path: '/home/patrik/attendance_ogs',
       'post-deploy':
-        'pnpm install && pnpm build && pnpm --prefix frontend build && pm2 reload ecosystem.config.js --env production',
+        'pnpm install && pnpm build && BACKEND_URL=http://localhost:4010 pnpm --prefix frontend build && pm2 reload ecosystem.config.js --env production',
     },
   },
 };
