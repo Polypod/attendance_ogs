@@ -299,6 +299,49 @@ export const aggregatedAttendanceReportQuerySchema = Joi.object({
     .optional()
 }).options({ stripUnknown: true });
 
+const rawAttendanceCsvColumnsSchema = Joi.array()
+  .items(
+    Joi.string().valid(
+      'date',
+      'start_time',
+      'end_time',
+      'student_name',
+      'class_name',
+      'instructor',
+      'status',
+      'category',
+      'notes',
+      'recorded_by',
+      'recorded_at'
+    )
+  )
+  .min(1)
+  .required();
+
+const aggregatedAttendanceCsvColumnsSchema = Joi.array()
+  .items(
+    Joi.string().valid(
+      'date',
+      'start_time',
+      'end_time',
+      'student_name',
+      'class_name',
+      'instructor',
+      'presentCount',
+      'totalCount'
+    )
+  )
+  .min(1)
+  .required();
+
+export const rawAttendanceReportExportCsvSchema = rawAttendanceReportQuerySchema.keys({
+  columns: rawAttendanceCsvColumnsSchema
+});
+
+export const aggregatedAttendanceReportExportCsvSchema = aggregatedAttendanceReportQuerySchema.keys({
+  columns: aggregatedAttendanceCsvColumnsSchema
+});
+
 // Report preset validation schemas
 export const reportPresetIdParamSchema = Joi.object({
   id: Joi.string().hex().length(24).required()
