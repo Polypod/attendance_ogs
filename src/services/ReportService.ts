@@ -342,8 +342,7 @@ export class ReportService {
     return AttendanceModel.aggregate(pipeline)
       .collation({ locale: 'sv', strength: 2 })
       .allowDiskUse(true)
-      .cursor({ batchSize: 500 })
-      .exec();
+      .cursor({ batchSize: 500 }) as any;
   }
 
   async getAggregatedAttendanceExportCursor(
@@ -615,8 +614,7 @@ export class ReportService {
     return AttendanceModel.aggregate(pipeline)
       .collation({ locale: 'sv', strength: 2 })
       .allowDiskUse(true)
-      .cursor({ batchSize: 500 })
-      .exec();
+      .cursor({ batchSize: 500 }) as any;
   }
 
   async getRawAttendanceReport(query: RawAttendanceReportQuery): Promise<RawAttendanceReportResult> {

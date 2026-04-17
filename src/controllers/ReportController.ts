@@ -1,7 +1,11 @@
 import { Request, Response } from 'express';
 import moment from 'moment-timezone';
 import { once } from 'events';
-import { ReportService } from '@/services/ReportService';
+import {
+  AggregatedAttendanceReportQuery,
+  RawAttendanceReportQuery,
+  ReportService
+} from '@/services/ReportService';
 import { encodeCsvRow } from '@/utils/csv';
 import { ValidationError } from '@/utils/validators';
 
@@ -48,10 +52,11 @@ export class ReportController {
 
   getRawAttendanceReportExportCsv = async (req: Request, res: Response) => {
     try {
-      const { columns, ...query } = req.body as { columns: string[] };
+      const body = req.body as RawAttendanceReportQuery & { columns: string[] };
+      const { columns, ...query } = body;
       const cursor = await this.reportService.getRawAttendanceExportCursor(query);
 
-      const filename = `attendance-raw-${query.from}-${query.to}.csv`;
+      const filename = `attendance-raw-${body.from}-${body.to}.csv`;
       res.status(200);
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -131,10 +136,11 @@ export class ReportController {
 
   getAggregatedAttendanceReportExportCsv = async (req: Request, res: Response) => {
     try {
-      const { columns, ...query } = req.body as { columns: string[] };
+      const body = req.body as AggregatedAttendanceReportQuery & { columns: string[] };
+      const { columns, ...query } = body;
       const cursor = await this.reportService.getAggregatedAttendanceExportCursor(query);
 
-      const filename = `attendance-aggregate-${query.groupBy}-${query.from}-${query.to}.csv`;
+      const filename = `attendance-aggregate-${body.groupBy}-${body.from}-${body.to}.csv`;
       res.status(200);
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
