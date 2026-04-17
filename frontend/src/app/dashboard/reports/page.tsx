@@ -192,6 +192,35 @@ type ColumnKey =
 
 type SortKey = ColumnKey;
 
+type ColumnDefinition = {
+  key: ColumnKey;
+  label: string;
+  sortable: boolean;
+  width?: string;
+};
+
+const orderColumns = (columns: readonly ColumnDefinition[], order: readonly ColumnKey[] | undefined) => {
+  const byKey = new Map<ColumnKey, ColumnDefinition>(columns.map((c) => [c.key, c]));
+  const result: ColumnDefinition[] = [];
+  const seen = new Set<ColumnKey>();
+
+  for (const key of order ?? []) {
+    const col = byKey.get(key);
+    if (!col) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(col);
+  }
+
+  for (const col of columns) {
+    if (seen.has(col.key)) continue;
+    seen.add(col.key);
+    result.push(col);
+  }
+
+  return result;
+};
+
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
   const { isAdmin, isInstructor } = useAuth();
@@ -765,25 +794,24 @@ export default function ReportsPage() {
     form.remove();
   };
 
-  const rawColumns = useMemo(
-    () =>
-      [
-        { key: "date", label: "Date", width: "6.5rem", sortable: true },
-        { key: "start_time", label: "Start", width: "4.5rem", sortable: true },
-        { key: "end_time", label: "End", width: "4.5rem", sortable: true },
-        { key: "student_name", label: "Student", width: "12rem", sortable: true },
-        { key: "class_name", label: "Class", width: "16rem", sortable: true },
-        { key: "instructor", label: "Instructor", width: "12rem", sortable: true },
-        { key: "status", label: "Status", width: "6.5rem", sortable: true },
-        { key: "category", label: "Category", width: "7.5rem", sortable: true },
-        { key: "notes", label: "Notes", width: "18rem", sortable: true },
-        { key: "recorded_by", label: "Recorded by", width: "14rem", sortable: true },
-        { key: "recorded_at", label: "Recorded at", width: "11rem", sortable: true },
-      ] as const,
+  const rawColumns = useMemo<ColumnDefinition[]>(
+    () => [
+      { key: "date", label: "Date", width: "6.5rem", sortable: true },
+      { key: "start_time", label: "Start", width: "4.5rem", sortable: true },
+      { key: "end_time", label: "End", width: "4.5rem", sortable: true },
+      { key: "student_name", label: "Student", width: "12rem", sortable: true },
+      { key: "class_name", label: "Class", width: "16rem", sortable: true },
+      { key: "instructor", label: "Instructor", width: "12rem", sortable: true },
+      { key: "status", label: "Status", width: "6.5rem", sortable: true },
+      { key: "category", label: "Category", width: "7.5rem", sortable: true },
+      { key: "notes", label: "Notes", width: "18rem", sortable: true },
+      { key: "recorded_by", label: "Recorded by", width: "14rem", sortable: true },
+      { key: "recorded_at", label: "Recorded at", width: "11rem", sortable: true },
+    ],
     []
   );
 
-  const aggregatedColumns = useMemo(() => {
+  const aggregatedColumns = useMemo<ColumnDefinition[]>(() => {
     if (groupBy === "session") {
       return [
         { key: "date", label: "Date", sortable: true },
@@ -793,34 +821,76 @@ export default function ReportsPage() {
         { key: "instructor", label: "Instructor", sortable: true },
         { key: "presentCount", label: "Present", sortable: true },
         { key: "totalCount", label: "Total", sortable: true },
-      ] as const;
+      ];
     }
     if (groupBy === "student") {
       return [
         { key: "student_name", label: "Student", sortable: true },
         { key: "presentCount", label: "Present", sortable: true },
         { key: "totalCount", label: "Total", sortable: true },
-      ] as const;
+      ];
     }
     if (groupBy === "instructor") {
       return [
         { key: "instructor", label: "Instructor", sortable: true },
         { key: "presentCount", label: "Present", sortable: true },
         { key: "totalCount", label: "Total", sortable: true },
-      ] as const;
+      ];
     }
     return [
       { key: "class_name", label: "Class", sortable: true },
       { key: "instructor", label: "Instructor", sortable: true },
       { key: "presentCount", label: "Present", sortable: true },
       { key: "totalCount", label: "Total", sortable: true },
-    ] as const;
+    ];
   }, [groupBy]);
 
   const currentColumns = mode === "raw" ? rawColumns : aggregatedColumns;
+
+  const [rawColumnOrder, setRawColumnOrder] = useState<ColumnKey[]>(() => rawColumns.map((c) => c.key));
+  const [aggregatedColumnOrderByGroupBy, setAggregatedColumnOrderByGroupBy] = useState<
+    Partial<Record<AggregatedGroupBy, ColumnKey[]>>
+  >({});
+
+  useEffect(() => {
+    setRawColumnOrder((prev) => orderColumns(rawColumns, prev).map((c) => c.key));
+  }, [rawColumns]);
+
+  useEffect(() => {
+    if (mode !== "aggregate") return;
+
+    setAggregatedColumnOrderByGroupBy((prev) => {
+      if (prev[groupBy]?.length) return prev;
+      return { ...prev, [groupBy]: aggregatedColumns.map((c) => c.key) };
+    });
+  }, [aggregatedColumns, groupBy, mode]);
+
+  const activeColumnOrder = mode === "raw" ? rawColumnOrder : aggregatedColumnOrderByGroupBy[groupBy];
+  const orderedColumns = useMemo(
+    () => orderColumns(currentColumns, activeColumnOrder),
+    [activeColumnOrder, currentColumns]
+  );
+
   const activeColumnVisibility = mode === "raw" ? rawColumnVisibility : aggregatedColumnVisibility;
   const setActiveColumnVisibility = mode === "raw" ? setRawColumnVisibility : setAggregatedColumnVisibility;
-  const visibleColumns = currentColumns.filter((c) => activeColumnVisibility[c.key] !== false);
+  const visibleColumns = orderedColumns.filter((c) => activeColumnVisibility[c.key] !== false);
+
+  const moveColumn = (key: ColumnKey, direction: -1 | 1) => {
+    const keys = orderedColumns.map((c) => c.key);
+    const idx = keys.indexOf(key);
+    if (idx < 0) return;
+    const nextIdx = idx + direction;
+    if (nextIdx < 0 || nextIdx >= keys.length) return;
+
+    const next = keys.slice();
+    [next[idx], next[nextIdx]] = [next[nextIdx], next[idx]];
+
+    if (mode === "raw") {
+      setRawColumnOrder(next);
+    } else {
+      setAggregatedColumnOrderByGroupBy((prev) => ({ ...prev, [groupBy]: next }));
+    }
+  };
 
   useEffect(() => {
     if (!sortBy) return;
@@ -841,7 +911,7 @@ export default function ReportsPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Reports</h1>
-        <p className="text-muted-foreground mt-1">Attendance report (Raw / Aggregated)</p>
+        <p className="text-muted-foreground mt-1">Attendance report</p>
       </div>
 
       {authStatus === "loading" && (
@@ -1260,11 +1330,11 @@ export default function ReportsPage() {
 
               <div>
                 <div className="text-sm font-medium mb-2">Columns</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {currentColumns.map((c) => {
+                <div className="space-y-2">
+                  {orderedColumns.map((c, idx) => {
                     const checked = activeColumnVisibility[c.key] !== false;
                     return (
-                      <label key={c.key} className="flex items-center gap-2 text-sm">
+                      <div key={c.key} className="flex items-center gap-2 text-sm">
                         <Checkbox
                           checked={checked}
                           onCheckedChange={(v) => {
@@ -1272,8 +1342,30 @@ export default function ReportsPage() {
                             setActiveColumnVisibility((prev) => ({ ...prev, [c.key]: nextChecked }));
                           }}
                         />
-                        <span>{c.label}</span>
-                      </label>
+                        <span className="flex-1">{c.label}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-7 w-7 p-0"
+                          disabled={idx === 0}
+                          onClick={() => moveColumn(c.key, -1)}
+                          aria-label={`Move ${c.label} up`}
+                          title="Move up"
+                        >
+                          ↑
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-7 w-7 p-0"
+                          disabled={idx === orderedColumns.length - 1}
+                          onClick={() => moveColumn(c.key, 1)}
+                          aria-label={`Move ${c.label} down`}
+                          title="Move down"
+                        >
+                          ↓
+                        </Button>
+                      </div>
                     );
                   })}
                 </div>
