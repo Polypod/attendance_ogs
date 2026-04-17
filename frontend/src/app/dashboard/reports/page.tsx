@@ -714,6 +714,57 @@ export default function ReportsPage() {
     });
   };
 
+  const handleExportCsv = () => {
+    const sessions = selectedSessionKeys
+      .map((k) => {
+        const [classScheduleId, ymd] = k.split(":");
+        if (!classScheduleId || !ymd) return null;
+        return { classScheduleId, date: ymd };
+      })
+      .filter(Boolean);
+
+    const payload: Record<string, any> = {
+      mode,
+      from,
+      to,
+      columns: visibleColumns.map((c) => c.key),
+    };
+
+    const trimmedSearch = search.trim();
+    if (trimmedSearch) payload.search = trimmedSearch;
+
+    if (sortBy) {
+      payload.sortBy = sortBy;
+      payload.sortDir = sortDir;
+    }
+
+    if (onlyActiveStudents) payload.onlyActiveStudents = true;
+    if (studentIds.length > 0) payload.studentIds = studentIds;
+    if (sessions.length > 0) payload.sessions = sessions;
+    if (classIds.length > 0) payload.classIds = classIds;
+    if (instructorsSelected.length > 0) payload.instructors = instructorsSelected;
+    if (status.length > 0) payload.status = status;
+
+    if (mode === "aggregate") {
+      payload.groupBy = groupBy;
+    }
+
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "/api/reports/attendance/export/csv";
+    form.style.display = "none";
+
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "payload";
+    input.value = JSON.stringify(payload);
+
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+    form.remove();
+  };
+
   const rawColumns = useMemo(
     () =>
       [
@@ -1200,6 +1251,10 @@ export default function ReportsPage() {
                   }}
                 >
                   Reset
+                </Button>
+
+                <Button type="button" onClick={handleExportCsv} disabled={loading || visibleColumns.length === 0}>
+                  Export CSV
                 </Button>
               </div>
 
