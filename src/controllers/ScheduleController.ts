@@ -10,8 +10,11 @@ export class ScheduleController {
   async getAllSchedules(req: Request, res: Response): Promise<void> {
     try {
       const { startDate, endDate, classId, expandRecurring } = req.query;
+      const debug = logger.isDebugEnabled();
       
-      logger.debug('ScheduleController.getAllSchedules', { startDate, endDate, expandRecurring, classId });
+      if (debug) {
+        logger.debug('ScheduleController.getAllSchedules', { startDate, endDate, expandRecurring, classId });
+      }
       
       // If expandRecurring is true and date range provided, generate instances
       if (expandRecurring === 'true' && startDate && endDate) {
@@ -43,7 +46,9 @@ export class ScheduleController {
           _id: doc._id
         }));
         
-        logger.debug('ScheduleController.recurring_schedules_found', { count: recurringSchedules.length });
+        if (debug) {
+          logger.debug('ScheduleController.recurring_schedules_found', { count: recurringSchedules.length });
+        }
         
         // Fetch non-recurring schedules within range
         const nonRecurringQuery: Record<string, unknown> = {
@@ -64,7 +69,7 @@ export class ScheduleController {
         // Expand recurring schedules
         for (const schedule of recurringSchedules) {
           if (schedule.days_of_week && schedule.days_of_week.length > 0) {
-            if (logger.isDebugEnabled()) {
+            if (debug) {
               logger.debug('ScheduleController.expand_schedule', {
                 scheduleId: schedule._id?.toString?.() ?? String(schedule._id),
                 date: schedule.date,
@@ -93,7 +98,7 @@ export class ScheduleController {
                   const dateStr = currentDate.toISOString().split('T')[0];
                   
                   // DEBUG: Log all sessions in this schedule
-                  if (logger.isDebugEnabled()) {
+                  if (debug) {
                     logger.debug('ScheduleController.schedule_sessions', {
                       scheduleId: schedule._id?.toString?.() ?? String(schedule._id),
                       sessionCount: schedule.sessions?.length || 0,
@@ -112,11 +117,13 @@ export class ScheduleController {
                   // Create a new date object for this instance
                   const instanceDate = new Date(currentDate);
 
-                  logger.debug('ScheduleController.add_instance', { date: dateStr, dayOfWeek });
+                  if (debug) {
+                    logger.debug('ScheduleController.add_instance', { date: dateStr, dayOfWeek });
+                  }
                   
                   // If session exists for this date, use its data
                   if (existingSession) {
-                    if (logger.isDebugEnabled()) {
+                    if (debug) {
                       logger.debug('ScheduleController.matching_session_found', {
                         sessionDate: existingSession.date.toISOString().split('T')[0],
                         sessionInstructor: (existingSession as any)['S-instructor'],
@@ -135,7 +142,9 @@ export class ScheduleController {
                       notes: existingSession.notes,
                     });
                   } else {
-                    logger.debug('ScheduleController.no_session_for_date', { date: dateStr });
+                    if (debug) {
+                      logger.debug('ScheduleController.no_session_for_date', { date: dateStr });
+                    }
                     // No session yet, create instance without session-specific data
                     const { sessions: _sessions, ...scheduleWithoutSessions } = schedule.toObject();
                     expandedSchedules.push({
@@ -154,7 +163,9 @@ export class ScheduleController {
               currentDate.setDate(currentDate.getDate() + 1);
             }
             
-            logger.debug('ScheduleController.instances_added', { count: expandedSchedules.length });
+            if (debug) {
+              logger.debug('ScheduleController.instances_added', { count: expandedSchedules.length });
+            }
           }
         }
         
@@ -170,9 +181,11 @@ export class ScheduleController {
           return a.start_time.localeCompare(b.start_time);
         });
         
-        logger.debug('ScheduleController.expanded_schedules_returning', { count: expandedSchedules.length });
+        if (debug) {
+          logger.debug('ScheduleController.expanded_schedules_returning', { count: expandedSchedules.length });
+        }
         // Log first schedule's instructor info for debugging
-        if (expandedSchedules.length > 0 && logger.isDebugEnabled()) {
+        if (expandedSchedules.length > 0 && debug) {
           logger.debug('ScheduleController.sample_expanded_schedule', {
             date: expandedSchedules[0].date,
             instructor: expandedSchedules[0].instructor,
@@ -275,8 +288,9 @@ export class ScheduleController {
     try {
       const { id } = req.params;
       const updateData = req.body;
+      const debug = logger.isDebugEnabled();
       
-      if (logger.isDebugEnabled()) {
+      if (debug) {
         logger.debug('ScheduleController.updateSchedule_called', {
           id,
           status: updateData?.status,
@@ -302,7 +316,7 @@ export class ScheduleController {
         return;
       }
       
-      if (logger.isDebugEnabled()) {
+      if (debug) {
         logger.debug('ScheduleController.sessions_before_update', {
           sessions: schedule.sessions?.map((s: ClassScheduleSession) => ({
             date: s.date,
@@ -318,10 +332,12 @@ export class ScheduleController {
       }
       
       if (updateData.sessions !== undefined) {
-        logger.debug('ScheduleController.setting_sessions', { count: updateData.sessions.length });
+        if (debug) {
+          logger.debug('ScheduleController.setting_sessions', { count: updateData.sessions.length });
+        }
         schedule.sessions = updateData.sessions;
         schedule.markModified('sessions');
-        if (logger.isDebugEnabled()) {
+        if (debug) {
           logger.debug('ScheduleController.sessions_after_assignment', {
             sessions: schedule.sessions?.map((s: ClassScheduleSession) => ({
               date: s.date,
@@ -341,7 +357,9 @@ export class ScheduleController {
       
       // Save with validation and ensure write is acknowledged
       await schedule.save({ wtimeout: 5000, w: 'majority' });
-      logger.debug('ScheduleController.schedule_saved');
+      if (debug) {
+        logger.debug('ScheduleController.schedule_saved');
+      }
       
       // Read directly from MongoDB to verify - bypass ALL caches with .lean()
 // Re-fetch to verify
@@ -349,7 +367,7 @@ export class ScheduleController {
         .lean()
         .populate('class_id', 'name instructor categories');
         
-      if (logger.isDebugEnabled()) {
+      if (debug) {
         logger.debug('ScheduleController.verified_sessions_after_save', {
           sessions: verifySchedule?.sessions?.map((s: ClassScheduleSession) => ({
             date: s.date,
@@ -363,7 +381,7 @@ export class ScheduleController {
       // Return the verified schedule (already populated from lean query above)
       const updatedSchedule = verifySchedule;
 
-      if (logger.isDebugEnabled()) {
+      if (debug) {
         logger.debug('ScheduleController.returning_updated_schedule', {
           sessions: updatedSchedule?.sessions?.map((s: ClassScheduleSession) => ({
             date: s.date,
