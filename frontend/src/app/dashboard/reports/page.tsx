@@ -11,7 +11,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
@@ -59,6 +58,7 @@ import {
 } from "./columns";
 
 import { sessionKeysToSessions } from "./sessionFilters";
+import { renderAggregatedCell, renderRawCell } from "./cellRenderers";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -1166,86 +1166,14 @@ export default function ReportsPage() {
                     {mode === "raw"
                       ? (rawReport?.rows ?? []).map((r) => (
                           <TableRow key={r.attendance_id}>
-                            {visibleColumns.map((c) => {
-                              switch (c.key) {
-                                case "date":
-                                  return <TableCell key={c.key}>{formatDateSv(r.date)}</TableCell>;
-                                case "start_time":
-                                  return <TableCell key={c.key}>{r.start_time}</TableCell>;
-                                case "end_time":
-                                  return <TableCell key={c.key}>{r.end_time}</TableCell>;
-                                case "student_name":
-                                  return (
-                                    <TableCell key={c.key} className="font-medium truncate" title={r.student_name}>
-                                      {r.student_name}
-                                    </TableCell>
-                                  );
-                                case "class_name":
-                                  return (
-                                    <TableCell key={c.key} className="truncate" title={r.class_name}>
-                                      {r.class_name}
-                                    </TableCell>
-                                  );
-                                case "instructor":
-                                  return (
-                                    <TableCell key={c.key} className="truncate" title={r.instructor}>
-                                      {r.instructor}
-                                    </TableCell>
-                                  );
-                                case "status":
-                                  return (
-                                    <TableCell key={c.key} className="capitalize">
-                                      {r.status}
-                                    </TableCell>
-                                  );
-                                case "category":
-                                  return <TableCell key={c.key}>{r.category}</TableCell>;
-                                case "notes":
-                                  return (
-                                    <TableCell key={c.key} className="truncate" title={r.notes}>
-                                      {r.notes}
-                                    </TableCell>
-                                  );
-                                case "recorded_by":
-                                  return (
-                                    <TableCell key={c.key} className="truncate" title={r.recorded_by}>
-                                      {r.recorded_by}
-                                    </TableCell>
-                                  );
-                                case "recorded_at":
-                                  return <TableCell key={c.key}>{formatDateSv(r.recorded_at)}</TableCell>;
-                                default:
-                                  return null;
-                              }
-                            })}
+                            {visibleColumns.map((c) => renderRawCell(c, r))}
                           </TableRow>
                         ))
                       : (aggregatedReport?.rows ?? []).map((r, idx) => (
                           <TableRow
                             key={r.student_id ?? r.class_schedule_id ?? r.class_id ?? r.instructor ?? `row-${idx}`}
                           >
-                            {visibleColumns.map((c) => {
-                              switch (c.key) {
-                                case "date":
-                                  return <TableCell key={c.key}>{r.date ? formatDateSv(r.date) : ""}</TableCell>;
-                                case "start_time":
-                                  return <TableCell key={c.key}>{r.start_time ?? ""}</TableCell>;
-                                case "end_time":
-                                  return <TableCell key={c.key}>{r.end_time ?? ""}</TableCell>;
-                                case "class_name":
-                                  return <TableCell key={c.key}>{r.class_name ?? ""}</TableCell>;
-                                case "student_name":
-                                  return <TableCell key={c.key}>{r.student_name ?? ""}</TableCell>;
-                                case "instructor":
-                                  return <TableCell key={c.key}>{r.instructor ?? ""}</TableCell>;
-                                case "presentCount":
-                                  return <TableCell key={c.key}>{r.presentCount}</TableCell>;
-                                case "totalCount":
-                                  return <TableCell key={c.key}>{r.totalCount}</TableCell>;
-                                default:
-                                  return null;
-                              }
-                            })}
+                            {visibleColumns.map((c) => renderAggregatedCell(c, r))}
                           </TableRow>
                         ))}
                   </TableBody>
