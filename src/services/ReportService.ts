@@ -5,6 +5,10 @@ import {
   appendRawSortStages,
   buildAttendanceLookupPipeline
 } from './reporting/attendancePipelineBuilders';
+import {
+  aggregatedAttendanceRowProjectionStage,
+  rawAttendanceRowProjectionStage
+} from './reporting/attendanceProjections';
 import type {
   AggregatedAttendanceReportQuery,
   AggregatedAttendanceReportResult,
@@ -31,28 +35,7 @@ export class ReportService {
     const pipeline = buildAttendanceLookupPipeline(query);
     appendRawSortStages(pipeline, query);
 
-    pipeline.push({
-      $project: {
-        attendance_id: { $toString: '$_id' },
-        date: '$date',
-        status: '$status',
-        category: '$category',
-        notes: '$notes',
-        recorded_by: '$recorded_by',
-        recorded_at: '$recorded_at',
-
-        student_id: { $toString: '$student._id' },
-        student_name: '$student.name',
-
-        class_schedule_id: { $toString: '$schedule._id' },
-        start_time: '$schedule.start_time',
-        end_time: '$schedule.end_time',
-
-        class_id: { $toString: '$class._id' },
-        class_name: '$class.name',
-        instructor: '$class.instructor'
-      }
-    });
+    pipeline.push(rawAttendanceRowProjectionStage());
 
     return AttendanceModel.aggregate(pipeline)
       .collation({ locale: 'sv', strength: 2 })
@@ -67,27 +50,7 @@ export class ReportService {
     appendAggregatedGroupStages(pipeline, query.groupBy);
     appendAggregatedSortStages(pipeline, query);
 
-    pipeline.push({
-      $project: {
-        presentCount: 1,
-        totalCount: 1,
-
-        student_id: { $cond: [{ $ifNull: ['$student_id', false] }, { $toString: '$student_id' }, '$$REMOVE'] },
-        student_name: 1,
-
-        instructor: 1,
-
-        class_schedule_id: {
-          $cond: [{ $ifNull: ['$class_schedule_id', false] }, { $toString: '$class_schedule_id' }, '$$REMOVE']
-        },
-        date: 1,
-        start_time: 1,
-        end_time: 1,
-
-        class_id: { $cond: [{ $ifNull: ['$class_id', false] }, { $toString: '$class_id' }, '$$REMOVE'] },
-        class_name: 1
-      }
-    });
+    pipeline.push(aggregatedAttendanceRowProjectionStage());
 
     return AttendanceModel.aggregate(pipeline)
       .collation({ locale: 'sv', strength: 2 })
@@ -108,28 +71,7 @@ export class ReportService {
         rows: [
           { $skip: skip },
           { $limit: pageSize },
-          {
-            $project: {
-              attendance_id: { $toString: '$_id' },
-              date: '$date',
-              status: '$status',
-              category: '$category',
-              notes: '$notes',
-              recorded_by: '$recorded_by',
-              recorded_at: '$recorded_at',
-
-              student_id: { $toString: '$student._id' },
-              student_name: '$student.name',
-
-              class_schedule_id: { $toString: '$schedule._id' },
-              start_time: '$schedule.start_time',
-              end_time: '$schedule.end_time',
-
-              class_id: { $toString: '$class._id' },
-              class_name: '$class.name',
-              instructor: '$class.instructor'
-            }
-          }
+          rawAttendanceRowProjectionStage()
         ],
         totalCount: [{ $count: 'count' }]
       }
@@ -166,25 +108,7 @@ export class ReportService {
         rows: [
           { $skip: skip },
           { $limit: pageSize },
-          {
-            $project: {
-              presentCount: 1,
-              totalCount: 1,
-
-              student_id: { $cond: [{ $ifNull: ['$student_id', false] }, { $toString: '$student_id' }, '$$REMOVE'] },
-              student_name: 1,
-
-              instructor: 1,
-
-              class_schedule_id: { $cond: [{ $ifNull: ['$class_schedule_id', false] }, { $toString: '$class_schedule_id' }, '$$REMOVE'] },
-              date: 1,
-              start_time: 1,
-              end_time: 1,
-
-              class_id: { $cond: [{ $ifNull: ['$class_id', false] }, { $toString: '$class_id' }, '$$REMOVE'] },
-              class_name: 1
-            }
-          }
+          aggregatedAttendanceRowProjectionStage()
         ],
         totalCount: [{ $count: 'count' }]
       }
