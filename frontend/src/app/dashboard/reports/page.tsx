@@ -24,202 +24,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type Student = {
-  _id: string;
-  name: string;
-  active?: boolean;
-  status?: string;
-};
+import {
+  ATTENDANCE_STATUSES,
+  type AggregatedAttendanceReportResult,
+  type AggregatedGroupBy,
+  type ColumnDefinition,
+  type ColumnKey,
+  type ReportPreset,
+  type ReportPresetSessionFilter,
+  type ReportPresetState,
+  type RawAttendanceReportResult,
+  type Schedule,
+  type SortDir,
+  type SortKey,
+  type Student,
+  type ViewMode,
+} from "./types";
 
-type Schedule = {
-  _id: string;
-  date?: string;
-  start_time?: string;
-  end_time?: string;
-  class_id?: {
-    _id: string;
-    name: string;
-    instructor?: string;
-  };
-  _isRecurringInstance?: boolean;
-  _originalScheduleId?: string;
-};
-
-type RawAttendanceRow = {
-  attendance_id: string;
-  date: string;
-  status: string;
-  category: string;
-  notes: string;
-  recorded_by: string;
-  recorded_at: string;
-  student_id: string;
-  student_name: string;
-  class_schedule_id: string;
-  start_time: string;
-  end_time: string;
-  class_id: string;
-  class_name: string;
-  instructor: string;
-};
-
-type RawAttendanceReportResult = {
-  rows: RawAttendanceRow[];
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-};
-
-type AggregatedGroupBy = "student" | "instructor" | "session" | "class";
-
-type AggregatedAttendanceRow = {
-  presentCount: number;
-  totalCount: number;
-
-  student_id?: string;
-  student_name?: string;
-
-  instructor?: string;
-
-  class_schedule_id?: string;
-  date?: string;
-  start_time?: string;
-  end_time?: string;
-
-  class_id?: string;
-  class_name?: string;
-};
-
-type AggregatedAttendanceReportResult = {
-  rows: AggregatedAttendanceRow[];
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-};
-
-type ViewMode = "raw" | "aggregate";
-
-type ReportPresetSessionFilter = {
-  classScheduleId: string;
-  date: string; // YYYY-MM-DD
-};
-
-type ReportPresetState = {
-  mode: ViewMode;
-  groupBy?: AggregatedGroupBy;
-
-  from: string;
-  to: string;
-
-  search?: string;
-
-  pageSize?: number;
-
-  sortBy?: SortKey;
-  sortDir?: SortDir;
-
-  studentIds?: string[];
-  classIds?: string[];
-  instructors?: string[];
-  status?: string[];
-  sessions?: ReportPresetSessionFilter[];
-  onlyActiveStudents?: boolean;
-
-  rawColumnVisibility?: Record<string, boolean>;
-  aggregatedColumnVisibility?: Record<string, boolean>;
-};
-
-type ReportPreset = {
-  _id: string;
-  name: string;
-  shared: boolean;
-  schemaVersion: number;
-  state: ReportPresetState;
-};
-
-const normalizeApiErrorMessage = (message: string) => {
-  const lower = message.toLowerCase();
-  if (lower.includes("<html") || lower.includes("<!doctype html")) {
-    return "API returned HTML instead of JSON. Check that NEXT_PUBLIC_API_URL points to the backend (e.g. http://localhost:4000) and that the backend is running.";
-  }
-  return message;
-};
-
-const formatDateSv = (iso: string) => {
-  try {
-    return new Date(iso).toLocaleDateString("sv-SE");
-  } catch {
-    return iso;
-  }
-};
-
-const isoToYmd = (iso: string) => {
-  if (!iso) return "";
-  if (iso.length >= 10) return iso.slice(0, 10);
-  return iso;
-};
-
-const sessionKey = (classScheduleId: string, ymd: string) => `${classScheduleId}:${ymd}`;
-
-const getTodayIsoDate = () => new Date().toISOString().slice(0, 10);
-
-const addDaysIsoDate = (isoDate: string, days: number) => {
-  const d = new Date(`${isoDate}T00:00:00.000Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
-
-const ATTENDANCE_STATUSES = ["present", "absent", "late", "excused"] as const;
-
-type SortDir = "asc" | "desc";
-
-type ColumnKey =
-  | "date"
-  | "start_time"
-  | "end_time"
-  | "student_name"
-  | "class_name"
-  | "instructor"
-  | "status"
-  | "category"
-  | "notes"
-  | "recorded_by"
-  | "recorded_at"
-  | "presentCount"
-  | "totalCount";
-
-type SortKey = ColumnKey;
-
-type ColumnDefinition = {
-  key: ColumnKey;
-  label: string;
-  sortable: boolean;
-  width?: string;
-};
-
-const orderColumns = (columns: readonly ColumnDefinition[], order: readonly ColumnKey[] | undefined) => {
-  const byKey = new Map<ColumnKey, ColumnDefinition>(columns.map((c) => [c.key, c]));
-  const result: ColumnDefinition[] = [];
-  const seen = new Set<ColumnKey>();
-
-  for (const key of order ?? []) {
-    const col = byKey.get(key);
-    if (!col) continue;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(col);
-  }
-
-  for (const col of columns) {
-    if (seen.has(col.key)) continue;
-    seen.add(col.key);
-    result.push(col);
-  }
-
-  return result;
-};
+import {
+  addDaysIsoDate,
+  formatDateSv,
+  getTodayIsoDate,
+  isoToYmd,
+  normalizeApiErrorMessage,
+  orderColumns,
+  sessionKey,
+} from "./utils";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
