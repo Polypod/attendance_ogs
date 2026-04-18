@@ -17,12 +17,7 @@ beforeAll(async () => {
   mongoose.set('strictQuery', false);
 
   // Initialize configuration service for validators that depend on it
-  try {
-    await ConfigService.initialize();
-  } catch (err) {
-    // If it fails, log and continue - tests will surface validation errors appropriately
-    console.warn('ConfigService.initialize() failed in test setup:', err?.message || err);
-  }
+  await ConfigService.initialize();
 });
 
 // Clear all test data after each test
