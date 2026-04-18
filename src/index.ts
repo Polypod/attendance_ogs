@@ -17,6 +17,7 @@ import { applyMiddleware } from './middleware/middleware';
 import { authenticate, authorize } from './middleware/auth';
 import { UserRoleEnum } from './types/interfaces';
 import { ConfigService } from './services/ConfigService';
+import { logger } from './utils/logger';
 
 dotenv.config();
 
@@ -29,7 +30,7 @@ applyMiddleware(app);
 
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  logger.debug('http_request', { method: req.method, path: req.path });
   next();
 });
 
@@ -82,26 +83,26 @@ const MONGODB_OPTIONS = {
 
 mongoose.connect(MONGODB_URI, MONGODB_OPTIONS)
   .then(async () => {
-    console.log('✅ Connected to MongoDB');
+    logger.info('mongodb_connected');
 
     // Initialize ConfigService after database connection
     try {
       await ConfigService.initialize();
     } catch (error: any) {
-      console.error('❌ Failed to initialize configuration:', error.message);
+      logger.error('config_initialize_failed', { message: error?.message }, error);
       process.exit(1); // Critical: cannot run without config
     }
 
     // Start the server only after successful DB connection AND config load
     const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+      logger.info('server_listening', { port: PORT });
     });
 
     // Handle graceful shutdown
     const gracefulShutdown = () => {
-      console.log('🛑 Shutting down gracefully...');
+      logger.info('server_shutdown_start');
       server.close(() => {
-        console.log('💤 Server shut down');
+        logger.info('server_shutdown_complete');
         process.exit(0);
       });
     };
@@ -111,12 +112,12 @@ mongoose.connect(MONGODB_URI, MONGODB_OPTIONS)
     process.on('SIGINT', gracefulShutdown);
   })
   .catch((error: Error) => {
-    console.error('❌ MongoDB connection error:', error);
+    logger.error('mongodb_connection_error', undefined, error);
     process.exit(1);
   });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason: Error | any, promise: Promise<any>) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error('unhandled_rejection', { promise: String(promise) }, reason);
   // Consider logging to an external service in production
 });

@@ -2,6 +2,7 @@ import { Express } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import express from 'express';
+import { logger } from '../utils/logger';
 
 /**
  * Applies common middleware to the Express application
@@ -13,7 +14,7 @@ export const applyMiddleware = (app: Express): void => {
 
   // Enable CORS with specific configuration
   const frontendOrigin = process.env.FRONTEND_URL || 'http://localhost:4001';
-  console.log('🔧 CORS origin set to', frontendOrigin);
+  logger.info('cors_origin', { origin: frontendOrigin });
   app.use(cors({
     origin: frontendOrigin,
     credentials: true,

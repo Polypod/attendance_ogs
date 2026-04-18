@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Edit, Plus, BarChart2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 type AttendanceRecord = {
   _id: string;
@@ -107,7 +108,11 @@ export default function StudentsPage() {
 
   // Fetch students
   useEffect(() => {
-    console.log('[Students] useEffect triggered, status:', status, 'session:', session, 'accessToken:', session?.accessToken);
+    logger.debug('StudentsPage.session_state', {
+      status,
+      hasSession: !!session,
+      hasAccessToken: !!session?.accessToken,
+    });
     if (status === 'authenticated' && session?.accessToken) {
       fetchStudents();
     } else if (status === 'unauthenticated') {
@@ -118,24 +123,27 @@ export default function StudentsPage() {
 
   async function fetchStudents() {
     if (!session?.accessToken) {
-      console.log('[Students] No access token, skipping fetch');
+      logger.debug('StudentsPage.fetchStudents_skipped_no_token');
       return;
     }
-    console.log('[Students] fetchStudents called with token:', (session as any)?.accessToken?.substring(0, 20) + '...');
     setLoading(true);
     setError(null);
     try {
       const api = createApiClient((session as any)?.accessToken);
-      console.log('[Students] Calling API...');
+      logger.debug('StudentsPage.fetchStudents_calling_api');
       const data = await api.get("/api/students");
-      console.log('[Students] API response:', data);
+      logger.debug('StudentsPage.fetchStudents_success', {
+        count: Array.isArray(data?.data) ? data.data.length : undefined,
+      });
       setStudents(data.data || []);
     } catch (e: unknown) {
-      console.error('[Students] Error fetching:', e);
+      logger.error('StudentsPage.fetchStudents_failed', {
+        message: e instanceof Error ? e.message : 'Unknown error',
+      });
       if (e instanceof Error) setError(e.message);
       else setError("Failed to fetch students");
     } finally {
-      console.log('[Students] Fetch complete, setting loading=false');
+      logger.debug('StudentsPage.fetchStudents_complete');
       setLoading(false);
     }
   }

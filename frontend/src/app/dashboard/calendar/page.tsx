@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { createApiClient } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import {
   Table,
   TableBody,
@@ -206,7 +207,9 @@ export default function CalendarPage() {
       const data = await api.get("/api/classes");
       setClasses(data.data || []);
     } catch (e: unknown) {
-      console.error("Failed to fetch classes:", e);
+      logger.error('CalendarPage.fetchClasses_failed', {
+        message: e instanceof Error ? e.message : 'Unknown error',
+      });
     }
   }
 

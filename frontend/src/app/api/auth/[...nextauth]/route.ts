@@ -1,6 +1,7 @@
 // frontend/src/app/api/auth/[...nextauth]/route.ts - NextAuth configuration
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { logger } from "@/lib/logger";
 
 const handler = NextAuth({
   providers: [
@@ -29,9 +30,7 @@ const handler = NextAuth({
             (process.env.NODE_ENV === "production" ? "" : "http://localhost:4000");
 
           if (!apiUrl) {
-            console.error(
-              "Missing BACKEND_URL/NEXT_PUBLIC_API_URL for NextAuth Credentials backend login"
-            );
+            logger.error('nextauth_missing_backend_url');
             return null;
           }
           const res = await fetch(`${apiUrl}/api/auth/login`, {
@@ -66,7 +65,9 @@ const handler = NextAuth({
           // Login failed
           return null;
         } catch (error) {
-          console.error("Authentication error:", error);
+          logger.error('nextauth_authentication_error', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+          });
           return null;
         }
       }

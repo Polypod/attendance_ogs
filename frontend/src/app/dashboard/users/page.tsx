@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Trash2, Edit, Key, UserPlus } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 type User = {
   _id: string;
@@ -77,7 +78,11 @@ export default function UsersPage() {
 
   // Fetch users
   useEffect(() => {
-    console.log('[Users] useEffect triggered, status:', status, 'session:', session, 'accessToken:', session?.accessToken);
+    logger.debug('UsersPage.session_state', {
+      status,
+      hasSession: !!session,
+      hasAccessToken: !!session?.accessToken,
+    });
     if (status === 'authenticated' && session?.accessToken) {
       fetchUsers();
     } else if (status === 'unauthenticated') {

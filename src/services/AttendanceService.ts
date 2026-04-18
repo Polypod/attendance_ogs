@@ -10,6 +10,7 @@ import {
   StudentCategory,
   ClassScheduleSession
 } from '../types/interfaces';
+import { logger } from '../utils/logger';
 
 // Cast the model to include our custom methods
 const AttendanceModel = Attendance as unknown as IAttendanceModel;
@@ -247,7 +248,7 @@ export class AttendanceService {
         // Save all schedules in parallel
         await Promise.all(schedules.map(s => s.save()));
       } catch (error) {
-        console.error('Failed to update sessions after marking attendance:', error);
+        logger.error('AttendanceService.markMultipleAttendance_session_update_failed', undefined, error);
         // Don't throw - attendance is already saved, session update is secondary
       }
     }
@@ -270,7 +271,7 @@ export class AttendanceService {
     // Use the project ValidationError for consistent error handling
     const { validateObjectId } = require('../utils/validators');
     validateObjectId(classScheduleId, 'class schedule ID');
-5509
+
     const query: { 
       class_schedule_id: Types.ObjectId;
       category?: StudentCategory;
@@ -321,7 +322,7 @@ export class AttendanceService {
       // Note: student_id can be null for "other students" attendance
       const filteredRecords = attendanceRecords.filter(r => r.class_schedule_id);
 
-      console.log('[AttendanceService] getClassAttendance returning', filteredRecords.length, 'records');
+      logger.debug('AttendanceService.getClassAttendance_returning', { count: filteredRecords.length });
       // Normalize `student_id` to a string id (tests and API expect ID strings)
       const normalized = filteredRecords.map(rec => {
         const studentField: any = rec.student_id;
@@ -348,7 +349,7 @@ export class AttendanceService {
         ? `Failed to retrieve class attendance: ${error.message}`
         : 'An unknown error occurred while retrieving class attendance';
       
-      console.error(errorMessage, error);
+      logger.error('AttendanceService.getClassAttendance_failed', { message: errorMessage }, error);
       throw new Error(errorMessage);
     }
   }
@@ -408,7 +409,7 @@ export class AttendanceService {
         return true;
       });
     } catch (error) {
-      console.error('Error in searchPastClasses:', error);
+      logger.error('AttendanceService.searchPastClasses_failed', undefined, error);
       throw new Error(
         isErrorWithMessage(error)
           ? error.message
@@ -554,7 +555,7 @@ export class AttendanceService {
         attendance_percentage: parseFloat(item.attendance_percentage.toFixed(2))
       }));
     } catch (error) {
-      console.error('Error in generateAttendanceReports:', error);
+      logger.error('AttendanceService.generateAttendanceReports_failed', undefined, error);
       throw new Error(
         isErrorWithMessage(error)
           ? error.message

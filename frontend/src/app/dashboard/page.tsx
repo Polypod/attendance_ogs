@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar, Clock } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 type ClassInfo = {
   _id: string;
@@ -89,10 +90,10 @@ export default function DashboardPage() {
       const fetchStart = showDateRange ? startDate : getTodayISO();
       const fetchEnd = showDateRange ? endDate : getISOPlusDays(7);
       const expandParam = '&expandRecurring=true';
-      console.log('[Dashboard] Fetching schedules:', { fetchStart, fetchEnd, showDateRange, expandParam });
+      logger.debug('DashboardPage.fetchSchedules_start', { fetchStart, fetchEnd, showDateRange, expandParam });
       const data = await api.get(`/api/schedules?startDate=${fetchStart}&endDate=${fetchEnd}${expandParam}`);
       const schedulesData = data.data || [];
-      console.log('[Dashboard] Received', schedulesData.length, 'schedules');
+      logger.debug('DashboardPage.fetchSchedules_success', { count: schedulesData.length });
       setSchedules(schedulesData);
 
       // Fetch attendance for completed classes

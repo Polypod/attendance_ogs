@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Error as MongooseError, mongo } from 'mongoose';
+import { logger } from '../utils/logger';
 
 interface AppError extends Error {
   statusCode?: number;
@@ -26,8 +27,16 @@ export const errorHandler = (
   error.status = err.status || 'error';
 
   // Log the error for debugging
-  console.error(`❌ [${new Date().toISOString()}] ${error.statusCode} - ${error.message}`);
-  console.error(err.stack);
+  logger.error(
+    'http_error',
+    {
+      statusCode: error.statusCode,
+      message: error.message,
+      method: req.method,
+      path: req.originalUrl,
+    },
+    err
+  );
 
   // Handle specific error types
   

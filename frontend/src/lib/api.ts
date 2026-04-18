@@ -1,5 +1,6 @@
 // frontend/src/lib/api.ts - API wrapper with authentication
 import { getSession } from "next-auth/react";
+import { logger } from "@/lib/logger";
 
 type RequestOptions = {
   method?: string;
@@ -40,10 +41,9 @@ export async function fetchWithAuth(
 
   // Only log in development mode to avoid exposing sensitive data in production
   if (process.env.NODE_ENV === 'development') {
-    console.log('[API] Fetching:', endpoint);
     const safeHeaders = { ...headers };
     delete safeHeaders['Authorization'];
-    console.log('[API] Headers:', safeHeaders);
+    logger.debug('api_request', { endpoint, method: options.method ?? 'GET', headers: safeHeaders });
   }
 
   const response = await fetch(`${baseUrl}${endpoint}`, {
@@ -53,8 +53,7 @@ export async function fetchWithAuth(
   });
 
   if (process.env.NODE_ENV === 'development') {
-    console.log('[API] Response status:', response.status);
-    console.log('[API] Response ok:', response.ok);
+    logger.debug('api_response', { endpoint, status: response.status, ok: response.ok });
   }
 
   // Handle 401 Unauthorized - redirect to login
@@ -67,7 +66,11 @@ export async function fetchWithAuth(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('[API] Error response:', errorText);
+    if (process.env.NODE_ENV === 'development') {
+      logger.error('api_error_response', { endpoint, status: response.status, body: errorText });
+    } else {
+      logger.error('api_error_response', { endpoint, status: response.status });
+    }
     throw new Error(`HTTP ${response.status}: ${errorText}`);
   }
 
@@ -82,15 +85,15 @@ export function createApiClient(token?: string) {
   return {
     get: async (endpoint: string) => {
       if (process.env.NODE_ENV === 'development') {
-        console.log('[createApiClient] GET request to:', endpoint);
+        logger.debug('api_client_get', { endpoint });
       }
       const response = await fetchWithAuth(endpoint, { method: "GET", token });
       if (process.env.NODE_ENV === 'development') {
-        console.log('[createApiClient] Got response, parsing JSON...');
+        logger.debug('api_client_parse_json', { endpoint });
       }
       const data = await response.json();
       if (process.env.NODE_ENV === 'development') {
-        console.log('[createApiClient] Parsed JSON:', data);
+        logger.debug('api_client_parsed', { endpoint });
       }
       return data;
     },
