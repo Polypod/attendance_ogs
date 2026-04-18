@@ -1,21 +1,4 @@
 import { ClassModel } from '../../models/Class';
-import { ConfigService } from '../../services/ConfigService';
-
-// Ensure ConfigService is initialized with local config
-beforeAll(async () => {
-  // ConfigService.initialize() reads config/system.yaml on startup in the app,
-  // but in tests we can ensure getCategoryValues() works by calling getInstance()
-  // which will throw if not initialized. In this test environment, the file
-  // exists in the repo so calling getCategories/getCategoryValues is safe.
-  // If needed, we could call ConfigService.initialize() asynchronously here.
-  try {
-    await ConfigService.initialize();
-  } catch (err: unknown) {
-    // If initialization fails, let tests proceed; validator will throw accordingly
-    // but we don't want the test harness to crash here.
-    console.warn('ConfigService initialization in test failed, continuing:', (err instanceof Error ? err.message : err));
-  }
-});
 
 describe('ClassModel validation', () => {
   it('creates successfully with valid categories', async () => {
