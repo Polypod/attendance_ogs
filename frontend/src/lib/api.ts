@@ -39,8 +39,10 @@ export async function fetchWithAuth(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
+  const debug = logger.isDebugEnabled();
+
   // Only log in development mode to avoid exposing sensitive data in production
-  if (process.env.NODE_ENV === 'development') {
+  if (debug && process.env.NODE_ENV === 'development') {
     const safeHeaders = { ...headers };
     delete safeHeaders['Authorization'];
     logger.debug('api_request', { endpoint, method: options.method ?? 'GET', headers: safeHeaders });
@@ -52,7 +54,7 @@ export async function fetchWithAuth(
     body: options.body ? JSON.stringify(options.body) : undefined
   });
 
-  if (process.env.NODE_ENV === 'development') {
+  if (debug && process.env.NODE_ENV === 'development') {
     logger.debug('api_response', { endpoint, status: response.status, ok: response.ok });
   }
 
@@ -84,15 +86,15 @@ export async function fetchWithAuth(
 export function createApiClient(token?: string) {
   return {
     get: async (endpoint: string) => {
-      if (process.env.NODE_ENV === 'development') {
+      if (debug && process.env.NODE_ENV === 'development') {
         logger.debug('api_client_get', { endpoint });
       }
       const response = await fetchWithAuth(endpoint, { method: "GET", token });
-      if (process.env.NODE_ENV === 'development') {
+      if (debug && process.env.NODE_ENV === 'development') {
         logger.debug('api_client_parse_json', { endpoint });
       }
       const data = await response.json();
-      if (process.env.NODE_ENV === 'development') {
+      if (debug && process.env.NODE_ENV === 'development') {
         logger.debug('api_client_parsed', { endpoint });
       }
       return data;

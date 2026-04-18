@@ -83,6 +83,7 @@ export default function DashboardPage() {
     if (!session?.accessToken) return;
     setLoading(true);
     setError(null);
+    const debug = logger.isDebugEnabled();
     try {
       const api = createApiClient((session as any)?.accessToken);
       // Determine fetch range: when showing a custom date range use that,
@@ -90,10 +91,14 @@ export default function DashboardPage() {
       const fetchStart = showDateRange ? startDate : getTodayISO();
       const fetchEnd = showDateRange ? endDate : getISOPlusDays(7);
       const expandParam = '&expandRecurring=true';
-      logger.debug('DashboardPage.fetchSchedules_start', { fetchStart, fetchEnd, showDateRange, expandParam });
+      if (debug) {
+        logger.debug('DashboardPage.fetchSchedules_start', { fetchStart, fetchEnd, showDateRange, expandParam });
+      }
       const data = await api.get(`/api/schedules?startDate=${fetchStart}&endDate=${fetchEnd}${expandParam}`);
       const schedulesData = data.data || [];
-      logger.debug('DashboardPage.fetchSchedules_success', { count: schedulesData.length });
+      if (debug) {
+        logger.debug('DashboardPage.fetchSchedules_success', { count: schedulesData.length });
+      }
       setSchedules(schedulesData);
 
       // Fetch attendance for completed classes

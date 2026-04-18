@@ -108,11 +108,14 @@ export default function StudentsPage() {
 
   // Fetch students
   useEffect(() => {
-    logger.debug('StudentsPage.session_state', {
-      status,
-      hasSession: !!session,
-      hasAccessToken: !!session?.accessToken,
-    });
+    const debug = logger.isDebugEnabled();
+    if (debug) {
+      logger.debug('StudentsPage.session_state', {
+        status,
+        hasSession: !!session,
+        hasAccessToken: !!session?.accessToken,
+      });
+    }
     if (status === 'authenticated' && session?.accessToken) {
       fetchStudents();
     } else if (status === 'unauthenticated') {
@@ -122,19 +125,26 @@ export default function StudentsPage() {
   }, [status, session]);
 
   async function fetchStudents() {
+    const debug = logger.isDebugEnabled();
     if (!session?.accessToken) {
-      logger.debug('StudentsPage.fetchStudents_skipped_no_token');
+      if (debug) {
+        logger.debug('StudentsPage.fetchStudents_skipped_no_token');
+      }
       return;
     }
     setLoading(true);
     setError(null);
     try {
       const api = createApiClient((session as any)?.accessToken);
-      logger.debug('StudentsPage.fetchStudents_calling_api');
+      if (debug) {
+        logger.debug('StudentsPage.fetchStudents_calling_api');
+      }
       const data = await api.get("/api/students");
-      logger.debug('StudentsPage.fetchStudents_success', {
-        count: Array.isArray(data?.data) ? data.data.length : undefined,
-      });
+      if (debug) {
+        logger.debug('StudentsPage.fetchStudents_success', {
+          count: Array.isArray(data?.data) ? data.data.length : undefined,
+        });
+      }
       setStudents(data.data || []);
     } catch (e: unknown) {
       logger.error('StudentsPage.fetchStudents_failed', {
@@ -143,7 +153,9 @@ export default function StudentsPage() {
       if (e instanceof Error) setError(e.message);
       else setError("Failed to fetch students");
     } finally {
-      logger.debug('StudentsPage.fetchStudents_complete');
+      if (debug) {
+        logger.debug('StudentsPage.fetchStudents_complete');
+      }
       setLoading(false);
     }
   }

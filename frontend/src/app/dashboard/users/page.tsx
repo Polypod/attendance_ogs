@@ -78,11 +78,14 @@ export default function UsersPage() {
 
   // Fetch users
   useEffect(() => {
-    logger.debug('UsersPage.session_state', {
-      status,
-      hasSession: !!session,
-      hasAccessToken: !!session?.accessToken,
-    });
+    const debug = logger.isDebugEnabled();
+    if (debug) {
+      logger.debug('UsersPage.session_state', {
+        status,
+        hasSession: !!session,
+        hasAccessToken: !!session?.accessToken,
+      });
+    }
     if (status === 'authenticated' && session?.accessToken) {
       fetchUsers();
     } else if (status === 'unauthenticated') {
