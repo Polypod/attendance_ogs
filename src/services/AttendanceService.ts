@@ -322,7 +322,9 @@ export class AttendanceService {
       // Note: student_id can be null for "other students" attendance
       const filteredRecords = attendanceRecords.filter(r => r.class_schedule_id);
 
-      logger.debug('AttendanceService.getClassAttendance_returning', { count: filteredRecords.length });
+      if (logger.isDebugEnabled()) {
+        logger.debug('AttendanceService.getClassAttendance_returning', { count: filteredRecords.length });
+      }
       // Normalize `student_id` to a string id (tests and API expect ID strings)
       const normalized = filteredRecords.map(rec => {
         const studentField: any = rec.student_id;

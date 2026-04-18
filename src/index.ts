@@ -34,7 +34,9 @@ app.use('/api', apiLimiter);
 
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
-  logger.debug('http_request', { method: req.method, path: req.path });
+  if (logger.isDebugEnabled()) {
+    logger.debug('http_request', { method: req.method, path: req.path });
+  }
   next();
 });
 
