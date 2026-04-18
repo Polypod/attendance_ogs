@@ -53,6 +53,7 @@ import {
 import { sessionKeysToSessions } from "./sessionFilters";
 import { ReportResultsPanel } from "./ReportResultsPanel";
 import { ColumnsPanel } from "./ColumnsPanel";
+import { PresetsPanel } from "./PresetsPanel";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -710,95 +711,24 @@ export default function ReportsPage() {
                 </div>
               </div>
 
-              <div className="rounded-md border p-3 space-y-3">
-                <div className="text-sm font-medium">Presets</div>
-
-                <div>
-                  <label htmlFor="preset" className="block text-sm font-medium mb-1">
-                    Select preset
-                  </label>
-                  <Select
-                    value={selectedPresetId ? selectedPresetId : "__none"}
-                    onValueChange={(v) => {
-                      if (v === "__none") {
-                        setSelectedPresetId("");
-                        return;
-                      }
-
-                      const preset = presets.find((p) => p._id === v);
-                      setSelectedPresetId(v);
-
-                      if (preset) {
-                        setPresetError(null);
-                        setPresetNameDraft(preset.name);
-                        setPresetSharedDraft(preset.shared);
-                        applyPresetState(preset.state);
-                      }
-                    }}
-                  >
-                    <SelectTrigger id="preset" className="w-full">
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">None</SelectItem>
-                      {presets.map((p) => (
-                        <SelectItem key={p._id} value={p._id}>
-                          {p.shared ? `Shared: ${p.name}` : `My: ${p.name}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label htmlFor="presetName" className="block text-sm font-medium mb-1">
-                    Preset name
-                  </label>
-                  <Input
-                    id="presetName"
-                    value={presetNameDraft}
-                    onChange={(e) => setPresetNameDraft(e.target.value)}
-                    placeholder="e.g. My weekly view"
-                  />
-                </div>
-
-                {isAdmin && (
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={presetSharedDraft} onCheckedChange={(v) => setPresetSharedDraft(v === true)} />
-                    <span>Shared</span>
-                  </label>
-                )}
-
-                {instructorEditingShared && (
-                  <p className="text-xs text-muted-foreground">
-                    Shared presets are read-only for instructors.
-                  </p>
-                )}
-
-                <div className="flex flex-wrap gap-2">
-                  <Button type="button" onClick={handleSavePreset} disabled={presetBusy || presetNameDraft.trim().length < 1}>
-                    Save
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleUpdatePreset}
-                    disabled={presetBusy || !selectedPresetId || instructorEditingShared}
-                  >
-                    Update
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleDeletePreset}
-                    disabled={presetBusy || !selectedPresetId || instructorEditingShared}
-                  >
-                    Delete
-                  </Button>
-                </div>
-
-                {presetError && <p className="text-xs text-destructive">{presetError}</p>}
-              </div>
+              <PresetsPanel
+                presets={presets}
+                selectedPresetId={selectedPresetId}
+                presetNameDraft={presetNameDraft}
+                presetSharedDraft={presetSharedDraft}
+                presetBusy={presetBusy}
+                presetError={presetError}
+                isAdmin={isAdmin}
+                instructorEditingShared={instructorEditingShared}
+                onSelectedPresetIdChange={setSelectedPresetId}
+                onPresetNameDraftChange={setPresetNameDraft}
+                onPresetSharedDraftChange={setPresetSharedDraft}
+                onPresetErrorChange={setPresetError}
+                onApplyPresetState={applyPresetState}
+                onSave={handleSavePreset}
+                onUpdate={handleUpdatePreset}
+                onDelete={handleDeletePreset}
+              />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
