@@ -52,6 +52,7 @@ import {
 
 import { sessionKeysToSessions } from "./sessionFilters";
 import { ReportResultsPanel } from "./ReportResultsPanel";
+import { ColumnsPanel } from "./ColumnsPanel";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -1065,48 +1066,14 @@ export default function ReportsPage() {
                 </Button>
               </div>
 
-              <div>
-                <div className="text-sm font-medium mb-2">Columns</div>
-                <div className="space-y-2">
-                  {orderedColumns.map((c, idx) => {
-                    const checked = activeColumnVisibility[c.key] !== false;
-                    return (
-                      <div key={c.key} className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) => {
-                            const nextChecked = v === true;
-                            setActiveColumnVisibility((prev) => ({ ...prev, [c.key]: nextChecked }));
-                          }}
-                        />
-                        <span className="flex-1">{c.label}</span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-7 w-7 p-0"
-                          disabled={idx === 0}
-                          onClick={() => moveColumn(c.key, -1)}
-                          aria-label={`Move ${c.label} up`}
-                          title="Move up"
-                        >
-                          ↑
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-7 w-7 p-0"
-                          disabled={idx === orderedColumns.length - 1}
-                          onClick={() => moveColumn(c.key, 1)}
-                          aria-label={`Move ${c.label} down`}
-                          title="Move down"
-                        >
-                          ↓
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <ColumnsPanel
+                orderedColumns={orderedColumns}
+                activeColumnVisibility={activeColumnVisibility}
+                onSetColumnVisible={(key, visible) =>
+                  setActiveColumnVisibility((prev) => ({ ...prev, [key]: visible }))
+                }
+                onMoveColumn={moveColumn}
+              />
             </div>
           </Card>
 
