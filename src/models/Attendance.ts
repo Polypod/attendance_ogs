@@ -88,6 +88,9 @@ attendanceSchema.index(
   { unique: true }
 );
 
+// Optimize reporting queries that primarily filter by date range (and often schedule/student/status)
+attendanceSchema.index({ date: 1, class_schedule_id: 1, student_id: 1, status: 1 });
+
 // Create and export the model
 export const AttendanceModel = model<IAttendanceDocument, IAttendanceModel>('Attendance', attendanceSchema);
 
