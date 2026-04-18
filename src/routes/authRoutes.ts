@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { authController } from '@/controllers/AuthController';
 import { authenticate } from '@/middleware/auth';
-import { authLimiter, authLimiterStore } from '@/middleware/rateLimiter';
+import { authLimiter, authLimiterStore, refreshTokenLimiter } from '@/middleware/rateLimiter';
 import { validateRequest } from '@/middleware/validation';
 import {
   loginSchema,
@@ -26,7 +26,7 @@ router.get('/rate-limit-status', async (req, res) => {
   const resetAt = info?.resetTime ? Math.ceil(info.resetTime.getTime() / 1000) : null;
   res.json({ rateLimited: limited, resetAt });
 });
-router.post('/refresh-token', validateRequest(refreshTokenSchema), authController.refreshToken);
+router.post('/refresh-token', refreshTokenLimiter, validateRequest(refreshTokenSchema), authController.refreshToken);
 
 // Protected routes (require authentication)
 router.get('/me', authenticate, authController.getMe);

@@ -2,6 +2,14 @@
 import rateLimit, { MemoryStore } from 'express-rate-limit';
 
 export const authLimiterStore = new MemoryStore();
+export const refreshTokenLimiterStore = new MemoryStore();
+
+const getClientRateLimitKey = (req: any): string => {
+  // Use forwarded IP from Next.js proxy, fallback to direct IP
+  const forwarded = req.headers['x-real-ip'] || req.headers['x-forwarded-for'];
+  const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0].trim();
+  return ip || req.ip || 'unknown';
+};
 
 /**
  * Rate limiter for authentication endpoints (login, register)
@@ -19,12 +27,26 @@ export const authLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   skipSuccessfulRequests: false, // Count successful requests
   skipFailedRequests: false, // Count failed requests as well
-  keyGenerator: (req) => {
-    // Use forwarded IP from Next.js proxy, fallback to direct IP
-    const forwarded = req.headers['x-real-ip'] || req.headers['x-forwarded-for'];
-    const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0].trim();
-    return ip || req.ip || 'unknown';
-  }
+  keyGenerator: getClientRateLimitKey
+});
+
+/**
+ * Rate limiter for refresh token endpoint
+ * More permissive than login, but still prevents abuse.
+ */
+export const refreshTokenLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // allow periodic refresh without being too strict
+  store: refreshTokenLimiterStore,
+  message: {
+    success: false,
+    message: 'Too many refresh attempts. Please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+  keyGenerator: getClientRateLimitKey
 });
 
 /**
@@ -40,5 +62,10 @@ export const apiLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: false
+  skipSuccessfulRequests: false,
+  keyGenerator: getClientRateLimitKey,
+  skip: (req) => {
+    // Keep health checks + rate-limit status lightweight.
+    return req.originalUrl === '/api/health' || req.originalUrl === '/api/auth/rate-limit-status';
+  }
 });

@@ -15,6 +15,7 @@ import { reportPresetRoutes } from './routes/reportPresetRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { applyMiddleware } from './middleware/middleware';
 import { authenticate, authorize } from './middleware/auth';
+import { apiLimiter } from './middleware/rateLimiter';
 import { UserRoleEnum } from './types/interfaces';
 import { ConfigService } from './services/ConfigService';
 import { logger } from './utils/logger';
@@ -27,6 +28,9 @@ const PORT = Number(process.env.PORT ?? 3000);
 
 // Apply common middleware
 applyMiddleware(app);
+
+// General API rate limiting
+app.use('/api', apiLimiter);
 
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
