@@ -58,6 +58,8 @@ import {
   getRawColumns,
 } from "./columns";
 
+import { sessionKeysToSessions } from "./sessionFilters";
+
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
   const { isAdmin, isInstructor } = useAuth();
@@ -299,13 +301,7 @@ export default function ReportsPage() {
         if (onlyActiveStudents) body.onlyActiveStudents = true;
         if (studentIds.length > 0) body.studentIds = studentIds;
         if (selectedSessionKeys.length > 0) {
-          body.sessions = selectedSessionKeys
-            .map((k) => {
-              const [classScheduleId, ymd] = k.split(":");
-              if (!classScheduleId || !ymd) return null;
-              return { classScheduleId, date: ymd };
-            })
-            .filter(Boolean);
+          body.sessions = sessionKeysToSessions(selectedSessionKeys);
         }
         if (classIds.length > 0) body.classIds = classIds;
         if (instructorsSelected.length > 0) body.instructors = instructorsSelected;
@@ -368,13 +364,7 @@ export default function ReportsPage() {
   ]);
 
   const buildPresetState = (): ReportPresetState => {
-    const sessions = selectedSessionKeys
-      .map((k) => {
-        const [classScheduleId, ymd] = k.split(":");
-        if (!classScheduleId || !ymd) return null;
-        return { classScheduleId, date: ymd } satisfies ReportPresetSessionFilter;
-      })
-      .filter(Boolean) as ReportPresetSessionFilter[];
+    const sessions = sessionKeysToSessions(selectedSessionKeys);
 
     const trimmedSearch = search.trim();
 
@@ -551,13 +541,7 @@ export default function ReportsPage() {
   };
 
   const handleExportCsv = () => {
-    const sessions = selectedSessionKeys
-      .map((k) => {
-        const [classScheduleId, ymd] = k.split(":");
-        if (!classScheduleId || !ymd) return null;
-        return { classScheduleId, date: ymd };
-      })
-      .filter(Boolean);
+    const sessions = sessionKeysToSessions(selectedSessionKeys);
 
     const payload: Record<string, any> = {
       mode,
