@@ -56,6 +56,7 @@ import { ColumnsPanel } from "./ColumnsPanel";
 import { PresetsPanel } from "./PresetsPanel";
 import { StatusFilterPanel } from "./StatusFilterPanel";
 import { DateRangeSearchPanel } from "./DateRangeSearchPanel";
+import { StudentsFilterPanel } from "./StudentsFilterPanel";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -752,62 +753,19 @@ export default function ReportsPage() {
                 }}
               />
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium">Students</label>
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-2 text-xs text-muted-foreground select-none">
-                      <Checkbox
-                        checked={onlyActiveStudents}
-                        onCheckedChange={(v) => setOnlyActiveStudents(v === true)}
-                      />
-                      <span>Only active</span>
-                    </label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={studentIds.length === 0}
-                      onClick={() => setStudentIds([])}
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-                <div className="rounded-md border p-2 min-h-40 max-h-40 overflow-auto space-y-2">
-                  {students
-                    .filter((s) => {
-                      if (!onlyActiveStudents) return true;
-                      const isActive = (s.active ?? true) !== false && (s.status ?? 'active') !== 'inactive';
-                      return isActive;
-                    })
-                    .slice()
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((s) => {
-                      const checked = studentIds.includes(s._id);
-                      return (
-                        <label key={s._id} className="flex items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(v) => {
-                              const nextChecked = v === true;
-                              setStudentIds((prev) => {
-                                if (nextChecked) return Array.from(new Set([...prev, s._id]));
-                                return prev.filter((id) => id !== s._id);
-                              });
-                            }}
-                          />
-                          <span className="truncate" title={s.name}>
-                            {s.name}
-                          </span>
-                        </label>
-                      );
-                    })}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {studentIds.length === 0 ? "All students" : `Selected: ${studentIds.length}`}
-                </div>
-              </div>
+              <StudentsFilterPanel
+                students={students}
+                selectedStudentIds={studentIds}
+                onlyActiveStudents={onlyActiveStudents}
+                onOnlyActiveStudentsChange={setOnlyActiveStudents}
+                onClearSelected={() => setStudentIds([])}
+                onToggleStudent={(studentId, nextChecked) => {
+                  setStudentIds((prev) => {
+                    if (nextChecked) return Array.from(new Set([...prev, studentId]));
+                    return prev.filter((id) => id !== studentId);
+                  });
+                }}
+              />
 
               <div>
                 <div className="flex items-center justify-between mb-1">
