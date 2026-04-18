@@ -84,6 +84,8 @@ export async function fetchWithAuth(
  * Use this in client components with useSession()
  */
 export function createApiClient(token?: string) {
+  const debug = logger.isDebugEnabled();
+
   return {
     get: async (endpoint: string) => {
       if (debug && process.env.NODE_ENV === 'development') {
