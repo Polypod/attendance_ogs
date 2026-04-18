@@ -348,12 +348,16 @@ export class ScheduleController {
         }
       }
       
-      // Update other fields (using type assertion for dynamic key access)
-      Object.keys(updateData).forEach((key: string) => {
-        if (key !== 'sessions' && key !== 'status') {
-          (schedule as any)[key as keyof typeof schedule] = updateData[key];
-        }
-      });
+      // Update other fields explicitly (avoid dynamic key assignment)
+      if (updateData.date !== undefined) schedule.date = updateData.date;
+      if (updateData.start_time !== undefined) schedule.start_time = updateData.start_time;
+      if (updateData.end_time !== undefined) schedule.end_time = updateData.end_time;
+      if (updateData.day_of_week !== undefined) schedule.day_of_week = updateData.day_of_week;
+      if (updateData.days_of_week !== undefined) schedule.days_of_week = updateData.days_of_week;
+      if (updateData.recurring !== undefined) schedule.recurring = updateData.recurring;
+      if (updateData.recurrence_end_date !== undefined) {
+        schedule.recurrence_end_date = updateData.recurrence_end_date;
+      }
       
       // Save with validation and ensure write is acknowledged
       await schedule.save({ wtimeout: 5000, w: 'majority' });
