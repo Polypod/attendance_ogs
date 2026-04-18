@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { ClassScheduleModel } from '../models/ClassSchedule';
 import { CreateClassScheduleDto, ClassStatusEnum, ClassScheduleSession } from '../types/interfaces';
 import { logger } from '../utils/logger';
+import { deletionService } from '../services/DeletionService';
 
 export class ScheduleController {
   // Get all class schedules
@@ -391,7 +392,8 @@ export class ScheduleController {
   async deleteSchedule(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const deletedSchedule = await ClassScheduleModel.findByIdAndDelete(id);
+      const result = await deletionService.deleteScheduleCascade(id);
+      const deletedSchedule = result?.deletedSchedule;
 
       if (!deletedSchedule) {
         res.status(404).json({ 
@@ -400,8 +402,6 @@ export class ScheduleController {
         });
         return;
       }
-
-      // TODO: Also delete related attendance records
       
       res.status(200).json({ 
         success: true, 

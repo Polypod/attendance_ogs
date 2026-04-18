@@ -1,6 +1,7 @@
 // src/controllers/ClassController.ts - Class business logic
 import { Request, Response } from 'express';
 import { ClassModel } from '../models/Class';
+import { deletionService } from '../services/DeletionService';
 import { CreateClassDto } from '../types/interfaces';
 
 export class ClassController {
@@ -109,7 +110,8 @@ export class ClassController {
   async deleteClass(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const deletedClass = await ClassModel.findByIdAndDelete(id);
+      const result = await deletionService.deleteClassCascade(id);
+      const deletedClass = result?.deletedClass;
 
       if (!deletedClass) {
         res.status(404).json({ 
@@ -118,8 +120,6 @@ export class ClassController {
         });
         return;
       }
-
-      // TODO: Also delete related schedules
       
       res.status(200).json({ 
         success: true, 
