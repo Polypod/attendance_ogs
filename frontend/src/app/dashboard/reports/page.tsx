@@ -55,6 +55,7 @@ import { ReportResultsPanel } from "./ReportResultsPanel";
 import { ColumnsPanel } from "./ColumnsPanel";
 import { PresetsPanel } from "./PresetsPanel";
 import { StatusFilterPanel } from "./StatusFilterPanel";
+import { DateRangeSearchPanel } from "./DateRangeSearchPanel";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -731,33 +732,14 @@ export default function ReportsPage() {
                 onDelete={handleDeletePreset}
               />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="from" className="block text-sm font-medium mb-1">
-                    From
-                  </label>
-                  <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-                </div>
-
-                <div>
-                  <label htmlFor="to" className="block text-sm font-medium mb-1">
-                    To
-                  </label>
-                  <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="search" className="block text-sm font-medium mb-1">
-                  Search
-                </label>
-                <Input
-                  id="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search students, classes, instructors..."
-                />
-              </div>
+              <DateRangeSearchPanel
+                from={from}
+                to={to}
+                search={search}
+                onFromChange={setFrom}
+                onToChange={setTo}
+                onSearchChange={setSearch}
+              />
 
               <StatusFilterPanel
                 statuses={ATTENDANCE_STATUSES}
