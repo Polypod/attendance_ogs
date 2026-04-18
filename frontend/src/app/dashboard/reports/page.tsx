@@ -57,6 +57,7 @@ import { PresetsPanel } from "./PresetsPanel";
 import { StatusFilterPanel } from "./StatusFilterPanel";
 import { DateRangeSearchPanel } from "./DateRangeSearchPanel";
 import { StudentsFilterPanel } from "./StudentsFilterPanel";
+import { ClassesFilterPanel } from "./ClassesFilterPanel";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -767,50 +768,17 @@ export default function ReportsPage() {
                 }}
               />
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium">Classes</label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={classIds.length === 0}
-                    onClick={() => setClassIds([])}
-                  >
-                    Clear
-                  </Button>
-                </div>
-                <div className="rounded-md border p-2 min-h-32 max-h-32 overflow-auto space-y-2">
-                  {classesInRange.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">No classes in range.</div>
-                  ) : (
-                    classesInRange.map((c) => {
-                      const checked = classIds.includes(c.id);
-                      const label = c.instructor ? `${c.name} (${c.instructor})` : c.name;
-                      return (
-                        <label key={c.id} className="flex items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(v) => {
-                              const nextChecked = v === true;
-                              setClassIds((prev) => {
-                                if (nextChecked) return Array.from(new Set([...prev, c.id]));
-                                return prev.filter((id) => id !== c.id);
-                              });
-                            }}
-                          />
-                          <span className="truncate" title={label}>
-                            {label}
-                          </span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {classIds.length === 0 ? "All classes" : `Selected: ${classIds.length}`}
-                </div>
-              </div>
+              <ClassesFilterPanel
+                classesInRange={classesInRange}
+                selectedClassIds={classIds}
+                onClearSelected={() => setClassIds([])}
+                onToggleClass={(classId, nextChecked) => {
+                  setClassIds((prev) => {
+                    if (nextChecked) return Array.from(new Set([...prev, classId]));
+                    return prev.filter((id) => id !== classId);
+                  });
+                }}
+              />
 
               <div>
                 <div className="flex items-center justify-between mb-1">
