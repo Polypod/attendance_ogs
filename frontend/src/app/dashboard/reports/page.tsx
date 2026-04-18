@@ -58,6 +58,7 @@ import { StatusFilterPanel } from "./StatusFilterPanel";
 import { DateRangeSearchPanel } from "./DateRangeSearchPanel";
 import { StudentsFilterPanel } from "./StudentsFilterPanel";
 import { ClassesFilterPanel } from "./ClassesFilterPanel";
+import { SessionsFilterPanel } from "./SessionsFilterPanel";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -780,49 +781,17 @@ export default function ReportsPage() {
                 }}
               />
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium">Sessions</label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={selectedSessionKeys.length === 0}
-                    onClick={() => setSelectedSessionKeys([])}
-                  >
-                    Clear
-                  </Button>
-                </div>
-                <div className="rounded-md border p-2 min-h-48 max-h-48 overflow-auto space-y-2">
-                  {sessionOptions.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">No sessions in range.</div>
-                  ) : (
-                    sessionOptions.map((opt) => {
-                      const checked = selectedSessionKeys.includes(opt.key);
-                      return (
-                        <label key={opt.key} className="flex items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(v) => {
-                              const nextChecked = v === true;
-                              setSelectedSessionKeys((prev) => {
-                                if (nextChecked) return Array.from(new Set([...prev, opt.key]));
-                                return prev.filter((k) => k !== opt.key);
-                              });
-                            }}
-                          />
-                          <span className="truncate" title={opt.label}>
-                            {opt.label}
-                          </span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {selectedSessionKeys.length === 0 ? "All sessions" : `Selected: ${selectedSessionKeys.length}`}
-                </div>
-              </div>
+              <SessionsFilterPanel
+                sessionOptions={sessionOptions}
+                selectedSessionKeys={selectedSessionKeys}
+                onClearSelected={() => setSelectedSessionKeys([])}
+                onToggleSession={(sessionKey, nextChecked) => {
+                  setSelectedSessionKeys((prev) => {
+                    if (nextChecked) return Array.from(new Set([...prev, sessionKey]));
+                    return prev.filter((k) => k !== sessionKey);
+                  });
+                }}
+              />
 
               <div>
                 <div className="flex items-center justify-between mb-1">
