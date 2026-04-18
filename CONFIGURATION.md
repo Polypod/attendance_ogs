@@ -60,7 +60,7 @@ NextAuth requires both `NEXTAUTH_SECRET` and `NEXTAUTH_URL` to function:
 
 **In `frontend/.env.local`:**
 ```
-NEXTAUTH_SECRET=dev_secret_change_me_in_production
+NEXTAUTH_SECRET=change-me-generate-a-secure-random-string
 NEXTAUTH_URL=http://localhost:4001
 ```
 
@@ -77,12 +77,12 @@ FRONTEND_URL=http://localhost:4001
 
 **In root `.env`:**
 ```
-MONGODB_URI=mongodb://root:ogsadmin@localhost:27019/attendance?authSource=admin
+MONGODB_URI=mongodb://<user>:<password>@localhost:27019/attendance?authSource=admin
 ```
 
 The connection string includes:
 - **Host & Port**: `localhost:27019` (Docker port mapping) or `localhost:27017` (local MongoDB)
-- **Credentials**: `root:ogsadmin` (must match docker-compose.yml)
+- **Credentials**: `<user>:<password>` (must match docker-compose.yml)
 - **Database**: `attendance`
 - **Auth Source**: `admin` (required for authentication)
 
@@ -264,7 +264,7 @@ pnpm test
 
 | Variable | File | Required | Example | Purpose |
 |----------|------|----------|---------|---------|
-| `MONGODB_URI` | `.env` | ✅ | `mongodb://root:ogsadmin@localhost:27019/attendance?authSource=admin` | Database connection |
+| `MONGODB_URI` | `.env` | ✅ | `mongodb://<user>:<password>@localhost:27019/attendance?authSource=admin` | Database connection |
 | `PORT` | `.env` | ✅ | `4000` | Backend server port |
 | `FRONTEND_URL` | `.env` | ✅ | `http://localhost:4001` | Frontend origin for CORS |
 | `JWT_SECRET` | `.env` | ✅ | `[32+ character string]` | JWT signing key |
@@ -282,7 +282,7 @@ pnpm test
 - [ ] Change admin password from `ChangeMe123!`
 - [ ] Update `MONGODB_URI` to production database
 - [ ] Set `NODE_ENV=production` in `.env`
-- [ ] Use secure MongoDB credentials (not default `root:ogsadmin`)
+- [ ] Use secure MongoDB credentials (avoid weak/default local credentials in production)
 - [ ] Configure proper FRONTEND_URL for production domain
 - [ ] Enable HTTPS for all endpoints
 - [ ] Implement rate limiting for API endpoints

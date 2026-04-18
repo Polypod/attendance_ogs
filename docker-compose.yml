@@ -5,9 +5,9 @@ services:
     image: mongo:latest
     container_name: attendance-mongodb
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: ogsadmin
-      MONGO_INITDB_DATABASE: attendance
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-attendance}
     ports:
       - "27019:27017"
     volumes:

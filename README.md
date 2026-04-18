@@ -79,7 +79,7 @@ cat > .env.local << EOF
 PORT=4001
 
 # NextAuth Configuration
-NEXTAUTH_SECRET=dev_secret_change_me
+NEXTAUTH_SECRET=change-me-generate-a-secure-random-string
 NEXTAUTH_URL=http://localhost:4001
 
 # Backend API URL (must match PORT in root .env)
@@ -256,8 +256,8 @@ The system uses 5 main collections:
 ### Database Configuration Notes
 
 - **MongoDB Port Mapping**: When using Docker, MongoDB container port 27017 is mapped to host port 27019 to avoid conflicts with locally running MongoDB instances
-- **Default MongoDB Connection**: `mongodb://root:ogsadmin@localhost:27019/attendance?authSource=admin`
-- **Credentials**: Set MONGO_USERNAME and MONGO_PASSWORD in docker-compose.yml as needed
+- **MongoDB Connection (example)**: `mongodb://<user>:<password>@localhost:27019/attendance?authSource=admin`
+- **Credentials**: Must match the values configured in docker-compose.yml (or your local MongoDB)
 
 ## Configuration Management
 
