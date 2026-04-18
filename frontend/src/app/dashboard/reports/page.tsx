@@ -59,6 +59,7 @@ import { DateRangeSearchPanel } from "./DateRangeSearchPanel";
 import { StudentsFilterPanel } from "./StudentsFilterPanel";
 import { ClassesFilterPanel } from "./ClassesFilterPanel";
 import { SessionsFilterPanel } from "./SessionsFilterPanel";
+import { InstructorsFilterPanel } from "./InstructorsFilterPanel";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -793,49 +794,17 @@ export default function ReportsPage() {
                 }}
               />
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium">Instructors</label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={instructorsSelected.length === 0}
-                    onClick={() => setInstructorsSelected([])}
-                  >
-                    Clear
-                  </Button>
-                </div>
-                <div className="rounded-md border p-2 min-h-32 max-h-32 overflow-auto space-y-2">
-                  {instructors.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">No instructors in range.</div>
-                  ) : (
-                    instructors.map((name) => {
-                      const checked = instructorsSelected.includes(name);
-                      return (
-                        <label key={name} className="flex items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(v) => {
-                              const nextChecked = v === true;
-                              setInstructorsSelected((prev) => {
-                                if (nextChecked) return Array.from(new Set([...prev, name]));
-                                return prev.filter((n) => n !== name);
-                              });
-                            }}
-                          />
-                          <span className="truncate" title={name}>
-                            {name}
-                          </span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {instructorsSelected.length === 0 ? "All instructors" : `Selected: ${instructorsSelected.length}`}
-                </div>
-              </div>
+              <InstructorsFilterPanel
+                instructors={instructors}
+                selectedInstructors={instructorsSelected}
+                onClearSelected={() => setInstructorsSelected([])}
+                onToggleInstructor={(name, nextChecked) => {
+                  setInstructorsSelected((prev) => {
+                    if (nextChecked) return Array.from(new Set([...prev, name]));
+                    return prev.filter((n) => n !== name);
+                  });
+                }}
+              />
 
               <div className="flex items-center gap-2 pt-2">
                 <Button
