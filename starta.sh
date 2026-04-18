@@ -9,6 +9,19 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
+format_duration() {
+  local total_seconds="$1"
+  local h=$((total_seconds / 3600))
+  local m=$(((total_seconds % 3600) / 60))
+  local s=$((total_seconds % 60))
+
+  if [ "$h" -gt 0 ]; then
+    printf "%d:%02d:%02d" "$h" "$m" "$s"
+  else
+    printf "%d:%02d" "$m" "$s"
+  fi
+}
+
 echo "=========================================="
 echo "  Karate Attendance System - Startup"
 echo "=========================================="
@@ -44,22 +57,44 @@ case "$choice" in
     echo ""
     echo "Startar produktionsmiljö..."
     echo ""
-    exec ./scripts/start-prod.sh
+    prod_start_seconds=$SECONDS
+    if ./scripts/start-prod.sh; then
+      prod_elapsed_seconds=$((SECONDS - prod_start_seconds))
+      echo ""
+      echo "⏱️  Tid att starta om produktionsmiljön: $(format_duration "$prod_elapsed_seconds")"
+      echo ""
+    else
+      prod_elapsed_seconds=$((SECONDS - prod_start_seconds))
+      echo ""
+      echo "❌ Produktionsmiljön misslyckades att starta om efter: $(format_duration "$prod_elapsed_seconds")"
+      exit 1
+    fi
     ;;
   3)
     echo ""
     echo "Startar båda miljöer..."
     echo ""
     echo "🚀 Startar produktionsmiljö i bakgrunden..."
+    prod_start_seconds=$SECONDS
     ./scripts/start-prod.sh &
     prod_pid=$!
-    sleep 3
     
     echo ""
     echo "🚀 Startar utvecklingsmiljö..."
     echo ""
     ./scripts/start-dev.sh &
     dev_pid=$!
+
+    # Vänta tills produktionsstart-scriptet är klart så vi kan visa hur lång tid det tog
+    if wait "$prod_pid"; then
+      prod_elapsed_seconds=$((SECONDS - prod_start_seconds))
+      prod_duration_text="$(format_duration "$prod_elapsed_seconds")"
+    else
+      prod_elapsed_seconds=$((SECONDS - prod_start_seconds))
+      echo ""
+      echo "❌ Produktionsmiljön misslyckades att starta om efter: $(format_duration "$prod_elapsed_seconds")"
+      exit 1
+    fi
     
     echo ""
     echo "=========================================="
@@ -68,6 +103,7 @@ case "$choice" in
     echo ""
     echo "Production: http://localhost:4010-4011"
     echo "Development: http://localhost:4000-4001"
+    echo "⏱️  Tid att starta om produktionsmiljön: ${prod_duration_text}"
     echo ""
     echo "PM2-kommandon:"
     echo "  pm2 status    - Visa alla processer"
@@ -76,7 +112,7 @@ case "$choice" in
     echo ""
     
     # Wait for processes
-    wait
+    wait "$dev_pid"
     ;;
   *)
     echo ""
