@@ -54,6 +54,7 @@ import { sessionKeysToSessions } from "./sessionFilters";
 import { ReportResultsPanel } from "./ReportResultsPanel";
 import { ColumnsPanel } from "./ColumnsPanel";
 import { PresetsPanel } from "./PresetsPanel";
+import { StatusFilterPanel } from "./StatusFilterPanel";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -758,29 +759,16 @@ export default function ReportsPage() {
                 />
               </div>
 
-              <div>
-                <div className="text-sm font-medium mb-2">Status</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {ATTENDANCE_STATUSES.map((s) => {
-                    const checked = status.includes(s);
-                    return (
-                      <label key={s} className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) => {
-                            const nextChecked = v === true;
-                            setStatus((prev) => {
-                              if (nextChecked) return Array.from(new Set([...prev, s]));
-                              return prev.filter((x) => x !== s);
-                            });
-                          }}
-                        />
-                        <span className="capitalize">{s}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
+              <StatusFilterPanel
+                statuses={ATTENDANCE_STATUSES}
+                selectedStatuses={status}
+                onToggleStatus={(s, nextChecked) => {
+                  setStatus((prev) => {
+                    if (nextChecked) return Array.from(new Set([...prev, s]));
+                    return prev.filter((x) => x !== s);
+                  });
+                }}
+              />
 
               <div>
                 <div className="flex items-center justify-between mb-1">
