@@ -39,6 +39,7 @@ export const errorHandler = (
   logger.error(
     'http_error',
     {
+      requestId: req.requestId,
       statusCode: error.statusCode,
       message: error.message,
       method: req.method,
