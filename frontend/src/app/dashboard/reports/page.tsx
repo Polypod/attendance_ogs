@@ -29,7 +29,6 @@ import {
   type Schedule,
   type SortDir,
   type SortKey,
-  type Student,
   type ViewMode,
 } from "./types";
 
@@ -64,6 +63,7 @@ import { ReportActionsRow } from "./ReportActionsRow";
 import { buildAttendanceExportPayload, buildAttendanceReportRequestBody } from "./payloadBuilders";
 import { buildReportPresetState } from "./presetStateBuilders";
 import { submitHiddenPayloadForm } from "./submitHiddenPayloadForm";
+import { useReportStudents } from "./useReportStudents";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -102,7 +102,6 @@ export default function ReportsPage() {
   const [mode, setMode] = useState<ViewMode>("raw");
   const [groupBy, setGroupBy] = useState<AggregatedGroupBy>("student");
 
-  const [students, setStudents] = useState<Student[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
 
   const [page, setPage] = useState(1);
@@ -112,6 +111,12 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null);
   const [rawReport, setRawReport] = useState<RawAttendanceReportResult | null>(null);
   const [aggregatedReport, setAggregatedReport] = useState<AggregatedAttendanceReportResult | null>(null);
+
+  const { students } = useReportStudents({
+    enabled: canLoad,
+    accessToken,
+    onError: setError,
+  });
 
   const [presets, setPresets] = useState<ReportPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>("");
@@ -178,30 +183,6 @@ export default function ReportsPage() {
 
     return options;
   }, [schedules]);
-
-  // Load students once
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function loadStudents() {
-      if (!canLoad || !accessToken) return;
-      try {
-        const api = createApiClient(accessToken);
-        const data = await api.get("/api/students");
-        const list: Student[] = data?.data ?? [];
-        if (!isCancelled) setStudents(list);
-      } catch (e: unknown) {
-        if (e instanceof Error) setError(normalizeApiErrorMessage(e.message));
-        else setError("Failed to fetch students");
-      }
-    }
-
-    loadStudents();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [accessToken, canLoad]);
 
   // Load schedules whenever date range changes (for schedule + instructor dropdowns)
   useEffect(() => {
