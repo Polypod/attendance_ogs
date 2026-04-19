@@ -15,10 +15,8 @@ const getClientRateLimitKey = (req: any): string => {
     }
   }
 
-  // Use forwarded IP from Next.js proxy, fallback to direct IP
-  const forwarded = req.headers['x-real-ip'] || req.headers['x-forwarded-for'];
-  const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0].trim();
-  if (ip) return ipKeyGenerator(ip);
+  // IP-based fallback. When the app runs behind a trusted reverse proxy, Express
+  // populates `req.ip` from X-Forwarded-For according to `trust proxy`.
   if (req.ip) return ipKeyGenerator(req.ip);
   return 'unknown';
 };

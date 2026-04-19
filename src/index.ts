@@ -2,7 +2,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import rateLimit from 'express-rate-limit';
 import { studentRoutes } from './routes/studentRoutes';
 import { classRoutes } from './routes/classRoutes';
 import { scheduleRoutes } from './routes/scheduleRoutes';
@@ -23,6 +22,9 @@ import { logger } from './utils/logger';
 dotenv.config();
 
 const app = express();
+// Only trust proxy headers from loopback. This prevents arbitrary clients from
+// spoofing X-Forwarded-For while still supporting local reverse proxies.
+app.set('trust proxy', 'loopback');
 // Ensure PORT is a number (env vars are strings)
 const PORT = Number(process.env.PORT ?? 3000);
 
