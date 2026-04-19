@@ -63,6 +63,7 @@ import { InstructorsFilterPanel } from "./InstructorsFilterPanel";
 import { ReportActionsRow } from "./ReportActionsRow";
 import { buildAttendanceExportPayload, buildAttendanceReportRequestBody } from "./payloadBuilders";
 import { buildReportPresetState } from "./presetStateBuilders";
+import { submitHiddenPayloadForm } from "./submitHiddenPayloadForm";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -550,20 +551,10 @@ export default function ReportsPage() {
       status,
     });
 
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = "/api/reports/attendance/export/csv";
-    form.style.display = "none";
-
-    const input = document.createElement("input");
-    input.type = "hidden";
-    input.name = "payload";
-    input.value = JSON.stringify(payload);
-
-    form.appendChild(input);
-    document.body.appendChild(form);
-    form.submit();
-    form.remove();
+    submitHiddenPayloadForm({
+      action: "/api/reports/attendance/export/csv",
+      payload,
+    });
   };
 
   const rawColumns = useMemo<ColumnDefinition[]>(() => getRawColumns(), []);
