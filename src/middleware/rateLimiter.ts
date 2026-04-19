@@ -1,14 +1,29 @@
 // src/middleware/rateLimiter.ts - Rate limiting middleware for API security
+import crypto from 'crypto';
 import rateLimit, { MemoryStore } from 'express-rate-limit';
 
 export const authLimiterStore = new MemoryStore();
 export const refreshTokenLimiterStore = new MemoryStore();
 
 const getClientRateLimitKey = (req: any): string => {
+  const authHeader = req.headers?.authorization;
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice('Bearer '.length).trim();
+    if (token) {
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex').slice(0, 16);
+      return `bearer:${tokenHash}`;
+    }
+  }
+
   // Use forwarded IP from Next.js proxy, fallback to direct IP
   const forwarded = req.headers['x-real-ip'] || req.headers['x-forwarded-for'];
   const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0].trim();
   return ip || req.ip || 'unknown';
+};
+
+const isAuthenticatedRequest = (req: any): boolean => {
+  const authHeader = req.headers?.authorization;
+  return typeof authHeader === 'string' && authHeader.startsWith('Bearer ');
 };
 
 /**
@@ -55,7 +70,7 @@ export const refreshTokenLimiter = rateLimit({
  */
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
+  max: (req) => (isAuthenticatedRequest(req) ? 1000 : 100),
   message: {
     success: false,
     message: 'Too many requests from this IP. Please try again later.'
@@ -66,6 +81,11 @@ export const apiLimiter = rateLimit({
   keyGenerator: getClientRateLimitKey,
   skip: (req) => {
     // Keep health checks + rate-limit status lightweight.
-    return req.originalUrl === '/api/health' || req.originalUrl === '/api/auth/rate-limit-status';
+    return (
+      req.originalUrl === '/api/health' ||
+      req.originalUrl === '/api/auth/rate-limit-status' ||
+      req.originalUrl === '/api/auth/login' ||
+      req.originalUrl === '/api/auth/refresh-token'
+    );
   }
 });
