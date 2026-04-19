@@ -60,6 +60,7 @@ import { StudentsFilterPanel } from "./StudentsFilterPanel";
 import { ClassesFilterPanel } from "./ClassesFilterPanel";
 import { SessionsFilterPanel } from "./SessionsFilterPanel";
 import { InstructorsFilterPanel } from "./InstructorsFilterPanel";
+import { ReportActionsRow } from "./ReportActionsRow";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -806,29 +807,21 @@ export default function ReportsPage() {
                 }}
               />
 
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setFrom(defaultFrom);
-                    setTo(today);
-                    setStudentIds([]);
-                    setOnlyActiveStudents(true);
-                    setSelectedSessionKeys([]);
-                    setClassIds([]);
-                    setInstructorsSelected([]);
-                    setStatus(["present"]);
-                    setSearch("");
-                  }}
-                >
-                  Reset
-                </Button>
-
-                <Button type="button" onClick={handleExportCsv} disabled={loading || visibleColumns.length === 0}>
-                  Export CSV
-                </Button>
-              </div>
+              <ReportActionsRow
+                onReset={() => {
+                  setFrom(defaultFrom);
+                  setTo(today);
+                  setStudentIds([]);
+                  setOnlyActiveStudents(true);
+                  setSelectedSessionKeys([]);
+                  setClassIds([]);
+                  setInstructorsSelected([]);
+                  setStatus(["present"]);
+                  setSearch("");
+                }}
+                onExportCsv={handleExportCsv}
+                exportDisabled={loading || visibleColumns.length === 0}
+              />
 
               <ColumnsPanel
                 orderedColumns={orderedColumns}
