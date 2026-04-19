@@ -1,6 +1,6 @@
 // src/middleware/rateLimiter.ts - Rate limiting middleware for API security
 import crypto from 'crypto';
-import rateLimit, { MemoryStore } from 'express-rate-limit';
+import rateLimit, { MemoryStore, ipKeyGenerator } from 'express-rate-limit';
 
 export const authLimiterStore = new MemoryStore();
 export const refreshTokenLimiterStore = new MemoryStore();
@@ -18,7 +18,9 @@ const getClientRateLimitKey = (req: any): string => {
   // Use forwarded IP from Next.js proxy, fallback to direct IP
   const forwarded = req.headers['x-real-ip'] || req.headers['x-forwarded-for'];
   const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0].trim();
-  return ip || req.ip || 'unknown';
+  if (ip) return ipKeyGenerator(ip);
+  if (req.ip) return ipKeyGenerator(req.ip);
+  return 'unknown';
 };
 
 const isAuthenticatedRequest = (req: any): boolean => {
