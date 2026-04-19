@@ -21,3 +21,13 @@ export async function fetchApiList<T>(accessToken: string, endpoint: string): Pr
   const list = await fetchApiData<T[]>(accessToken, endpoint);
   return list ?? [];
 }
+
+export async function fetchApiPostData<TResponse, TBody>(
+  accessToken: string,
+  endpoint: string,
+  body: TBody
+): Promise<TResponse | undefined> {
+  const api = createApiClient(accessToken);
+  const response = (await api.post(endpoint, body)) as ApiEnvelope<TResponse> | undefined;
+  return response?.data;
+}

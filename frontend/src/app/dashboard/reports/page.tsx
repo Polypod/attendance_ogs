@@ -65,6 +65,7 @@ import { submitHiddenPayloadForm } from "./submitHiddenPayloadForm";
 import { useReportStudents } from "./useReportStudents";
 import { useReportSchedules } from "./useReportSchedules";
 import { useReportPresets } from "./useReportPresets";
+import { fetchApiPostData, getApiErrorMessage } from "./fetchHelpers";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -241,18 +242,22 @@ export default function ReportsPage() {
           status,
         });
 
-        const api = createApiClient(accessToken);
-
         if (mode === "raw") {
-          const data = await api.post("/api/reports/attendance/raw", body);
-          const result: RawAttendanceReportResult = data?.data;
+          const result = (await fetchApiPostData<RawAttendanceReportResult, typeof body>(
+            accessToken,
+            "/api/reports/attendance/raw",
+            body
+          )) as RawAttendanceReportResult;
           if (!isCancelled) {
             setRawReport(result);
             setAggregatedReport(null);
           }
         } else {
-          const data = await api.post("/api/reports/attendance/aggregate", body);
-          const result: AggregatedAttendanceReportResult = data?.data;
+          const result = (await fetchApiPostData<AggregatedAttendanceReportResult, typeof body>(
+            accessToken,
+            "/api/reports/attendance/aggregate",
+            body
+          )) as AggregatedAttendanceReportResult;
           if (!isCancelled) {
             setAggregatedReport(result);
             setRawReport(null);
@@ -260,8 +265,7 @@ export default function ReportsPage() {
         }
       } catch (e: unknown) {
         if (!isCancelled) {
-          if (e instanceof Error) setError(normalizeApiErrorMessage(e.message));
-          else setError("Failed to fetch report");
+          setError(getApiErrorMessage(e, "Failed to fetch report"));
           setRawReport(null);
           setAggregatedReport(null);
         }
