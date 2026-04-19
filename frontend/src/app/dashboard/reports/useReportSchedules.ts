@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createApiClient } from "@/lib/api";
 
 import type { Schedule } from "./types";
-import { normalizeApiErrorMessage } from "./utils";
+import { fetchApiList, getApiErrorMessage } from "./fetchHelpers";
 
 export function useReportSchedules(args: {
   enabled: boolean;
   accessToken?: string;
   from: string;
   to: string;
-  onError: (msg: string) => void;
+  onError: (msg: string | null) => void;
 }): { schedules: Schedule[] } {
   const { enabled, accessToken, from, to, onError } = args;
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -23,18 +22,16 @@ export function useReportSchedules(args: {
       if (!enabled || !accessToken) return;
 
       try {
+        onError(null);
         const qs = new URLSearchParams({
           startDate: from,
           endDate: to,
           expandRecurring: "true",
         });
-        const api = createApiClient(accessToken);
-        const data = await api.get(`/api/schedules?${qs.toString()}`);
-        const list: Schedule[] = data?.data ?? [];
+        const list = await fetchApiList<Schedule>(accessToken, `/api/schedules?${qs.toString()}`);
         if (!isCancelled) setSchedules(list);
       } catch (e: unknown) {
-        if (e instanceof Error) onError(normalizeApiErrorMessage(e.message));
-        else onError("Failed to fetch schedules");
+        if (!isCancelled) onError(getApiErrorMessage(e, "Failed to fetch schedules"));
       }
     }
 
