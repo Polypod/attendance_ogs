@@ -69,6 +69,8 @@ export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
   const { isAdmin, isInstructor } = useAuth();
   const hasAccess = isAdmin || isInstructor;
+  const accessToken = (session as any)?.accessToken as string | undefined;
+  const canLoad = hasAccess && authStatus === "authenticated" && !!accessToken;
 
   const today = useMemo(() => getTodayIsoDate(), []);
   const defaultFrom = useMemo(() => addDaysIsoDate(today, -30), [today]);
@@ -182,10 +184,9 @@ export default function ReportsPage() {
     let isCancelled = false;
 
     async function loadStudents() {
-      if (!hasAccess) return;
-      if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+      if (!canLoad || !accessToken) return;
       try {
-        const api = createApiClient((session as any)?.accessToken);
+        const api = createApiClient(accessToken);
         const data = await api.get("/api/students");
         const list: Student[] = data?.data ?? [];
         if (!isCancelled) setStudents(list);
@@ -200,22 +201,21 @@ export default function ReportsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [authStatus, hasAccess, session]);
+  }, [accessToken, canLoad]);
 
   // Load schedules whenever date range changes (for schedule + instructor dropdowns)
   useEffect(() => {
     let isCancelled = false;
 
     async function loadSchedules() {
-      if (!hasAccess) return;
-      if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+      if (!canLoad || !accessToken) return;
       try {
         const qs = new URLSearchParams({
           startDate: from,
           endDate: to,
           expandRecurring: "true",
         });
-        const api = createApiClient((session as any)?.accessToken);
+        const api = createApiClient(accessToken);
         const data = await api.get(`/api/schedules?${qs.toString()}`);
         const list: Schedule[] = data?.data ?? [];
         if (!isCancelled) setSchedules(list);
@@ -230,19 +230,18 @@ export default function ReportsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [authStatus, from, hasAccess, session, to]);
+  }, [accessToken, canLoad, from, to]);
 
   // Load presets whenever auth becomes available
   useEffect(() => {
     let isCancelled = false;
 
     async function loadPresets() {
-      if (!hasAccess) return;
-      if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+      if (!canLoad || !accessToken) return;
 
       try {
         setPresetError(null);
-        const api = createApiClient((session as any)?.accessToken);
+        const api = createApiClient(accessToken);
         const data = await api.get("/api/report-presets");
         const list: ReportPreset[] = data?.data ?? [];
         if (!isCancelled) setPresets(list);
@@ -259,7 +258,7 @@ export default function ReportsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [authStatus, hasAccess, session]);
+  }, [accessToken, canLoad]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -283,8 +282,7 @@ export default function ReportsPage() {
     let isCancelled = false;
 
     async function loadReport() {
-      if (!hasAccess) return;
-      if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+      if (!canLoad || !accessToken) return;
       setLoading(true);
       setError(null);
       try {
@@ -306,7 +304,7 @@ export default function ReportsPage() {
           status,
         });
 
-        const api = createApiClient((session as any)?.accessToken);
+        const api = createApiClient(accessToken);
 
         if (mode === "raw") {
           const data = await api.post("/api/reports/attendance/raw", body);
@@ -341,11 +339,10 @@ export default function ReportsPage() {
       isCancelled = true;
     };
   }, [
-    authStatus,
+    accessToken,
     classIds.join(","),
     from,
     groupBy,
-    hasAccess,
     instructorsSelected.join(","),
     mode,
     onlyActiveStudents,
@@ -353,12 +350,12 @@ export default function ReportsPage() {
     pageSize,
     selectedSessionKeys.join(","),
     search,
-    session,
     sortBy ?? "",
     sortDir,
     status.join(","),
     studentIds.join(","),
     to,
+    canLoad,
   ]);
 
   const buildPresetState = (): ReportPresetState =>
@@ -419,10 +416,9 @@ export default function ReportsPage() {
   };
 
   const reloadPresets = async (nextSelectedId?: string) => {
-    if (!hasAccess) return;
-    if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+    if (!canLoad || !accessToken) return;
 
-    const api = createApiClient((session as any)?.accessToken);
+    const api = createApiClient(accessToken);
     const data = await api.get("/api/report-presets");
     const list: ReportPreset[] = data?.data ?? [];
     setPresets(list);
@@ -439,14 +435,13 @@ export default function ReportsPage() {
       return;
     }
 
-    if (!hasAccess) return;
-    if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+    if (!canLoad || !accessToken) return;
 
     setPresetBusy(true);
     setPresetError(null);
 
     try {
-      const api = createApiClient((session as any)?.accessToken);
+      const api = createApiClient(accessToken);
       const body: any = {
         name,
         schemaVersion: 1,
@@ -469,14 +464,13 @@ export default function ReportsPage() {
   const handleUpdatePreset = async () => {
     if (!selectedPresetId) return;
 
-    if (!hasAccess) return;
-    if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+    if (!canLoad || !accessToken) return;
 
     setPresetBusy(true);
     setPresetError(null);
 
     try {
-      const api = createApiClient((session as any)?.accessToken);
+      const api = createApiClient(accessToken);
       const body: any = {
         schemaVersion: 1,
         state: buildPresetState(),
@@ -499,14 +493,13 @@ export default function ReportsPage() {
   const handleDeletePreset = async () => {
     if (!selectedPresetId) return;
 
-    if (!hasAccess) return;
-    if (authStatus !== "authenticated" || !(session as any)?.accessToken) return;
+    if (!canLoad || !accessToken) return;
 
     setPresetBusy(true);
     setPresetError(null);
 
     try {
-      const api = createApiClient((session as any)?.accessToken);
+      const api = createApiClient(accessToken);
       await api.delete(`/api/report-presets/${selectedPresetId}`);
 
       setSelectedPresetId("");
