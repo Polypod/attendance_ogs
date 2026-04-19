@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   // `src/app/api/[...path]/route.ts`.
   // This keeps the backend destination runtime-configurable via BACKEND_URL,
   // instead of baking it into build artifacts via rewrites.
+  turbopack: {
+    root: __dirname,
+  },
 };
 
 export default nextConfig;
