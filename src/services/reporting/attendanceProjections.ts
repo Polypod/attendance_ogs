@@ -1,6 +1,6 @@
-type PipelineStage = Record<string, unknown>;
+import type { PipelineStage } from 'mongoose';
 
-export const rawAttendanceRowProjectionStage = (): PipelineStage => ({
+export const rawAttendanceRowProjectionStage = (): PipelineStage.Project => ({
   $project: {
     attendance_id: { $toString: '$_id' },
     date: '$date',
@@ -23,7 +23,7 @@ export const rawAttendanceRowProjectionStage = (): PipelineStage => ({
   }
 });
 
-export const aggregatedAttendanceRowProjectionStage = (): PipelineStage => ({
+export const aggregatedAttendanceRowProjectionStage = (): PipelineStage.Project => ({
   $project: {
     presentCount: 1,
     totalCount: 1,
