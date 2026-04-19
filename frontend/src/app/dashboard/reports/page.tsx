@@ -62,6 +62,7 @@ import { SessionsFilterPanel } from "./SessionsFilterPanel";
 import { InstructorsFilterPanel } from "./InstructorsFilterPanel";
 import { ReportActionsRow } from "./ReportActionsRow";
 import { buildAttendanceExportPayload, buildAttendanceReportRequestBody } from "./payloadBuilders";
+import { buildReportPresetState } from "./presetStateBuilders";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -359,30 +360,25 @@ export default function ReportsPage() {
     to,
   ]);
 
-  const buildPresetState = (): ReportPresetState => {
-    const sessions = sessionKeysToSessions(selectedSessionKeys);
-
-    const trimmedSearch = search.trim();
-
-    return {
+  const buildPresetState = (): ReportPresetState =>
+    buildReportPresetState({
       mode,
       groupBy,
       from,
       to,
-      search: trimmedSearch ? trimmedSearch : undefined,
+      search,
       pageSize,
-      sortBy: sortBy ?? undefined,
-      sortDir: sortBy ? sortDir : undefined,
-      studentIds: studentIds.length > 0 ? studentIds : undefined,
-      classIds: classIds.length > 0 ? classIds : undefined,
-      instructors: instructorsSelected.length > 0 ? instructorsSelected : undefined,
-      status: status.length > 0 ? status : undefined,
-      sessions: sessions.length > 0 ? sessions : undefined,
+      sortBy,
+      sortDir,
+      studentIds,
+      classIds,
+      instructors: instructorsSelected,
+      status,
+      selectedSessionKeys,
       onlyActiveStudents,
       rawColumnVisibility,
       aggregatedColumnVisibility,
-    };
-  };
+    });
 
   const applyPresetState = (state: ReportPresetState) => {
     // Presets should never apply pagination state
