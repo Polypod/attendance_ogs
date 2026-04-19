@@ -26,7 +26,6 @@ import {
   type ReportPresetSessionFilter,
   type ReportPresetState,
   type RawAttendanceReportResult,
-  type Schedule,
   type SortDir,
   type SortKey,
   type ViewMode,
@@ -64,6 +63,7 @@ import { buildAttendanceExportPayload, buildAttendanceReportRequestBody } from "
 import { buildReportPresetState } from "./presetStateBuilders";
 import { submitHiddenPayloadForm } from "./submitHiddenPayloadForm";
 import { useReportStudents } from "./useReportStudents";
+import { useReportSchedules } from "./useReportSchedules";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -102,8 +102,6 @@ export default function ReportsPage() {
   const [mode, setMode] = useState<ViewMode>("raw");
   const [groupBy, setGroupBy] = useState<AggregatedGroupBy>("student");
 
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-
   const [page, setPage] = useState(1);
   const pageSize = 25;
 
@@ -115,6 +113,14 @@ export default function ReportsPage() {
   const { students } = useReportStudents({
     enabled: canLoad,
     accessToken,
+    onError: setError,
+  });
+
+  const { schedules } = useReportSchedules({
+    enabled: canLoad,
+    accessToken,
+    from,
+    to,
     onError: setError,
   });
 
@@ -183,35 +189,6 @@ export default function ReportsPage() {
 
     return options;
   }, [schedules]);
-
-  // Load schedules whenever date range changes (for schedule + instructor dropdowns)
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function loadSchedules() {
-      if (!canLoad || !accessToken) return;
-      try {
-        const qs = new URLSearchParams({
-          startDate: from,
-          endDate: to,
-          expandRecurring: "true",
-        });
-        const api = createApiClient(accessToken);
-        const data = await api.get(`/api/schedules?${qs.toString()}`);
-        const list: Schedule[] = data?.data ?? [];
-        if (!isCancelled) setSchedules(list);
-      } catch (e: unknown) {
-        if (e instanceof Error) setError(normalizeApiErrorMessage(e.message));
-        else setError("Failed to fetch schedules");
-      }
-    }
-
-    loadSchedules();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [accessToken, canLoad, from, to]);
 
   // Load presets whenever auth becomes available
   useEffect(() => {
