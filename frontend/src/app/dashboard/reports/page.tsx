@@ -64,6 +64,7 @@ import { buildReportPresetState } from "./presetStateBuilders";
 import { submitHiddenPayloadForm } from "./submitHiddenPayloadForm";
 import { useReportStudents } from "./useReportStudents";
 import { useReportSchedules } from "./useReportSchedules";
+import { useReportPresets } from "./useReportPresets";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -124,12 +125,18 @@ export default function ReportsPage() {
     onError: setError,
   });
 
-  const [presets, setPresets] = useState<ReportPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>("");
   const [presetNameDraft, setPresetNameDraft] = useState("");
   const [presetSharedDraft, setPresetSharedDraft] = useState(false);
   const [presetBusy, setPresetBusy] = useState(false);
   const [presetError, setPresetError] = useState<string | null>(null);
+
+  const { presets, reloadPresets } = useReportPresets({
+    enabled: canLoad,
+    accessToken,
+    onPresetError: setPresetError,
+    onSetSelectedPresetId: setSelectedPresetId,
+  });
 
   const selectedPreset = useMemo(
     () => presets.find((p) => p._id === selectedPresetId) ?? null,
@@ -189,34 +196,6 @@ export default function ReportsPage() {
 
     return options;
   }, [schedules]);
-
-  // Load presets whenever auth becomes available
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function loadPresets() {
-      if (!canLoad || !accessToken) return;
-
-      try {
-        setPresetError(null);
-        const api = createApiClient(accessToken);
-        const data = await api.get("/api/report-presets");
-        const list: ReportPreset[] = data?.data ?? [];
-        if (!isCancelled) setPresets(list);
-      } catch (e: unknown) {
-        if (!isCancelled) {
-          if (e instanceof Error) setPresetError(normalizeApiErrorMessage(e.message));
-          else setPresetError("Failed to fetch presets");
-        }
-      }
-    }
-
-    loadPresets();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [accessToken, canLoad]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -370,19 +349,6 @@ export default function ReportsPage() {
     } else {
       setSortBy(null);
       setSortDir("asc");
-    }
-  };
-
-  const reloadPresets = async (nextSelectedId?: string) => {
-    if (!canLoad || !accessToken) return;
-
-    const api = createApiClient(accessToken);
-    const data = await api.get("/api/report-presets");
-    const list: ReportPreset[] = data?.data ?? [];
-    setPresets(list);
-
-    if (nextSelectedId !== undefined) {
-      setSelectedPresetId(nextSelectedId);
     }
   };
 
