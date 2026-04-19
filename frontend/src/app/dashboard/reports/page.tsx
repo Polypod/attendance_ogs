@@ -61,6 +61,7 @@ import { ClassesFilterPanel } from "./ClassesFilterPanel";
 import { SessionsFilterPanel } from "./SessionsFilterPanel";
 import { InstructorsFilterPanel } from "./InstructorsFilterPanel";
 import { ReportActionsRow } from "./ReportActionsRow";
+import { buildAttendanceExportPayload, buildAttendanceReportRequestBody } from "./payloadBuilders";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
@@ -285,29 +286,23 @@ export default function ReportsPage() {
       setLoading(true);
       setError(null);
       try {
-        const body: Record<string, any> = {
+        const body = buildAttendanceReportRequestBody({
+          mode,
+          groupBy,
           from,
           to,
           page,
           pageSize,
-        };
-
-        const trimmedSearch = search.trim();
-        if (trimmedSearch) body.search = trimmedSearch;
-
-        if (sortBy) {
-          body.sortBy = sortBy;
-          body.sortDir = sortDir;
-        }
-
-        if (onlyActiveStudents) body.onlyActiveStudents = true;
-        if (studentIds.length > 0) body.studentIds = studentIds;
-        if (selectedSessionKeys.length > 0) {
-          body.sessions = sessionKeysToSessions(selectedSessionKeys);
-        }
-        if (classIds.length > 0) body.classIds = classIds;
-        if (instructorsSelected.length > 0) body.instructors = instructorsSelected;
-        if (status.length > 0) body.status = status;
+          search,
+          sortBy,
+          sortDir,
+          onlyActiveStudents,
+          studentIds,
+          selectedSessionKeys,
+          classIds,
+          instructors: instructorsSelected,
+          status,
+        });
 
         const api = createApiClient((session as any)?.accessToken);
 
@@ -319,7 +314,6 @@ export default function ReportsPage() {
             setAggregatedReport(null);
           }
         } else {
-          body.groupBy = groupBy;
           const data = await api.post("/api/reports/attendance/aggregate", body);
           const result: AggregatedAttendanceReportResult = data?.data;
           if (!isCancelled) {
@@ -543,33 +537,22 @@ export default function ReportsPage() {
   };
 
   const handleExportCsv = () => {
-    const sessions = sessionKeysToSessions(selectedSessionKeys);
-
-    const payload: Record<string, any> = {
+    const payload = buildAttendanceExportPayload({
       mode,
+      groupBy,
       from,
       to,
       columns: visibleColumns.map((c) => c.key),
-    };
-
-    const trimmedSearch = search.trim();
-    if (trimmedSearch) payload.search = trimmedSearch;
-
-    if (sortBy) {
-      payload.sortBy = sortBy;
-      payload.sortDir = sortDir;
-    }
-
-    if (onlyActiveStudents) payload.onlyActiveStudents = true;
-    if (studentIds.length > 0) payload.studentIds = studentIds;
-    if (sessions.length > 0) payload.sessions = sessions;
-    if (classIds.length > 0) payload.classIds = classIds;
-    if (instructorsSelected.length > 0) payload.instructors = instructorsSelected;
-    if (status.length > 0) payload.status = status;
-
-    if (mode === "aggregate") {
-      payload.groupBy = groupBy;
-    }
+      search,
+      sortBy,
+      sortDir,
+      onlyActiveStudents,
+      studentIds,
+      selectedSessionKeys,
+      classIds,
+      instructors: instructorsSelected,
+      status,
+    });
 
     const form = document.createElement("form");
     form.method = "POST";
