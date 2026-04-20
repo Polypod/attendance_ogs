@@ -17,6 +17,43 @@ export default function LoginPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unlockAtRef = useRef<number>(0);
 
+  const describeAuthError = (code: string | null | undefined): string => {
+    switch (code) {
+      case "CredentialsSignin":
+        return "Invalid email or password";
+      case "AccessDenied":
+        return "Access denied";
+      case "Configuration":
+        return "Authentication is misconfigured";
+      case "SessionRequired":
+        return "Please sign in to continue";
+      default:
+        return "An error occurred. Please try again.";
+    }
+  };
+
+  const extractErrorCodeFromUrl = (urlString: string): string | null => {
+    try {
+      const url = new URL(urlString, window.location.origin);
+      return url.searchParams.get("error");
+    } catch {
+      return null;
+    }
+  };
+
+  // If NextAuth redirected here with ?error=..., show it.
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("error");
+      if (code) {
+        setError(describeAuthError(code));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // On mount: ask the server if this IP is currently rate limited
   useEffect(() => {
     fetch("/api/auth/rate-limit-status")
@@ -99,12 +136,27 @@ export default function LoginPage() {
         redirect: false
       });
 
-      if (result?.error) {
-        setError("An error occurred. Please try again.");
-      } else if (result?.ok) {
-        router.push("/dashboard");
-        router.refresh();
+      if (!result) {
+        setError("Sign in failed. Please try again.");
+        return;
       }
+
+      // next-auth/react derives `error` from the returned URL's query params.
+      // In some failure modes we may not get `error` but still have `ok=false`.
+      const errorCode = result.error ?? (result.url ? extractErrorCodeFromUrl(result.url) : null);
+
+      if (errorCode) {
+        setError(describeAuthError(errorCode));
+        return;
+      }
+
+      if (!result.ok) {
+        setError("Sign in failed. Please try again.");
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
     } catch {
       setError("An error occurred. Please try again.");
     } finally {
@@ -174,8 +226,7 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-600">
-          <p>Default admin credentials:</p>
-          <p className="font-mono">admin@karateattendance.com / ChangeMe123!</p>
+          <p>Enter login credentials</p>
         </div>
       </Card>
     </div>
