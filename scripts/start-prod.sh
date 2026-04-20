@@ -137,6 +137,9 @@ echo "Building backend (root)..."
 pnpm build
 
 echo "Building frontend..."
+# Ensure we don't serve a partially reused / inconsistent Next.js build.
+# A clean .next directory prevents chunk mismatches after restarts/deploys.
+rm -rf frontend/.next
 # Run frontend build and save logs for easier debugging
 if ! BACKEND_URL=http://localhost:4010 pnpm --prefix frontend build > logs/frontend-build.log 2>&1; then
   echo "Frontend build failed. See logs/frontend-build.log for details."
@@ -175,7 +178,7 @@ kill_port_pids 4010
 kill_port_pids 4011
 
 echo "Starting backend on port 4010 with PM2..."
-NODE_OPTIONS=--require=./scripts/tsconfig-paths-dist-register.js PORT=4010 \
+NODE_ENV=production NODE_OPTIONS=--require=./scripts/tsconfig-paths-dist-register.js PORT=4010 \
   pm2 start "pnpm start" \
     --name "backend" \
     --cwd "$ROOT_DIR" \
@@ -185,7 +188,7 @@ NODE_OPTIONS=--require=./scripts/tsconfig-paths-dist-register.js PORT=4010 \
     --listen-timeout 10000
 
 echo "Starting frontend on port 4011 with PM2..."
-PORT=4011 BACKEND_URL=http://localhost:4010 NEXTAUTH_URL=http://localhost:4011 \
+NODE_ENV=production PORT=4011 BACKEND_URL=http://localhost:4010 NEXTAUTH_URL=http://localhost:4011 \
   pm2 start "pnpm start" \
     --name "frontend" \
     --cwd "$ROOT_DIR/frontend" \
