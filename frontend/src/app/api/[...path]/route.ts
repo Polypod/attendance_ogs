@@ -3,6 +3,22 @@ import { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function generateRequestId(): string {
+  try {
+    const cryptoObj = (globalThis as any)?.crypto;
+    if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
+  } catch {
+    // ignore
+  }
+
+  return `rid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getOrCreateRequestId(req: NextRequest): string {
+  const incoming = req.headers.get("x-request-id")?.trim();
+  return incoming && incoming.length > 0 ? incoming : generateRequestId();
+}
+
 function getBackendUrl(): string {
   const backendUrl = process.env.BACKEND_URL?.trim();
   if (backendUrl) return backendUrl;
@@ -20,12 +36,17 @@ function getBackendUrl(): string {
 }
 
 async function proxy(req: NextRequest, pathSegments: string[]) {
+  const requestId = getOrCreateRequestId(req);
+
   let backendUrl: string;
   try {
     backendUrl = getBackendUrl();
   } catch (err) {
     const message = err instanceof Error ? err.message : "Configuration error";
-    return Response.json({ error: message }, { status: 500 });
+    return Response.json(
+      { error: message, requestId },
+      { status: 500, headers: { "X-Request-Id": requestId } }
+    );
   }
 
   const incomingUrl = new URL(req.url);
@@ -36,6 +57,7 @@ async function proxy(req: NextRequest, pathSegments: string[]) {
   headers.delete("host");
   headers.delete("connection");
   headers.delete("content-length");
+  headers.set("x-request-id", requestId);
 
   const init: RequestInit = {
     method: req.method,
@@ -50,15 +72,17 @@ async function proxy(req: NextRequest, pathSegments: string[]) {
 
   try {
     const upstream = await fetch(targetUrl, init);
+    const responseHeaders = new Headers(upstream.headers);
+    responseHeaders.set("X-Request-Id", requestId);
     return new Response(upstream.body, {
       status: upstream.status,
-      headers: upstream.headers,
+      headers: responseHeaders,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Upstream fetch failed";
     return Response.json(
-      { error: "Proxy request failed", details: message },
-      { status: 502 }
+      { error: "Proxy request failed", details: message, requestId },
+      { status: 502, headers: { "X-Request-Id": requestId } }
     );
   }
 }

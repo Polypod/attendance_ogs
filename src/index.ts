@@ -76,6 +76,7 @@ app.use((req: Request, res: Response) => {
   res.status(404).json({ 
     success: false, 
     message: 'Resource not found',
+    requestId: req.requestId,
     path: req.path
   });
 });

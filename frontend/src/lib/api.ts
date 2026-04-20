@@ -9,6 +9,17 @@ type RequestOptions = {
   token?: string; // Optional token for client-side calls
 };
 
+function generateRequestId(): string {
+  try {
+    const cryptoObj = (globalThis as any)?.crypto;
+    if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
+  } catch {
+    // ignore
+  }
+
+  return `rid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 /**
  * Fetch wrapper that automatically adds authentication headers
  * For client components, pass the token directly via options
@@ -26,6 +37,14 @@ export async function fetchWithAuth(
     "Content-Type": "application/json",
     ...options.headers
   };
+
+  const existingRequestId = headers["X-Request-Id"] ?? headers["x-request-id"];
+  const requestId = (existingRequestId && existingRequestId.trim().length > 0)
+    ? existingRequestId
+    : generateRequestId();
+  if (!existingRequestId) {
+    headers["X-Request-Id"] = requestId;
+  }
 
   // Use provided token or get session (for server-side)
   let token = options.token;
@@ -45,7 +64,7 @@ export async function fetchWithAuth(
   if (debug && process.env.NODE_ENV === 'development') {
     const safeHeaders = { ...headers };
     delete safeHeaders['Authorization'];
-    logger.debug('api_request', { endpoint, method: options.method ?? 'GET', headers: safeHeaders });
+    logger.debug('api_request', { endpoint, method: options.method ?? 'GET', requestId, headers: safeHeaders });
   }
 
   const response = await fetch(`${baseUrl}${endpoint}`, {
@@ -54,8 +73,10 @@ export async function fetchWithAuth(
     body: options.body ? JSON.stringify(options.body) : undefined
   });
 
+  const responseRequestId = response.headers.get('x-request-id') ?? requestId;
+
   if (debug && process.env.NODE_ENV === 'development') {
-    logger.debug('api_response', { endpoint, status: response.status, ok: response.ok });
+    logger.debug('api_response', { endpoint, status: response.status, ok: response.ok, requestId: responseRequestId });
   }
 
   // Handle 401 Unauthorized - redirect to login
@@ -69,11 +90,11 @@ export async function fetchWithAuth(
   if (!response.ok) {
     const errorText = await response.text();
     if (process.env.NODE_ENV === 'development') {
-      logger.error('api_error_response', { endpoint, status: response.status, body: errorText });
+      logger.error('api_error_response', { endpoint, status: response.status, requestId: responseRequestId, body: errorText });
     } else {
-      logger.error('api_error_response', { endpoint, status: response.status });
+      logger.error('api_error_response', { endpoint, status: response.status, requestId: responseRequestId });
     }
-    throw new Error(`HTTP ${response.status}: ${errorText}`);
+    throw new Error(`HTTP ${response.status} [requestId=${responseRequestId}]: ${errorText}`);
   }
 
   return response;

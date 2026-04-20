@@ -86,6 +86,7 @@ export const errorHandler = (
   // Send error response
   res.status(error.statusCode || 500).json({
     success: false,
+    requestId: req.requestId,
     status: error.status,
     error: error.message || 'Internal Server Error',
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
