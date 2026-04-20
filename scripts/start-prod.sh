@@ -37,6 +37,11 @@ get_pids_for_port() {
 # Create logs directory early so redirects don't fail
 mkdir -p logs || true
 
+# Prevent unbounded log growth from PM2-managed log files.
+if [ -x "${ROOT_DIR}/scripts/setup-pm2-logrotate.sh" ]; then
+  "${ROOT_DIR}/scripts/setup-pm2-logrotate.sh" || true
+fi
+
 # Stop and delete existing PM2 processes to avoid conflicts
 echo "Cleaning up existing PM2 processes..."
 pm2 delete backend 2>/dev/null || true

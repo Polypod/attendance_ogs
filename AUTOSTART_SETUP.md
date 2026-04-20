@@ -66,6 +66,19 @@ pm2 logs frontend
 journalctl -xeu pm2-patrik.service -f
 ```
 
+### Log rotation (prevents disk growth)
+
+PM2 writes process stdout/stderr to files under `logs/`. To keep disk usage bounded, log rotation is configured via the PM2 module `pm2-logrotate`.
+
+- Setup script: `scripts/setup-pm2-logrotate.sh`
+- Default policy: rotate at `10M`, keep `14` archives, `compress=true`, daily interval
+
+Verify status:
+
+```bash
+pm2 describe pm2-logrotate
+```
+
 ## Process Management
 
 ```bash

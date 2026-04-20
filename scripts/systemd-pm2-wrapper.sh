@@ -11,6 +11,12 @@ export PM2_HOME="$HOME/.pm2"
 # Ensure logs directory exists
 mkdir -p /home/patrik/attendance_ogs/logs
 
+# Configure PM2 log rotation (best-effort). This prevents unbounded growth of
+# logs/* files produced by PM2 out_file/error_file.
+if [ -x /home/patrik/attendance_ogs/scripts/setup-pm2-logrotate.sh ]; then
+	/home/patrik/attendance_ogs/scripts/setup-pm2-logrotate.sh || true
+fi
+
 # Start PM2 with ecosystem.config.js
 cd /home/patrik/attendance_ogs
 pm2 start ecosystem.config.js
