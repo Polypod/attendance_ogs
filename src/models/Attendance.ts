@@ -91,6 +91,9 @@ attendanceSchema.index(
 // Optimize reporting queries that primarily filter by date range (and often schedule/student/status)
 attendanceSchema.index({ date: 1, class_schedule_id: 1, student_id: 1, status: 1 });
 
+// Additional support for queries filtering by schedule first (e.g. session-focused reports)
+attendanceSchema.index({ class_schedule_id: 1, date: 1, status: 1 });
+
 // Create and export the model
 export const AttendanceModel = model<IAttendanceDocument, IAttendanceModel>('Attendance', attendanceSchema);
 

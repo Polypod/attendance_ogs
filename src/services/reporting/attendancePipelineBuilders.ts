@@ -72,71 +72,78 @@ export const buildAttendanceLookupPipeline = (
 ): PipelineStage[] => {
   const match = buildAttendanceBaseMatch(query);
 
-  const pipeline: PipelineStage[] = [
-    { $match: match },
-    {
-      $lookup: {
-        from: 'students',
-        localField: 'student_id',
-        foreignField: '_id',
-        as: 'student'
-      }
-    },
-    { $unwind: '$student' },
-    {
-      $lookup: {
-        from: 'classschedules',
-        localField: 'class_schedule_id',
-        foreignField: '_id',
-        as: 'schedule'
-      }
-    },
-    { $unwind: '$schedule' },
-    {
-      $lookup: {
-        from: 'classes',
-        localField: 'schedule.class_id',
-        foreignField: '_id',
-        as: 'class'
-      }
-    },
-    { $unwind: '$class' }
-  ];
+  const pipeline: PipelineStage[] = [{ $match: match }];
 
-  const postLookupMatch: Record<string, any> = {};
+  pipeline.push({
+    $lookup: {
+      from: 'students',
+      localField: 'student_id',
+      foreignField: '_id',
+      as: 'student'
+    }
+  });
+  pipeline.push({ $unwind: '$student' });
 
+  const studentPostLookupMatch: Record<string, any> = {};
   if (query.onlyActiveStudents) {
-    postLookupMatch['student.active'] = { $ne: false };
-    postLookupMatch['student.status'] = { $ne: 'inactive' };
+    studentPostLookupMatch['student.active'] = { $ne: false };
+    studentPostLookupMatch['student.status'] = { $ne: 'inactive' };
+  }
+  if (query.studentName) {
+    studentPostLookupMatch['student.name'] = {
+      $regex: escapeRegExp(query.studentName),
+      $options: 'i'
+    };
+  }
+  if (Object.keys(studentPostLookupMatch).length > 0) {
+    pipeline.push({ $match: studentPostLookupMatch });
   }
 
+  pipeline.push({
+    $lookup: {
+      from: 'classschedules',
+      localField: 'class_schedule_id',
+      foreignField: '_id',
+      as: 'schedule'
+    }
+  });
+  pipeline.push({ $unwind: '$schedule' });
+
+  if (query.classIds?.length) {
+    const uniqueClassIds = Array.from(new Set(query.classIds));
+    pipeline.push({
+      $match: {
+        'schedule.class_id': { $in: uniqueClassIds.map((id) => new Types.ObjectId(id)) }
+      }
+    });
+  }
+
+  pipeline.push({
+    $lookup: {
+      from: 'classes',
+      localField: 'schedule.class_id',
+      foreignField: '_id',
+      as: 'class'
+    }
+  });
+  pipeline.push({ $unwind: '$class' });
+
+  const classPostLookupMatch: Record<string, any> = {};
   const instructors = [
     ...(query.instructors ?? []).filter((v) => typeof v === 'string' && v.trim().length > 0),
     ...(query.instructor ? [query.instructor] : [])
   ];
   const uniqueInstructors = Array.from(new Set(instructors.map((v) => v.trim()))).filter((v) => v.length > 0);
   if (uniqueInstructors.length === 1) {
-    postLookupMatch['class.instructor'] = uniqueInstructors[0];
+    classPostLookupMatch['class.instructor'] = uniqueInstructors[0];
   } else if (uniqueInstructors.length > 1) {
-    postLookupMatch['class.instructor'] = { $in: uniqueInstructors };
-  }
-
-  if (query.classIds?.length) {
-    const uniqueClassIds = Array.from(new Set(query.classIds));
-    postLookupMatch['class._id'] = { $in: uniqueClassIds.map((id) => new Types.ObjectId(id)) };
-  }
-
-  if (query.studentName) {
-    postLookupMatch['student.name'] = {
-      $regex: escapeRegExp(query.studentName),
-      $options: 'i'
-    };
+    classPostLookupMatch['class.instructor'] = { $in: uniqueInstructors };
   }
 
   const searchValue = query.search?.trim();
   const postLookupAnd: Record<string, any>[] = [];
-  if (Object.keys(postLookupMatch).length > 0) {
-    postLookupAnd.push(postLookupMatch);
+  if (Object.keys(classPostLookupMatch).length > 0) {
+    postLookupAnd.push(classPostLookupMatch);
   }
   if (searchValue) {
     const escaped = escapeRegExp(searchValue);

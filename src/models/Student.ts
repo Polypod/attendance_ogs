@@ -101,6 +101,10 @@ const studentSchema = new Schema<IStudentDocument>({
   versionKey: false
 });
 
+// Reporting pipelines often filter out inactive students after lookup.
+// This compound index supports those filters when pushed down.
+studentSchema.index({ active: 1, status: 1 });
+
 
 
 export const StudentModel = model<IStudentDocument>('Student', studentSchema);
