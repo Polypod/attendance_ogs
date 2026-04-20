@@ -51,11 +51,17 @@ const attendanceSchema = new Schema<IAttendanceDocument>(
       required: [true, 'Category is required'],
       validate: {
         validator: function(value: string) {
-          const configService = ConfigService.getInstance();
+          const configService = ConfigService.tryGetInitializedInstance();
+          if (!configService) {
+            return false;
+          }
           return configService.isValidCategory(value);
         },
         message: function() {
-          const configService = ConfigService.getInstance();
+          const configService = ConfigService.tryGetInitializedInstance();
+          if (!configService) {
+            return 'Configuration has not been initialized. Cannot validate category.';
+          }
           const validCategories = configService.getCategoryValues().join(', ');
           return `Category must be one of: ${validCategories}`;
         }

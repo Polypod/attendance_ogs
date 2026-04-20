@@ -57,6 +57,26 @@ export class ConfigService {
   }
 
   /**
+   * Get the singleton instance only if configuration has been initialized.
+   *
+   * This is primarily intended for synchronous validation paths (e.g. Mongoose
+   * schema validators) where we must not throw if config hasn't been loaded yet.
+   */
+  public static tryGetInitializedInstance(): ConfigService | null {
+    const instance = ConfigService.instance;
+    if (!instance) {
+      return null;
+    }
+
+    // Note: `config` is only set by `initialize()`.
+    if (!(instance as any).config) {
+      return null;
+    }
+
+    return instance;
+  }
+
+  /**
    * Validate config structure
    */
   private validateConfig(config: any): void {

@@ -42,11 +42,17 @@ const studentSchema = new Schema<IStudentDocument>({
     validate: {
       validator: function(this: any, values: string[]) {
         if (!values || values.length === 0) return false;
-        const configService = ConfigService.getInstance();
+        const configService = ConfigService.tryGetInitializedInstance();
+        if (!configService) {
+          return false;
+        }
         return values.every(val => configService.isValidCategory(val));
       },
       message: function() {
-        const configService = ConfigService.getInstance();
+        const configService = ConfigService.tryGetInitializedInstance();
+        if (!configService) {
+          return 'Configuration has not been initialized. Cannot validate student categories.';
+        }
         const validCategories = configService.getCategoryValues().join(', ');
         return `Invalid student category. Must be one of: ${validCategories}`;
       }
@@ -58,11 +64,17 @@ const studentSchema = new Schema<IStudentDocument>({
     required: [true, 'Belt level is required'],
     validate: {
       validator: function(value: string) {
-        const configService = ConfigService.getInstance();
+        const configService = ConfigService.tryGetInitializedInstance();
+        if (!configService) {
+          return false;
+        }
         return configService.isValidBeltLevel(value);
       },
       message: function() {
-        const configService = ConfigService.getInstance();
+        const configService = ConfigService.tryGetInitializedInstance();
+        if (!configService) {
+          return 'Configuration has not been initialized. Cannot validate belt level.';
+        }
         const validBeltLevels = configService.getBeltLevelValues().join(', ');
         return `Invalid belt level. Must be one of: ${validBeltLevels}`;
       }
