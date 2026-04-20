@@ -4,6 +4,7 @@ import { authController } from '@/controllers/AuthController';
 import { authenticate } from '@/middleware/auth';
 import { authLimiter, authLimiterStore, refreshTokenLimiter } from '@/middleware/rateLimiter';
 import { validateRequest } from '@/middleware/validation';
+import { ipKeyGenerator } from 'express-rate-limit';
 import {
   loginSchema,
   changePasswordSchema,
@@ -17,9 +18,9 @@ router.post('/login', authLimiter, validateRequest(loginSchema), authController.
 
 // Rate limit status check – does not increment counter
 router.get('/rate-limit-status', async (req, res) => {
-  const forwarded = req.headers['x-real-ip'] || req.headers['x-forwarded-for'];
-  const ip = Array.isArray(forwarded) ? forwarded[0] : (forwarded as string | undefined)?.split(',')[0].trim();
-  const key = ip || req.ip || 'unknown';
+  // Match the same IP keying strategy as the auth limiter.
+  // `req.ip` is derived from X-Forwarded-For according to Express `trust proxy`.
+  const key = req.ip ? ipKeyGenerator(req.ip) : 'unknown';
   const info = await authLimiterStore.get(key);
   const max = 5;
   const limited = !!info && info.totalHits > max;
