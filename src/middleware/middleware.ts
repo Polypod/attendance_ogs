@@ -4,6 +4,7 @@ import cors from 'cors';
 import express from 'express';
 import { logger } from '../utils/logger';
 import { requestIdMiddleware } from './requestId';
+import { httpTelemetryMiddleware } from './httpTelemetry';
 
 /**
  * Applies common middleware to the Express application
@@ -15,6 +16,9 @@ export const applyMiddleware = (app: Express): void => {
 
   // Correlation id (for request tracing across logs)
   app.use(requestIdMiddleware);
+
+  // Basic HTTP observability (latency + status + requestId)
+  app.use(httpTelemetryMiddleware);
 
   // Enable CORS with specific configuration
   const frontendOrigin = process.env.FRONTEND_URL || 'http://localhost:4001';

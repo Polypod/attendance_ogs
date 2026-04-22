@@ -11,6 +11,7 @@ import { userRoutes } from './routes/userRoutes';
 import { configRoutes } from './routes/configRoutes';
 import { reportRoutes } from './routes/reportRoutes';
 import { reportPresetRoutes } from './routes/reportPresetRoutes';
+import { metricsRoutes } from './routes/metricsRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { applyMiddleware } from './middleware/middleware';
 import { authenticate, authorize } from './middleware/auth';
@@ -30,6 +31,9 @@ const PORT = Number(process.env.PORT ?? 3000);
 
 // Apply common middleware
 applyMiddleware(app);
+
+// Metrics endpoint (restricted). Mount before rate limiting.
+app.use('/api/metrics', metricsRoutes);
 
 // General API rate limiting
 app.use('/api', apiLimiter);
