@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ function getBackendUrl(): string {
 
 async function proxy(req: NextRequest, pathSegments: string[]) {
   const requestId = getOrCreateRequestId(req);
+  const startMs = Date.now();
 
   let backendUrl: string;
   try {
@@ -72,6 +74,16 @@ async function proxy(req: NextRequest, pathSegments: string[]) {
 
   try {
     const upstream = await fetch(targetUrl, init);
+    const durationMs = Date.now() - startMs;
+    if (logger.isDebugEnabled()) {
+      logger.debug('proxy_response', {
+        requestId,
+        method: req.method,
+        path: `/api/${path}`,
+        status: upstream.status,
+        durationMs,
+      });
+    }
     const responseHeaders = new Headers(upstream.headers);
     responseHeaders.set("X-Request-Id", requestId);
     return new Response(upstream.body, {
@@ -80,6 +92,14 @@ async function proxy(req: NextRequest, pathSegments: string[]) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Upstream fetch failed";
+    const durationMs = Date.now() - startMs;
+    logger.error('proxy_error', {
+      requestId,
+      method: req.method,
+      path: `/api/${path}`,
+      durationMs,
+      details: message,
+    });
     return Response.json(
       { error: "Proxy request failed", details: message, requestId },
       { status: 502, headers: { "X-Request-Id": requestId } }
