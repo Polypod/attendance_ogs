@@ -17,13 +17,13 @@ module.exports = {
     '!src/**/__mocks__/**',
     '!src/**/__tests__/**'
   ],
-  // Relax coverage thresholds to allow incremental test additions
+  // Coverage thresholds are intentionally ratcheted upward over time.
   coverageThreshold: {
     global: {
-      branches: 30,
-      functions: 45,
-      lines: 30,
-      statements: 30
+      branches: 48,
+      functions: 74,
+      lines: 58,
+      statements: 58
     }
   },
   moduleNameMapper: {
