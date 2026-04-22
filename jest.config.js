@@ -1,12 +1,4 @@
 module.exports = {
-  preset: 'ts-jest',
-  transform: {
-    '^.+\\.(t|j)sx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.jest.json' }]
-  },
-  testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/frontend/src'],
-  testMatch: ['**/__tests__/**/*.test.ts'],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
@@ -26,8 +18,36 @@ module.exports = {
       statements: 58
     }
   },
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
-  },
-  setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts']
+  projects: [
+    {
+      displayName: 'backend',
+      preset: 'ts-jest',
+      transform: {
+        '^.+\\.(t|j)sx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.jest.json' }]
+      },
+      testEnvironment: 'node',
+      roots: ['<rootDir>/src'],
+      testMatch: ['**/__tests__/**/*.test.ts'],
+      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/src/$1'
+      },
+      setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts']
+    },
+    {
+      displayName: 'frontend',
+      preset: 'ts-jest',
+      transform: {
+        '^.+\\.(t|j)sx?$': ['ts-jest', { tsconfig: '<rootDir>/frontend/tsconfig.jest.json' }]
+      },
+      testEnvironment: 'jsdom',
+      roots: ['<rootDir>/frontend/src'],
+      testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
+      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/frontend/src/$1'
+      },
+      setupFilesAfterEnv: ['<rootDir>/frontend/src/test/setup.ts']
+    }
+  ]
 };
