@@ -54,20 +54,18 @@ type Student = {
   active?: boolean;
 };
 
-type AttendanceRecord = {
-  student_id: string;
-  student?: { _id: string; name: string; categories: string[] };
-  status: "present" | "absent" | "excused";
-  notes: string;
-};
-
 // Helper to convert YYYY-MM-DD to an ISO date at UTC midnight
-import { formatDateToIso, buildAttendancePayload } from '../utils';
+import { formatDateToIso, buildAttendancePayload, type AttendanceRecord } from '../utils';
+import {
+  buildInitialAttendanceMap,
+  buildUpdatedScheduleSessions,
+  filterAttendanceForSessionDate,
+  type ApiAttendance,
+} from './attendanceHelpers';
+import { buildCreateStudentPayload } from '../../students/studentHelpers';
 
 // Local helper types to avoid using `any`
 type SessionWithToken = { accessToken?: string; user?: { email?: string } };
-type ApiStudentRef = string | { _id: string };
-type ApiAttendance = { date?: string; student_id: ApiStudentRef; status?: "present" | "absent" | "excused"; notes?: string };
 type CreateStudentForm = {
   name: string;
   categories: string[];
@@ -75,7 +73,7 @@ type CreateStudentForm = {
   email: string;
   phone?: string;
   emergency_contact?: { name?: string; phone?: string };
-  active?: boolean;
+  active: boolean;
 };
 
 export default function TakeAttendancePage() {
@@ -173,46 +171,14 @@ export default function TakeAttendancePage() {
         const existingAttendanceList = (attendanceRes.data || []) as ApiAttendance[];
 
         // Filter attendance for this specific date (important for recurring classes)
-        const existingAttendance = existingAttendanceList.filter((a) => {
-          if (!a.date) return true; // Old format without date
-          return a.date.split('T')[0] === actualDate;
-        });
-        
-        // Initialize attendance records with existing data or absent as default
-        const initialAttendance: Record<string, AttendanceRecord> = {};
-        allStudentsList.forEach((student: Student) => {
-          const existing = existingAttendance.find((a) => {
-            const sid = typeof a.student_id === 'string' ? a.student_id : a.student_id._id;
-            return sid === student._id;
-          });
-          
-          if (existing) {
-            const status = (existing.status ?? "absent") as AttendanceRecord["status"];
-            initialAttendance[student._id] = {
-              student_id: student._id,
-              status,
-              notes: existing.notes || "",
-            };
-          } else {
-            initialAttendance[student._id] = {
-              student_id: student._id,
-              status: "absent",
-              notes: "",
-            };
-          }
-        });
-        setAttendance(initialAttendance);
+        const existingAttendanceForDate = filterAttendanceForSessionDate(
+          existingAttendanceList,
+          actualDate
+        );
+        setAttendance(buildInitialAttendanceMap(allStudentsList, existingAttendanceForDate));
       } catch {
         // If no attendance found, initialize with defaults
-        const initialAttendance: Record<string, AttendanceRecord> = {};
-        allStudentsList.forEach((student: Student) => {
-          initialAttendance[student._id] = {
-            student_id: student._id,
-            status: "absent",
-            notes: "",
-          };
-        });
-        setAttendance(initialAttendance);
+        setAttendance(buildInitialAttendanceMap(allStudentsList, []));
       }
 
     } catch (e: unknown) {
@@ -232,20 +198,7 @@ export default function TakeAttendancePage() {
     setError(null);
     try {
       const api = createApiClient((session as unknown as SessionWithToken)?.accessToken);
-      const studentData: Partial<CreateStudentForm> = { ...createForm };
-      if (!studentData.phone || studentData.phone.trim() === '') {
-        delete studentData.phone;
-      }
-      if (studentData.emergency_contact) {
-        const hasName = studentData.emergency_contact.name && studentData.emergency_contact.name.trim() !== '';
-        const hasPhone = studentData.emergency_contact.phone && studentData.emergency_contact.phone.trim() !== '';
-        if (!hasName && !hasPhone) {
-          delete studentData.emergency_contact;
-        } else {
-          if (!hasName) delete studentData.emergency_contact.name;
-          if (!hasPhone) delete studentData.emergency_contact.phone;
-        }
-      }
+      const studentData = buildCreateStudentPayload(createForm as unknown as CreateStudentForm);
 
       const data = await api.post('/api/students', studentData);
       const created = data.data;
@@ -325,48 +278,13 @@ export default function TakeAttendancePage() {
 
       // Update schedule with session-specific instructor and notes
       const existingSessions = schedule.sessions || [];
-      
-      const sessionIndex = existingSessions.findIndex((s) => s.date.split("T")[0] === sessionDate);
 
-      let updatedSessions;
-      if (sessionIndex >= 0) {
-        // Update existing session - create a completely new array with updated session
-        updatedSessions = existingSessions.map((session, index) => {
-          if (index === sessionIndex) {
-            // Update this session with new instructor and notes
-            return {
-              date: session.date, // Preserve original date
-              "S-instructor": sInstructor,
-              notes: sessionNotes,
-              status: "completed" as const,
-            };
-          }
-          // Keep other sessions unchanged - but filter out old 'instructor' field
-          return {
-            date: session.date,
-            "S-instructor": session["S-instructor"] || "",
-            notes: session.notes || "",
-            status: session.status,
-          };
-        });
-      } else {
-        // Add new session - create ISO date string for MongoDB
-        const sessionDateISO = formatDateToIso(sessionDate);
-        updatedSessions = [
-          ...existingSessions.map(s => ({
-            date: s.date,
-            "S-instructor": s["S-instructor"] || "",
-            notes: s.notes || "",
-            status: s.status,
-          })),
-          {
-            date: sessionDateISO,
-            "S-instructor": sInstructor,
-            notes: sessionNotes,
-            status: "completed" as const,
-          },
-        ];
-      }
+      const updatedSessions = buildUpdatedScheduleSessions(
+        existingSessions,
+        sessionDate,
+        sInstructor,
+        sessionNotes
+      );
       const schedulePayload = {
         sessions: updatedSessions,
         status: "completed",
