@@ -27,6 +27,12 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Edit, Plus, BarChart2 } from "lucide-react";
 import { logger } from "@/lib/logger";
+import {
+  buildCreateStudentPayload,
+  buildUpdateStudentPayload,
+  computeAttendanceStats,
+  filterStudentsByActive,
+} from "@/app/dashboard/students/studentHelpers";
 
 type AttendanceRecord = {
   _id: string;
@@ -167,26 +173,8 @@ export default function StudentsPage() {
     setError(null);
     try {
       const api = createApiClient((session as any)?.accessToken);
-      // Prepare data and remove empty phone if not provided
-      const studentData: any = { ...createForm };
-      if (!studentData.phone || studentData.phone.trim() === '') {
-        delete studentData.phone;
-      }
-      // Handle emergency_contact - only send if at least one field is filled
-      if (studentData.emergency_contact) {
-        const hasName = studentData.emergency_contact.name && studentData.emergency_contact.name.trim() !== '';
-        const hasPhone = studentData.emergency_contact.phone && studentData.emergency_contact.phone.trim() !== '';
-        
-        if (!hasName && !hasPhone) {
-          // Both empty, don't send emergency_contact at all
-          delete studentData.emergency_contact;
-        } else {
-          // At least one field has data, but remove empty fields
-          if (!hasName) delete studentData.emergency_contact.name;
-          if (!hasPhone) delete studentData.emergency_contact.phone;
-        }
-      }
-      const data = await api.post("/api/students", studentData);
+      const payload = buildCreateStudentPayload(createForm);
+      const data = await api.post("/api/students", payload);
       setStudents((prev) => [...prev, data.data]);
       setCreateDialogOpen(false);
       setCreateForm({
@@ -214,26 +202,8 @@ export default function StudentsPage() {
     setError(null);
     try {
       const api = createApiClient((session as any)?.accessToken);
-      // Set phone to null if empty to remove it from database
-      const updateData: any = { ...editForm };
-      if (!updateData.phone || updateData.phone.trim() === '') {
-        updateData.phone = null;
-      }
-      // Handle emergency_contact - set to null if both fields are empty
-      if (updateData.emergency_contact) {
-        const hasName = updateData.emergency_contact.name && updateData.emergency_contact.name.trim() !== '';
-        const hasPhone = updateData.emergency_contact.phone && updateData.emergency_contact.phone.trim() !== '';
-        
-        if (!hasName && !hasPhone) {
-          // Both empty, set to null to remove from database
-          updateData.emergency_contact = null;
-        } else {
-          // At least one field has data, but set empty fields to null
-          if (!hasName) updateData.emergency_contact.name = null;
-          if (!hasPhone) updateData.emergency_contact.phone = null;
-        }
-      }
-      const data = await api.put(`/api/students/${selectedStudent._id}`, updateData);
+      const payload = buildUpdateStudentPayload(editForm);
+      const data = await api.put(`/api/students/${selectedStudent._id}`, payload);
       setStudents((prev) =>
         prev.map((s) => (s._id === selectedStudent._id ? data.data : s))
       );
@@ -561,9 +531,7 @@ export default function StudentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {students
-                  .filter(student => !showOnlyActive || student.active !== false)
-                  .map((student) => (
+                {filterStudentsByActive(students, showOnlyActive).map((student) => (
                 <TableRow key={student._id}>
                   <TableCell
                     className="font-medium cursor-pointer hover:text-primary hover:underline"
@@ -853,12 +821,7 @@ export default function StudentsPage() {
             ) : attendanceRecords.length === 0 ? (
               <p className="text-sm text-muted-foreground">No attendance records found.</p>
             ) : (() => {
-              const total = attendanceRecords.length;
-              const present = attendanceRecords.filter(a => a.status === 'present').length;
-              const late = attendanceRecords.filter(a => a.status === 'late').length;
-              const excused = attendanceRecords.filter(a => a.status === 'excused').length;
-              const absent = attendanceRecords.filter(a => a.status === 'absent').length;
-              const pct = total > 0 ? Math.round(((present + excused + late * 0.5) / total) * 100) : 0;
+              const { total, present, late, excused, absent, pct } = computeAttendanceStats(attendanceRecords);
 
               return (
                 <div className="space-y-4">
