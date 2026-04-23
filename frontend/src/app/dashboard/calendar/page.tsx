@@ -33,6 +33,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Trash2, Edit, Plus, Calendar as CalendarIcon, Users, Clock, MapPin, Info } from "lucide-react";
+import {
+  attendanceCountKey,
+  countPresentAttendance,
+  dayValuesToNumbers,
+  DAYS_OF_WEEK,
+  daysOfWeekToValues,
+  filterAttendanceForScheduleDate,
+  isoDatePart,
+} from "@/app/dashboard/calendar/calendarHelpers";
 
 type ClassInfo = {
   _id: string;
@@ -139,15 +148,7 @@ export default function CalendarPage() {
     recurrence_end_date: "", // End date for recurring schedules
   });
 
-  const daysOfWeek = [
-    { value: "monday", label: "Monday", number: 1 },
-    { value: "tuesday", label: "Tuesday", number: 2 },
-    { value: "wednesday", label: "Wednesday", number: 3 },
-    { value: "thursday", label: "Thursday", number: 4 },
-    { value: "friday", label: "Friday", number: 5 },
-    { value: "saturday", label: "Saturday", number: 6 },
-    { value: "sunday", label: "Sunday", number: 0 },
-  ];
+  const daysOfWeek = DAYS_OF_WEEK;
 
   useEffect(() => {
     if (status === 'authenticated' && session?.accessToken) {
@@ -178,17 +179,14 @@ export default function CalendarPage() {
           const attendanceList = attendanceData.data || [];
           
           // Filter attendance for this specific date (important for recurring classes)
-          const scheduleDate = schedule.date.split('T')[0];
-          const dateAttendance = attendanceList.filter((a: any) => {
-            if (!a.date) return true; // Old format without date
-            return a.date.split('T')[0] === scheduleDate;
-          });
+          const scheduleDate = isoDatePart(schedule.date);
+          const dateAttendance = filterAttendanceForScheduleDate(attendanceList, scheduleDate);
           
           // Count present students only
-          const presentCount = dateAttendance.filter((a: any) => a.status === 'present').length;
-          counts[`${schedule._id}-${scheduleDate}`] = presentCount;
+          const presentCount = countPresentAttendance(dateAttendance);
+          counts[attendanceCountKey(schedule._id, scheduleDate)] = presentCount;
         } catch {
-          counts[`${schedule._id}-${schedule.date.split('T')[0]}`] = 0;
+          counts[attendanceCountKey(schedule._id, isoDatePart(schedule.date))] = 0;
         }
       }
       setAttendanceCounts(counts);
@@ -235,11 +233,12 @@ export default function CalendarPage() {
     try {
       const api = createApiClient((session as any)?.accessToken);
       // Convert day strings to numbers (only if recurring)
-      const daysAsNumbers = createForm.recurring 
-        ? createForm.days_of_week.map(day => 
-            daysOfWeek.find(d => d.value === day)?.number ?? 0
-          )
-        : [new Date(createForm.date).getDay()]; // For non-recurring, use the actual day of the date
+      const daysAsNumbers = dayValuesToNumbers(
+        createForm.days_of_week,
+        createForm.date,
+        createForm.recurring,
+        daysOfWeek
+      );
       
       // Prepare payload - remove empty recurrence_end_date if not recurring
       const payload: any = {
@@ -295,11 +294,12 @@ export default function CalendarPage() {
       // Remove class_id from update payload - it's not allowed in updates
       const { class_id: _classId, ...updateData } = editForm;
       // Convert day strings to numbers (only if recurring)
-      const daysAsNumbers = editForm.recurring
-        ? editForm.days_of_week.map(day => 
-            daysOfWeek.find(d => d.value === day)?.number ?? 0
-          )
-        : [new Date(editForm.date).getDay()]; // For non-recurring, use the actual day of the date
+      const daysAsNumbers = dayValuesToNumbers(
+        editForm.days_of_week,
+        editForm.date,
+        editForm.recurring,
+        daysOfWeek
+      );
       
       const payload = { ...updateData, days_of_week: daysAsNumbers };
       const data = await api.put(`/api/schedules/${selectedSchedule._id}`, payload);
@@ -333,17 +333,11 @@ export default function CalendarPage() {
     setError(null); // Clear any previous errors
     setSelectedSchedule(schedule);
     // Convert number days back to string values for form
-    let daysAsStrings: string[] = [];
-    if (schedule.days_of_week) {
-      daysAsStrings = schedule.days_of_week.map(day => {
-        if (typeof day === 'number') {
-          return daysOfWeek.find(d => d.number === day)?.value || '';
-        }
-        return day;
-      }).filter(d => d);
-    } else if (schedule.day_of_week) {
-      daysAsStrings = [schedule.day_of_week];
-    }
+    const daysAsStrings = daysOfWeekToValues(
+      schedule.days_of_week,
+      schedule.day_of_week,
+      daysOfWeek
+    );
     
     setEditForm({
       class_id: typeof schedule.class_id === 'string' ? schedule.class_id : schedule.class_id._id,
@@ -371,11 +365,8 @@ export default function CalendarPage() {
       const api = createApiClient((session as any)?.accessToken);
       const attendanceData = await api.get(`/api/attendance/class/${schedule._id}`);
       const attendanceList: AttendanceRecord[] = attendanceData.data || [];
-      const scheduleDate = schedule.date.split('T')[0];
-      const filtered = attendanceList.filter((a) => {
-        if (!a.date) return true;
-        return a.date.split('T')[0] === scheduleDate;
-      });
+      const scheduleDate = isoDatePart(schedule.date);
+      const filtered = filterAttendanceForScheduleDate(attendanceList, scheduleDate);
       setSummaryAttendance(filtered);
     } catch {
       setSummaryAttendance([]);
