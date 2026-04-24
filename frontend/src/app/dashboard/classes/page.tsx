@@ -26,6 +26,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Trash2, Edit, Plus } from "lucide-react";
+import {
+  buildClassFormFromClass,
+  extractClassesFromApiResponse,
+  formatCategoriesForDisplay,
+  toggleCategorySelection,
+} from "./classHelpers";
 
 type Class = {
   _id: string;
@@ -87,7 +93,7 @@ export default function CalendarPage() {
     try {
       const api = createApiClient((session as any)?.accessToken);
       const data = await api.get("/api/classes");
-      setClasses(data.classes || data.data || []);
+      setClasses(extractClassesFromApiResponse(data));
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
       else setError("Failed to fetch classes");
@@ -158,14 +164,7 @@ export default function CalendarPage() {
   // Open edit dialog with class data
   function openEditDialog(cls: Class) {
     setSelectedClass(cls);
-    setEditForm({
-      name: cls.name || "",
-      description: cls.description || "",
-      categories: cls.categories || [],
-      instructor: cls.instructor || "",
-      max_capacity: cls.max_capacity || 20,
-      duration_minutes: cls.duration_minutes || 60,
-    });
+    setEditForm(buildClassFormFromClass(cls));
     setEditDialogOpen(true);
   }
 
@@ -288,17 +287,14 @@ export default function CalendarPage() {
                           type="checkbox"
                           checked={createForm.categories.includes(cat.value)}
                           onChange={(e) => {
-                            if (e.target.checked) {
-                              setCreateForm({
-                                ...createForm,
-                                categories: [...createForm.categories, cat.value],
-                              });
-                            } else {
-                              setCreateForm({
-                                ...createForm,
-                                categories: createForm.categories.filter((c) => c !== cat.value),
-                              });
-                            }
+                            setCreateForm({
+                              ...createForm,
+                              categories: toggleCategorySelection(
+                                createForm.categories,
+                                cat.value,
+                                e.target.checked
+                              ),
+                            });
                           }}
                           className="mr-2"
                         />
@@ -354,9 +350,7 @@ export default function CalendarPage() {
                   <TableCell className="font-medium">{cls.name}</TableCell>
                   <TableCell>{cls.instructor}</TableCell>
                   <TableCell>
-                    {Array.isArray(cls.categories)
-                      ? cls.categories.join(", ")
-                      : cls.categories || "N/A"}
+                    {formatCategoriesForDisplay(cls.categories)}
                   </TableCell>
                   <TableCell>{cls.duration_minutes} min</TableCell>
                   <TableCell>{cls.max_capacity}</TableCell>
@@ -479,17 +473,14 @@ export default function CalendarPage() {
                         type="checkbox"
                         checked={editForm.categories.includes(cat.value)}
                         onChange={(e) => {
-                          if (e.target.checked) {
-                            setEditForm({
-                              ...editForm,
-                              categories: [...editForm.categories, cat.value],
-                            });
-                          } else {
-                            setEditForm({
-                              ...editForm,
-                              categories: editForm.categories.filter((c) => c !== cat.value),
-                            });
-                          }
+                          setEditForm({
+                            ...editForm,
+                            categories: toggleCategorySelection(
+                              editForm.categories,
+                              cat.value,
+                              e.target.checked
+                            ),
+                          });
                         }}
                         className="mr-2"
                       />
