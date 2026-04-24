@@ -33,6 +33,12 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Trash2, Edit, Key, UserPlus } from "lucide-react";
 import { logger } from "@/lib/logger";
+import {
+  buildEditUserFormFromUser,
+  formatLastLogin,
+  getRoleBadgeColor,
+  getStatusBadgeColor,
+} from "./userHelpers";
 
 type User = {
   _id: string;
@@ -184,11 +190,7 @@ export default function UsersPage() {
   // Open edit dialog with user data
   function openEditDialog(user: User) {
     setSelectedUser(user);
-    setEditForm({
-      name: user.name,
-      role: user.role,
-      status: user.status,
-    });
+    setEditForm(buildEditUserFormFromUser(user));
     setEditDialogOpen(true);
   }
 
@@ -205,35 +207,6 @@ export default function UsersPage() {
     setResetPasswordDialogOpen(true);
   }
 
-  // Get role badge color
-  function getRoleBadgeColor(role: User["role"]) {
-    switch (role) {
-      case "admin":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      case "instructor":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "staff":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "student":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  }
-
-  // Get status badge color
-  function getStatusBadgeColor(status: User["status"]) {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "inactive":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
-      case "suspended":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  }
 
   // Redirect if not admin
   if (!isAdmin) {
@@ -416,9 +389,7 @@ export default function UsersPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    {user.last_login
-                      ? new Date(user.last_login).toLocaleDateString()
-                      : "Never"}
+                    {formatLastLogin(user.last_login)}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button
