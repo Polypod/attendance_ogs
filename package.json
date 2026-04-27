@@ -9,7 +9,7 @@
         "dev:all": "pnpm run dev & pnpm run dev:frontend",
         "build": "tsc -p tsconfig.build.json",
         "start": "node dist/index.js",
-        "test": "jest",
+        "test": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--no-experimental-webstorage\" jest",
         "verify": "pnpm test && pnpm run build && pnpm -C frontend run build",
         "lint:frontend": "cd frontend && npx eslint . --ext .ts,.tsx,.js,.jsx || true",
         "lint:backend": "npx eslint \"src/**/*.{ts,tsx,js,jsx}\" --ext .ts,.tsx,.js,.jsx || true",
