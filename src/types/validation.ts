@@ -76,6 +76,16 @@ export const updateStudentSchema = Joi.object<UpdateStudentDto>({
   active: Joi.boolean().optional()
 }).min(1); // At least one field is required for update
 
+export const studentImportSchema = Joi.object({
+  csvContent: Joi.string().trim().min(1).required(),
+  actionOverrides: Joi.object()
+    .pattern(
+      Joi.string().pattern(/^\d+$/),
+      Joi.string().valid('create', 'update', 'skip')
+    )
+    .optional()
+});
+
 // Class validation schemas
 export const createClassSchema = Joi.object<CreateClassDto>({
   name: Joi.string().required().min(3).max(100),

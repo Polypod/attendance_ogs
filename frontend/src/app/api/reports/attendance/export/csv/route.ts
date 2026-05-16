@@ -1,5 +1,6 @@
-import { getToken } from "next-auth/jwt";
+import { getServerSession } from "next-auth/next";
 import { NextRequest } from "next/server";
+import { authOptions } from "@/lib/authOptions";
 
 type ExportPayload = {
   mode: "raw" | "aggregate";
@@ -12,8 +13,8 @@ const getBackendUrl = (): string => {
 };
 
 export async function POST(request: NextRequest) {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-  const accessToken = (token as any)?.accessToken as string | undefined;
+  const session = await getServerSession(authOptions);
+  const accessToken = session?.accessToken;
 
   if (!accessToken) {
     return new Response("Unauthorized", { status: 401 });
