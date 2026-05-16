@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Edit, Plus, BarChart2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Trash2, Edit, Plus, BarChart2 } from "lucide-react";
 import { logger } from "@/lib/logger";
 import {
   buildCreateStudentPayload,
@@ -63,12 +63,17 @@ type Student = {
   active?: boolean;
 };
 
+type StudentSortField = "name" | "categories" | "belt_level" | "email" | "phone";
+type SortDirection = "asc" | "desc";
+
 export default function StudentsPage() {
   const { data: session, status } = useSession();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showOnlyActive, setShowOnlyActive] = useState(true);
+  const [sortField, setSortField] = useState<StudentSortField>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   // Fetch config for dropdowns
   const { config, loading: configLoading } = useConfig();
@@ -253,6 +258,53 @@ export default function StudentsPage() {
     setSelectedStudent(student);
     setDeleteDialogOpen(true);
   }
+
+  function handleSort(field: StudentSortField) {
+    if (sortField === field) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortField(field);
+    setSortDirection("asc");
+  }
+
+  function getStudentSortValue(student: Student, field: StudentSortField): string {
+    switch (field) {
+      case "name":
+        return student.name ?? "";
+      case "categories":
+        return student.categories?.join(", ") ?? "";
+      case "belt_level":
+        return config?.beltLevels.find((belt) => belt.value === student.belt_level)?.label ?? student.belt_level ?? "";
+      case "email":
+        return student.email ?? "";
+      case "phone":
+        return student.phone ?? "";
+      default:
+        return "";
+    }
+  }
+
+  function renderSortIcon(field: StudentSortField) {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 text-muted-foreground" />;
+    }
+
+    if (sortDirection === "asc") {
+      return <ArrowUp className="h-4 w-4" />;
+    }
+
+    return <ArrowDown className="h-4 w-4" />;
+  }
+
+  const visibleStudents = [...filterStudentsByActive(students, showOnlyActive)].sort((left, right) => {
+    const leftValue = getStudentSortValue(left, sortField);
+    const rightValue = getStudentSortValue(right, sortField);
+    const direction = sortDirection === "asc" ? 1 : -1;
+
+    return leftValue.localeCompare(rightValue, "sv", { sensitivity: "base" }) * direction;
+  });
 
   async function openAttendanceDialog(student: Student) {
     setAttendanceStudent(student);
@@ -522,16 +574,71 @@ export default function StudentsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Categories</TableHead>
-                  <TableHead>Belt Level</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
+                  <TableHead>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="-ml-3 h-auto px-3 py-1 font-semibold"
+                      onClick={() => handleSort("name")}
+                    >
+                      Name
+                      {renderSortIcon("name")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="-ml-3 h-auto px-3 py-1 font-semibold"
+                      onClick={() => handleSort("categories")}
+                    >
+                      Categories
+                      {renderSortIcon("categories")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="-ml-3 h-auto px-3 py-1 font-semibold"
+                      onClick={() => handleSort("belt_level")}
+                    >
+                      Belt Level
+                      {renderSortIcon("belt_level")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="-ml-3 h-auto px-3 py-1 font-semibold"
+                      onClick={() => handleSort("email")}
+                    >
+                      Email
+                      {renderSortIcon("email")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="-ml-3 h-auto px-3 py-1 font-semibold"
+                      onClick={() => handleSort("phone")}
+                    >
+                      Phone
+                      {renderSortIcon("phone")}
+                    </Button>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filterStudentsByActive(students, showOnlyActive).map((student) => (
+                {visibleStudents.map((student) => (
                 <TableRow key={student._id}>
                   <TableCell
                     className="font-medium cursor-pointer hover:text-primary hover:underline"
