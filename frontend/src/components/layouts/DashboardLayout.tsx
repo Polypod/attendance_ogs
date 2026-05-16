@@ -144,7 +144,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Main content area */}
-      <main className="flex-1 flex flex-col p-3 md:ml-40 mt-14 md:mt-0">
+      <main className="flex-1 flex flex-col p-3 mt-14 md:mt-0">
         {children}
       </main>
     </div>

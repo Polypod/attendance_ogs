@@ -8,6 +8,10 @@ export type ClassLike = {
   duration_minutes: number;
 };
 
+export type ClassWithCategories = Omit<ClassLike, "categories"> & {
+  categories: string[];
+};
+
 export type ClassForm = {
   name: string;
   description: string;
@@ -17,12 +21,17 @@ export type ClassForm = {
   duration_minutes: number;
 };
 
-export function extractClassesFromApiResponse(payload: unknown): ClassLike[] {
+export function extractClassesFromApiResponse(payload: unknown): ClassWithCategories[] {
   if (!payload || typeof payload !== "object") return [];
   const obj = payload as { classes?: unknown; data?: unknown };
 
   const classesValue = obj.classes ?? obj.data;
-  return Array.isArray(classesValue) ? (classesValue as ClassLike[]) : [];
+  if (!Array.isArray(classesValue)) return [];
+
+  return (classesValue as ClassLike[]).map((cls) => ({
+    ...cls,
+    categories: Array.isArray(cls.categories) ? (cls.categories as string[]) : [],
+  }));
 }
 
 export function buildClassFormFromClass(cls: Partial<ClassLike>): ClassForm {

@@ -176,7 +176,7 @@ export default function CalendarPage() {
       for (const schedule of schedulesList) {
         try {
           const attendanceData = await api.get(`/api/attendance/class/${schedule._id}`);
-          const attendanceList = attendanceData.data || [];
+          const attendanceList: AttendanceRecord[] = attendanceData.data || [];
           
           // Filter attendance for this specific date (important for recurring classes)
           const scheduleDate = isoDatePart(schedule.date);

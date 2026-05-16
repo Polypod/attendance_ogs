@@ -17,9 +17,13 @@ if [ -x /home/patrik/attendance_ogs/scripts/setup-pm2-logrotate.sh ]; then
 	/home/patrik/attendance_ogs/scripts/setup-pm2-logrotate.sh || true
 fi
 
-# Start PM2 with ecosystem.config.js
+# Start attendance_ogs (backend + frontend)
 cd /home/patrik/attendance_ogs
-pm2 start ecosystem.config.js
+pm2 startOrReload ecosystem.config.js
+
+# Start OGS app (ogs-app)
+cd /home/patrik/OGS
+pm2 startOrReload ecosystem.config.cjs --only ogs-app
 
 # Keep the wrapper running (PM2 daemon runs in background)
 # Use exec to replace shell with sleep so systemd keeps monitoring
