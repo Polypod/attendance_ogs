@@ -32,6 +32,7 @@ import {
   buildUpdateStudentPayload,
   computeAttendanceStats,
   filterStudentsByActive,
+  filterStudentsByCategories,
 } from "@/app/dashboard/students/studentHelpers";
 
 type AttendanceRecord = {
@@ -72,6 +73,7 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showOnlyActive, setShowOnlyActive] = useState(true);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [sortField, setSortField] = useState<StudentSortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -298,7 +300,14 @@ export default function StudentsPage() {
     return <ArrowDown className="h-4 w-4" />;
   }
 
-  const visibleStudents = [...filterStudentsByActive(students, showOnlyActive)].sort((left, right) => {
+  const availableCategories = (config?.categories ?? []).slice().sort((a, b) => a.order - b.order);
+
+  const filteredStudents = filterStudentsByCategories(
+    filterStudentsByActive(students, showOnlyActive),
+    selectedCategories
+  );
+
+  const visibleStudents = [...filteredStudents].sort((left, right) => {
     const leftValue = getStudentSortValue(left, sortField);
     const rightValue = getStudentSortValue(right, sortField);
     const direction = sortDirection === "asc" ? 1 : -1;
@@ -556,18 +565,60 @@ export default function StudentsPage() {
       ) : (
         <div className="space-y-4">
           <Card className="p-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="filter-active"
-                checked={showOnlyActive}
-                onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
-              />
+            <div className="space-y-3">
               <label
                 htmlFor="filter-active"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                className="flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer select-none"
               >
-                Show only active students
+                <Checkbox
+                  id="filter-active"
+                  checked={showOnlyActive}
+                  onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
+                />
+                <span>Show only active students</span>
               </label>
+
+              {availableCategories.length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <span className="text-sm text-muted-foreground">Filter by category:</span>
+                  {availableCategories.map((cat) => {
+                    const checked = selectedCategories.includes(cat.value);
+                    const id = `filter-category-${cat.value}`;
+                    return (
+                      <label
+                        key={cat.value}
+                        htmlFor={id}
+                        className="flex items-center gap-2 text-sm leading-none cursor-pointer select-none"
+                      >
+                        <Checkbox
+                          id={id}
+                          checked={checked}
+                          onCheckedChange={(v) => {
+                            const nextChecked = v === true;
+                            setSelectedCategories((prev) => {
+                              if (nextChecked) return prev.includes(cat.value) ? prev : [...prev, cat.value];
+                              return prev.filter((c) => c !== cat.value);
+                            });
+                          }}
+                        />
+                        <span>{cat.label}</span>
+                      </label>
+                    );
+                  })}
+
+                  {selectedCategories.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => setSelectedCategories([])}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
           <Card>
@@ -622,18 +673,6 @@ export default function StudentsPage() {
                       {renderSortIcon("email")}
                     </Button>
                   </TableHead>
-                  <TableHead>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="-ml-3 h-auto px-3 py-1 font-semibold"
-                      onClick={() => handleSort("phone")}
-                    >
-                      Phone
-                      {renderSortIcon("phone")}
-                    </Button>
-                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -653,7 +692,6 @@ export default function StudentsPage() {
                     {config?.beltLevels.find(b => b.value === student.belt_level)?.label || student.belt_level}
                   </TableCell>
                   <TableCell>{student.email || "N/A"}</TableCell>
-                  <TableCell>{student.phone || "N/A"}</TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button
                       variant="outline"

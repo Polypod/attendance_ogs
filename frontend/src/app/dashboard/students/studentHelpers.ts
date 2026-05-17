@@ -91,6 +91,16 @@ export function filterStudentsByActive<T extends { active?: boolean }>(
   return students.filter((student) => !showOnlyActive || student.active !== false);
 }
 
+export function filterStudentsByCategories<T extends { categories?: string[] }>(
+  students: T[],
+  selectedCategories: string[]
+): T[] {
+  if (!Array.isArray(selectedCategories) || selectedCategories.length === 0) return students;
+
+  const allowed = new Set(selectedCategories);
+  return students.filter((student) => (student.categories ?? []).some((c) => allowed.has(c)));
+}
+
 export function computeAttendanceStats(records: Array<{ status: string }>): {
   total: number;
   present: number;
