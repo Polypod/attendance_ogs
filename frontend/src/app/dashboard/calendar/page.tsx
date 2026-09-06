@@ -77,6 +77,9 @@ type Schedule = {
   recurrence_end_date?: string; // New field for recurring end date
   status: string;
   sessions?: ClassScheduleSession[];
+  _isRecurringInstance?: boolean; // Marker for expanded recurring instances
+  _instanceDate?: string; // Original instance date (YYYY-MM-DD)
+  _originalScheduleId?: string; // ID of the original recurring schedule
 };
 
 type Class = {
@@ -89,15 +92,15 @@ function getTodayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function getTwoWeeksBack() {
+function getThreeMonthsBack() {
   const date = new Date();
-  date.setDate(date.getDate() - 14);
+  date.setMonth(date.getMonth() - 3);
   return date.toISOString().slice(0, 10);
 }
 
-function getTwoWeeksForward() {
+function getThreeMonthsForward() {
   const date = new Date();
-  date.setDate(date.getDate() + 14);
+  date.setMonth(date.getMonth() + 3);
   return date.toISOString().slice(0, 10);
 }
 
@@ -108,8 +111,8 @@ export default function CalendarPage() {
   const [attendanceCounts, setAttendanceCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState(getTwoWeeksBack());
-  const [endDate, setEndDate] = useState(getTwoWeeksForward());
+  const [startDate, setStartDate] = useState(getThreeMonthsBack());
+  const [endDate, setEndDate] = useState(getThreeMonthsForward());
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -146,6 +149,9 @@ export default function CalendarPage() {
     days_of_week: [] as string[], // Array of weekdays for multiple selection
     recurring: false,
     recurrence_end_date: "", // End date for recurring schedules
+    status: "scheduled", // For session-level status updates
+    notes: "", // For session-level notes
+    instructor: "", // For session-level instructor override
   });
 
   const daysOfWeek = DAYS_OF_WEEK;
@@ -291,21 +297,61 @@ export default function CalendarPage() {
     setError(null);
     try {
       const api = createApiClient((session as any)?.accessToken);
-      // Remove class_id from update payload - it's not allowed in updates
-      const { class_id: _classId, ...updateData } = editForm;
-      // Convert day strings to numbers (only if recurring)
-      const daysAsNumbers = dayValuesToNumbers(
-        editForm.days_of_week,
-        editForm.date,
-        editForm.recurring,
-        daysOfWeek
-      );
       
-      const payload = { ...updateData, days_of_week: daysAsNumbers };
-      const data = await api.put(`/api/schedules/${selectedSchedule._id}`, payload);
-      setSchedules((prev) =>
-        prev.map((s) => (s._id === selectedSchedule._id ? data.data : s))
-      );
+      // Check if this is a recurring instance - if so, update only the session
+      if ((selectedSchedule as any)._isRecurringInstance && (selectedSchedule as any)._originalScheduleId) {
+        const instanceDate = editForm.date;
+        
+        // Build session update with the changes
+        const sessionUpdate = {
+          date: new Date(instanceDate).toISOString(),
+          status: editForm.status || 'scheduled',
+          notes: editForm.notes || '',
+          'S-instructor': editForm.instructor || '',
+        };
+        
+        // Fetch current schedule to get all sessions
+        const currentSchedule = await api.get(`/api/schedules/${(selectedSchedule as any)._originalScheduleId}`);
+        const existingSessions = currentSchedule.data?.sessions || [];
+        
+        // Find and update the specific session
+        const updatedSessions = existingSessions.map((s: any) => {
+          if (s.date && new Date(s.date).toISOString().split('T')[0] === instanceDate) {
+            return sessionUpdate;
+          }
+          return s;
+        });
+        
+        // If session doesn't exist, add it
+        if (!updatedSessions.some((s: any) => s.date && new Date(s.date).toISOString().split('T')[0] === instanceDate)) {
+          updatedSessions.push(sessionUpdate);
+        }
+        
+        // Update only the sessions array
+        const payload = { sessions: updatedSessions };
+        const data = await api.put(`/api/schedules/${(selectedSchedule as any)._originalScheduleId}`, payload);
+        
+        // Update local state
+        setSchedules((prev) =>
+          prev.map((s) => s._id === (selectedSchedule as any)._originalScheduleId ? data.data : s)
+        );
+      } else {
+        // For non-recurring schedules, update normally
+        const { class_id: _classId, ...updateData } = editForm;
+        const daysAsNumbers = dayValuesToNumbers(
+          editForm.days_of_week,
+          editForm.date,
+          editForm.recurring,
+          daysOfWeek
+        );
+        
+        const payload = { ...updateData, days_of_week: daysAsNumbers };
+        const data = await api.put(`/api/schedules/${selectedSchedule._id}`, payload);
+        setSchedules((prev) =>
+          prev.map((s) => (s._id === selectedSchedule._id ? data.data : s))
+        );
+      }
+      
       setEditDialogOpen(false);
       setSelectedSchedule(null);
     } catch (e: unknown) {
@@ -319,8 +365,34 @@ export default function CalendarPage() {
     setError(null);
     try {
       const api = createApiClient((session as any)?.accessToken);
-      await api.delete(`/api/schedules/${selectedSchedule._id}`);
-      setSchedules((prev) => prev.filter((s) => s._id !== selectedSchedule._id));
+      
+      // Check if this is a recurring instance - if so, delete only the session
+      if ((selectedSchedule as any)._isRecurringInstance && (selectedSchedule as any)._originalScheduleId) {
+        const instanceDate = selectedSchedule.date.split('T')[0];
+        
+        // Fetch current schedule to get all sessions
+        const currentSchedule = await api.get(`/api/schedules/${(selectedSchedule as any)._originalScheduleId}`);
+        const existingSessions = currentSchedule.data?.sessions || [];
+        
+        // Filter out the session for this date
+        const updatedSessions = existingSessions.filter((s: any) => 
+          !s.date || new Date(s.date).toISOString().split('T')[0] !== instanceDate
+        );
+        
+        // Update the sessions array (removes the session without deleting the whole schedule)
+        const payload = { sessions: updatedSessions };
+        await api.put(`/api/schedules/${(selectedSchedule as any)._originalScheduleId}`, payload);
+        
+        // Update local state - remove this instance from display
+        setSchedules((prev) => prev.filter((s) => 
+          !(s._id === selectedSchedule._id && (s as any)._instanceDate === instanceDate)
+        ));
+      } else {
+        // For non-recurring schedules, delete normally
+        await api.delete(`/api/schedules/${selectedSchedule._id}`);
+        setSchedules((prev) => prev.filter((s) => s._id !== selectedSchedule._id));
+      }
+      
       setDeleteDialogOpen(false);
       setSelectedSchedule(null);
     } catch (e: unknown) {
@@ -339,14 +411,32 @@ export default function CalendarPage() {
       daysOfWeek
     );
     
+    // If this is a recurring instance, look for the session data
+    const instanceDate = schedule.date ? schedule.date.split('T')[0] : "";
+    let sessionData = { status: "scheduled", notes: "", instructor: "" };
+    
+    if ((schedule as any)._isRecurringInstance && schedule.sessions) {
+      const matchingSession = schedule.sessions.find(
+        (s: ClassScheduleSession) => s.date && new Date(s.date).toISOString().split('T')[0] === instanceDate
+      );
+      if (matchingSession) {
+        sessionData = {
+          status: matchingSession.status || "scheduled",
+          notes: matchingSession.notes || "",
+          instructor: matchingSession['S-instructor'] || "",
+        };
+      }
+    }
+    
     setEditForm({
       class_id: typeof schedule.class_id === 'string' ? schedule.class_id : schedule.class_id._id,
-      date: schedule.date ? schedule.date.split('T')[0] : "",
+      date: instanceDate,
       start_time: schedule.start_time || "",
       end_time: schedule.end_time || "",
       days_of_week: daysAsStrings,
       recurring: schedule.recurring || false,
       recurrence_end_date: schedule.recurrence_end_date ? schedule.recurrence_end_date.split('T')[0] : "",
+      ...sessionData,
     });
     setEditDialogOpen(true);
   }
@@ -648,12 +738,26 @@ export default function CalendarPage() {
           <form onSubmit={handleEditSchedule}>
             <DialogHeader>
               <DialogTitle>Edit Schedule</DialogTitle>
-              <DialogDescription>Update schedule information.</DialogDescription>
+              <DialogDescription>
+                {(selectedSchedule as any)?._isRecurringInstance 
+                  ? "Update this session only (not the entire recurring schedule)"
+                  : "Update schedule information."}
+              </DialogDescription>
             </DialogHeader>
+            
+            {/* Message for recurring instances */}
+            {(selectedSchedule as any)?._isRecurringInstance && (
+              <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Single Session Edit:</strong> Changes made here will only affect this individual occurrence, not the entire recurring series.
+                </p>
+              </div>
+            )}
+            
             <div className="space-y-4 py-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Class *</label>
-                <Select value={editForm.class_id} onValueChange={(value) => setEditForm({ ...editForm, class_id: value })}>
+                <Select value={editForm.class_id} onValueChange={(value) => setEditForm({ ...editForm, class_id: value })} disabled={(selectedSchedule as any)?._isRecurringInstance}>
                   <SelectTrigger><SelectValue placeholder="Select a class" /></SelectTrigger>
                   <SelectContent>
                     {classes.map((cls) => <SelectItem key={cls._id} value={cls._id}>{cls.name} - {cls.instructor}</SelectItem>)}
@@ -662,98 +766,154 @@ export default function CalendarPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Date *</label>
-                <Input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} required />
+                <Input 
+                  type="date" 
+                  value={editForm.date} 
+                  onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} 
+                  disabled={(selectedSchedule as any)?._isRecurringInstance}
+                  required 
+                />
               </div>
               
               {/* Start Time and End Time on same row */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Start Time *</label>
-                  <Input type="time" value={editForm.start_time} onChange={(e) => setEditForm({ ...editForm, start_time: e.target.value })} required />
+                  <Input 
+                    type="time" 
+                    value={editForm.start_time} 
+                    onChange={(e) => setEditForm({ ...editForm, start_time: e.target.value })} 
+                    disabled={(selectedSchedule as any)?._isRecurringInstance}
+                    required 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">End Time *</label>
-                  <Input type="time" value={editForm.end_time} onChange={(e) => setEditForm({ ...editForm, end_time: e.target.value })} required />
-                </div>
-              </div>
-
-              {/* Recurring checkbox */}
-              <div>
-                <label className="flex items-center">
-                  <input type="checkbox" checked={editForm.recurring} onChange={(e) => setEditForm({ ...editForm, recurring: e.target.checked })} className="mr-2" />
-                  Recurring Weekly
-                </label>
-              </div>
-
-              {/* Days of Week - only show if recurring */}
-              {editForm.recurring && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">Days of Week *</label>
-                  <div className="grid grid-cols-2 gap-2 border rounded-md p-3 bg-gray-50">
-                    {daysOfWeek.map((day) => (
-                      <div key={day.value} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`edit-day-${day.value}`}
-                          checked={editForm.days_of_week.includes(day.value)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setEditForm({
-                                ...editForm,
-                                days_of_week: [...editForm.days_of_week, day.value],
-                              });
-                            } else {
-                              setEditForm({
-                                ...editForm,
-                                days_of_week: editForm.days_of_week.filter((d) => d !== day.value),
-                              });
-                            }
-                          }}
-                          className="w-4 h-4 rounded border-gray-300"
-                        />
-                        <label htmlFor={`edit-day-${day.value}`} className="text-sm cursor-pointer">
-                          {day.label}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                  {editForm.days_of_week.length > 0 ? (
-                    <p className="text-sm text-gray-600 mt-1">
-                      Selected: {editForm.days_of_week.map(d => daysOfWeek.find(day => day.value === d)?.label).join(", ")}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-red-500 mt-1">
-                      Please select at least one day
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Note about status management */}
-              {editForm.recurring && (
-                <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                  <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> For recurring schedules, status is managed per session when taking attendance. 
-                    Each occurrence can have its own status (scheduled, completed, cancelled).
-                  </p>
-                </div>
-              )}
-
-              {/* Show date range when recurring is checked */}
-              {editForm.recurring && (
-                <div>
-                  <label className="block text-sm font-medium mb-1">Recurrence End Date *</label>
                   <Input 
-                    type="date" 
-                    value={editForm.recurrence_end_date} 
-                    onChange={(e) => setEditForm({ ...editForm, recurrence_end_date: e.target.value })} 
+                    type="time" 
+                    value={editForm.end_time} 
+                    onChange={(e) => setEditForm({ ...editForm, end_time: e.target.value })} 
+                    disabled={(selectedSchedule as any)?._isRecurringInstance}
                     required 
-                    min={editForm.date}
                   />
-                  <p className="text-sm text-gray-500 mt-1">
-                    Classes will repeat weekly from {editForm.date} to {editForm.recurrence_end_date || '...'}
-                  </p>
                 </div>
+              </div>
+
+              {/* For recurring instances, show session-specific fields */}
+              {(selectedSchedule as any)?._isRecurringInstance ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Session Status</label>
+                    <Select value={editForm.status} onValueChange={(value) => setEditForm({ ...editForm, status: value })}>
+                      <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="scheduled">Scheduled</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Session Notes</label>
+                    <Input 
+                      type="text" 
+                      value={editForm.notes} 
+                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                      placeholder="Add notes for this session"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Session Instructor (Override)</label>
+                    <Input 
+                      type="text" 
+                      value={editForm.instructor} 
+                      onChange={(e) => setEditForm({ ...editForm, instructor: e.target.value })}
+                      placeholder="Leave empty to use default"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Recurring checkbox */}
+                  <div>
+                    <label className="flex items-center">
+                      <input type="checkbox" checked={editForm.recurring} onChange={(e) => setEditForm({ ...editForm, recurring: e.target.checked })} className="mr-2" />
+                      Recurring Weekly
+                    </label>
+                  </div>
+
+                  {/* Days of Week - only show if recurring */}
+                  {editForm.recurring && (
+                   <div>
+                     <label className="block text-sm font-medium mb-2">Days of Week *</label>
+                     <div className="grid grid-cols-2 gap-2 border rounded-md p-3 bg-gray-50">
+                       {daysOfWeek.map((day) => (
+                         <div key={day.value} className="flex items-center space-x-2">
+                           <input
+                             type="checkbox"
+                             id={`edit-day-${day.value}`}
+                             checked={editForm.days_of_week.includes(day.value)}
+                             onChange={(e) => {
+                               if (e.target.checked) {
+                                 setEditForm({
+                                   ...editForm,
+                                   days_of_week: [...editForm.days_of_week, day.value],
+                                 });
+                               } else {
+                                 setEditForm({
+                                   ...editForm,
+                                   days_of_week: editForm.days_of_week.filter((d) => d !== day.value),
+                                 });
+                               }
+                             }}
+                             className="w-4 h-4 rounded border-gray-300"
+                           />
+                           <label htmlFor={`edit-day-${day.value}`} className="text-sm cursor-pointer">
+                             {day.label}
+                           </label>
+                         </div>
+                       ))}
+                     </div>
+                     {editForm.days_of_week.length > 0 ? (
+                       <p className="text-sm text-gray-600 mt-1">
+                         Selected: {editForm.days_of_week.map(d => daysOfWeek.find(day => day.value === d)?.label).join(", ")}
+                       </p>
+                     ) : (
+                       <p className="text-sm text-red-500 mt-1">
+                         Please select at least one day
+                       </p>
+                     )}
+                   </div>
+                 )}
+
+                 {/* Note about status management */}
+                 {editForm.recurring && (
+                   <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                     <p className="text-sm text-blue-800">
+                       <strong>Note:</strong> For recurring schedules, status is managed per session when taking attendance. 
+                       Each occurrence can have its own status (scheduled, completed, cancelled).
+                     </p>
+                   </div>
+                 )}
+
+                 {/* Show date range when recurring is checked */}
+                 {editForm.recurring && (
+                   <div>
+                     <label className="block text-sm font-medium mb-1">Recurrence End Date *</label>
+                     <Input 
+                       type="date" 
+                       value={editForm.recurrence_end_date} 
+                       onChange={(e) => setEditForm({ ...editForm, recurrence_end_date: e.target.value })} 
+                       required 
+                       min={editForm.date}
+                     />
+                     <p className="text-sm text-gray-500 mt-1">
+                       Classes will repeat weekly from {editForm.date} to {editForm.recurrence_end_date || '...'}
+                     </p>
+                   </div>
+                 )}
+               </>
               )}
             </div>
             {error && (
@@ -773,11 +933,22 @@ export default function CalendarPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Schedule</DialogTitle>
-            <DialogDescription>Are you sure you want to delete this scheduled class? This action cannot be undone.</DialogDescription>
+            <DialogDescription>
+              {(selectedSchedule as any)?._isRecurringInstance
+                ? "Delete this session only (not the entire recurring schedule)"
+                : "Are you sure you want to delete this scheduled class? This action cannot be undone."}
+            </DialogDescription>
           </DialogHeader>
+          {(selectedSchedule as any)?._isRecurringInstance && (
+            <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+              <p className="text-sm text-blue-800">
+                <strong>Single Session Deletion:</strong> Only this individual occurrence will be removed from the recurring series.
+              </p>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteSchedule}>Delete Schedule</Button>
+            <Button variant="destructive" onClick={handleDeleteSchedule}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

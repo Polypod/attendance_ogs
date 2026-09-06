@@ -17,20 +17,7 @@ const classScheduleSchema = new Schema<IClassScheduleDocument>({
   },
   date: {
     type: Date,
-    required: [true, 'Class date is required'],
-    validate: {
-      validator: function(this: any, value: Date) {
-        // Allow past dates for classes that are completed; otherwise ensure date is not in the past for new documents
-        if ((this as any).isNew) {
-          if (this.status === ClassStatusEnum.COMPLETED) {
-            return true;
-          }
-          return value >= new Date(new Date().setHours(0, 0, 0, 0));
-        }
-        return true;
-      },
-      message: 'Class date cannot be in the past'
-    }
+    required: [true, 'Class date is required']
   },
   start_time: { 
     type: String, 

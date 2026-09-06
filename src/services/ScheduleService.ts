@@ -141,6 +141,7 @@ export class ScheduleService {
                     date: instanceDate,
                     _isRecurringInstance: true,
                     _originalScheduleId: schedule._id,
+                    _instanceDate: dateStr,
                     status: existingSession.status,
                     notes: existingSession.notes,
                   });
@@ -156,6 +157,7 @@ export class ScheduleService {
                     date: instanceDate,
                     _isRecurringInstance: true,
                     _originalScheduleId: schedule._id,
+                    _instanceDate: dateStr,
                     status: ClassStatusEnum.SCHEDULED,
                   });
                 }
