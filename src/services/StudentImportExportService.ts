@@ -70,7 +70,7 @@ const normalizeValue = (value: string | undefined): string => {
 const splitCategories = (value: string): string[] => {
   return value
     .split('|')
-    .map((item) => item.trim())
+    .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 };
 
@@ -266,9 +266,7 @@ export class StudentImportExportService {
         }
       }
 
-      if (!beltLevel) {
-        errors.push('Belt level is required');
-      } else if (!configService.isValidBeltLevel(beltLevel)) {
+      if (beltLevel && !configService.isValidBeltLevel(beltLevel)) {
         errors.push(`Invalid belt level: ${beltLevel}`);
       }
 

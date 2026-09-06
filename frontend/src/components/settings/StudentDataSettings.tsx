@@ -40,6 +40,22 @@ type ImportRow = {
 
 type ImportAction = "create" | "update" | "skip";
 
+// Excel on Windows often exports CSV as Windows-1252 instead of UTF-8, which
+// mangles Swedish letters (å/ä/ö) when decoded as UTF-8. Detect and fall back.
+const readFileAsText = async (file: File): Promise<string> => {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+
+  if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return new TextDecoder("utf-8").decode(bytes.subarray(3));
+  }
+
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return new TextDecoder("windows-1252").decode(bytes);
+  }
+};
+
 type ImportResult = {
   summary: {
     totalRows: number;
@@ -224,7 +240,7 @@ export default function StudentDataSettings() {
     setApplyResult(null);
 
     try {
-      const nextCsvContent = await selectedFile.text();
+      const nextCsvContent = await readFileAsText(selectedFile);
       const response = await fetch("/frontend-api/students/import/preview", {
         method: "POST",
         headers: {

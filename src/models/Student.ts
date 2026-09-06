@@ -61,9 +61,10 @@ const studentSchema = new Schema<IStudentDocument>({
 
   belt_level: {
     type: String,
-    required: [true, 'Belt level is required'],
+    required: false,
     validate: {
       validator: function(value: string) {
+        if (!value) return true;
         const configService = ConfigService.tryGetInitializedInstance();
         if (!configService) {
           return false;

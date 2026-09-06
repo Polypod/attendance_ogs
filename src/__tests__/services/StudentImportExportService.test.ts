@@ -181,6 +181,43 @@ describe('StudentImportExportService', () => {
     );
   });
 
+  it('accepts rows with a missing belt level as valid', async () => {
+    const csv = [
+      'name,email,categories,belt_level,phone,emergency_contact_name,emergency_contact_phone,active,status',
+      'No Belt Student,no-belt@example.com,kids,,070-111222,Parent,070-333444,true,active',
+    ].join('\n');
+
+    const preview = await service.previewImport(csv);
+
+    expect(preview.summary.validRows).toBe(1);
+    expect(preview.rows[0].errors).not.toContain('Belt level is required');
+    expect(preview.rows[0]).toEqual(
+      expect.objectContaining({
+        valid: true,
+        normalizedStudent: expect.objectContaining({ belt_level: '' }),
+      })
+    );
+
+    const result = await service.applyImport(csv);
+    expect(result.summary.created).toBe(1);
+
+    const created = await StudentModel.findOne({ email: 'no-belt@example.com' }).lean();
+    expect(created?.belt_level).toBe('');
+  });
+
+  it('accepts categories regardless of letter casing', async () => {
+    const csv = [
+      'name,email,categories,belt_level,phone,emergency_contact_name,emergency_contact_phone,active,status',
+      'Mixed Case,mixed-case@example.com,Kids|YOUTH,10kyu,070-111222,Parent,070-333444,true,active',
+    ].join('\n');
+
+    const preview = await service.previewImport(csv);
+
+    expect(preview.summary.validRows).toBe(1);
+    expect(preview.rows[0].errors).toHaveLength(0);
+    expect(preview.rows[0].normalizedStudent?.categories).toEqual(['kids', 'youth']);
+  });
+
   it('applies valid rows while skipping invalid rows and user-skipped rows', async () => {
     await StudentModel.create({
       name: 'Existing Student',
