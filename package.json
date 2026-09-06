@@ -15,7 +15,8 @@
         "lint:backend": "npx eslint \"src/**/*.{ts,tsx,js,jsx}\" --ext .ts,.tsx,.js,.jsx || true",
         "lint": "pnpm run lint:frontend && pnpm run lint:backend",
         "seed:admin": "ts-node -r tsconfig-paths/register src/scripts/seedAdmin.ts",
-        "seed:kiosks": "ts-node -r tsconfig-paths/register src/scripts/seedKiosks.ts"
+        "seed:kiosks": "ts-node -r tsconfig-paths/register src/scripts/seedKiosks.ts",
+        "restore:kiosk": "ts-node -r tsconfig-paths/register src/scripts/restoreKioskKey.ts"
     },
     "dependencies": {
         "@fullcalendar/core": "^6.1.20",
