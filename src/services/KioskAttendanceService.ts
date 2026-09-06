@@ -69,7 +69,7 @@ export class KioskAttendanceError extends Error {
 
 export class KioskAttendanceService {
   async getTodaySessions(): Promise<{ date: string; sessions: KioskSessionView[] }> {
-    const { start, end } = this.todayRange();
+    const { dateKey, start, end } = this.todayRange();
     const sources = await this.getSessionSources(start, end);
     const attendanceBySessionAndStudent = await this.getAttendanceStatuses(sources, start, end);
     const allStudents = await this.getStudents();

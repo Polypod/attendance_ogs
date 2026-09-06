@@ -9,7 +9,6 @@ export async function authenticateKiosk(req: Request, res: Response, next: NextF
   if (!accessKey) {
     res.status(401).json({
       success: false,
-      requestId: req.requestId,
       message: 'Kiosk access key is required',
     });
     return;
@@ -23,7 +22,6 @@ export async function authenticateKiosk(req: Request, res: Response, next: NextF
   if (!kiosk) {
     res.status(401).json({
       success: false,
-      requestId: req.requestId,
       message: 'Invalid or inactive kiosk access key',
     });
     return;
