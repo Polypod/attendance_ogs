@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Joi from 'joi';
 import { kioskAttendanceController } from '../controllers/KioskAttendanceController';
 import { authenticateKiosk } from '../middleware/kioskAuth';
+import { apiLimiter } from '../middleware/rateLimiter';
 import { validateParams, validateRequest } from '../middleware/validation';
 
 const router = Router();
@@ -23,6 +24,7 @@ router.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   next();
 });
+router.use(apiLimiter);
 router.use(authenticateKiosk);
 router.get('/today', kioskAttendanceController.getToday);
 router.post(

@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { Types } from 'mongoose';
 import { AttendanceKioskModel, IAttendanceKioskDocument } from '../models/AttendanceKiosk';
 
 export interface KioskSummary {
@@ -31,6 +32,12 @@ function toKioskSummary(kiosk: IAttendanceKioskDocument): KioskSummary {
 }
 
 export class KioskManagementService {
+  private assertValidId(id: string): void {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new KioskManagementError(400, 'Invalid kiosk ID');
+    }
+  }
+
   async listKiosks(): Promise<KioskSummary[]> {
     const kiosks = await AttendanceKioskModel.find({})
       .select('name active created_at last_used_at')
@@ -62,6 +69,7 @@ export class KioskManagementService {
   }
 
   async rotateAccessKey(id: string): Promise<{ kiosk: KioskSummary; accessKey: string }> {
+    this.assertValidId(id);
     const accessKey = crypto.randomBytes(32).toString('base64url');
     const kiosk = await AttendanceKioskModel.findByIdAndUpdate(
       id,
@@ -77,6 +85,7 @@ export class KioskManagementService {
   }
 
   async setKioskStatus(id: string, active: boolean): Promise<KioskSummary> {
+    this.assertValidId(id);
     const kiosk = await AttendanceKioskModel.findByIdAndUpdate(
       id,
       { active },
@@ -91,6 +100,7 @@ export class KioskManagementService {
   }
 
   async updateKioskName(id: string, newName: string): Promise<KioskSummary> {
+    this.assertValidId(id);
     const normalizedName = newName.trim();
     if (!normalizedName) {
       throw new KioskManagementError(400, 'Kiosk name is required');
@@ -117,6 +127,7 @@ export class KioskManagementService {
   }
 
   async deleteKiosk(id: string): Promise<void> {
+    this.assertValidId(id);
     const kiosk = await AttendanceKioskModel.findByIdAndDelete(id);
 
     if (!kiosk) {
