@@ -70,9 +70,10 @@ export class KioskManagementService {
 
   async rotateAccessKey(id: string): Promise<{ kiosk: KioskSummary; accessKey: string }> {
     this.assertValidId(id);
+    const kioskId = new Types.ObjectId(id);
     const accessKey = crypto.randomBytes(32).toString('base64url');
-    const kiosk = await AttendanceKioskModel.findByIdAndUpdate(
-      id,
+    const kiosk = await AttendanceKioskModel.findOneAndUpdate(
+      { _id: kioskId },
       { token_hash: hashKioskAccessKey(accessKey), active: true },
       { new: true, runValidators: true }
     ).select('+token_hash');
@@ -86,9 +87,14 @@ export class KioskManagementService {
 
   async setKioskStatus(id: string, active: boolean): Promise<KioskSummary> {
     this.assertValidId(id);
-    const kiosk = await AttendanceKioskModel.findByIdAndUpdate(
-      id,
-      { active },
+    if (typeof active !== 'boolean') {
+      throw new KioskManagementError(400, 'Invalid kiosk active status');
+    }
+    const safeActive = active === true;
+    const kioskId = new Types.ObjectId(id);
+    const kiosk = await AttendanceKioskModel.findOneAndUpdate(
+      { _id: kioskId },
+      { active: safeActive },
       { new: true, runValidators: true }
     );
 
@@ -101,14 +107,15 @@ export class KioskManagementService {
 
   async updateKioskName(id: string, newName: string): Promise<KioskSummary> {
     this.assertValidId(id);
+    const kioskId = new Types.ObjectId(id);
     const normalizedName = newName.trim();
     if (!normalizedName) {
       throw new KioskManagementError(400, 'Kiosk name is required');
     }
 
     try {
-      const kiosk = await AttendanceKioskModel.findByIdAndUpdate(
-        id,
+      const kiosk = await AttendanceKioskModel.findOneAndUpdate(
+        { _id: kioskId },
         { name: normalizedName },
         { new: true, runValidators: true }
       );
@@ -128,7 +135,8 @@ export class KioskManagementService {
 
   async deleteKiosk(id: string): Promise<void> {
     this.assertValidId(id);
-    const kiosk = await AttendanceKioskModel.findByIdAndDelete(id);
+    const kioskId = new Types.ObjectId(id);
+    const kiosk = await AttendanceKioskModel.findOneAndDelete({ _id: kioskId });
 
     if (!kiosk) {
       throw new KioskManagementError(404, 'Kiosk not found');
