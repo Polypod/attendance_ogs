@@ -1,6 +1,6 @@
 "use client";
 
-import StudentDataSettings from "@/components/settings/StudentDataSettings";
+import KioskSettings from "@/components/settings/KioskSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -20,7 +20,7 @@ export default function SettingsPage() {
             <CardDescription>This section is limited to administrators.</CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            You do not have permission to import or export student records.
+            You do not have permission to manage kiosk access.
           </CardContent>
         </Card>
       </div>
@@ -32,11 +32,20 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Manage administrative data exchange tasks for the student register.
+          Manage kiosk access and security settings.
         </p>
       </div>
 
-      <StudentDataSettings />
+      <KioskSettings />
     </div>
   );
 }
+=======
+          Manage kiosk devices and activation links.
+        </p>
+      </div>
+      <KioskSettings />
+    </div>
+  );
+}
+>>>>>>> origin/copilot/add-link-to-narvaro-page

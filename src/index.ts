@@ -12,6 +12,8 @@ import { configRoutes } from './routes/configRoutes';
 import { reportRoutes } from './routes/reportRoutes';
 import { reportPresetRoutes } from './routes/reportPresetRoutes';
 import { metricsRoutes } from './routes/metricsRoutes';
+import { kioskAttendanceRoutes } from './routes/kioskAttendanceRoutes';
+import { kioskManagementRoutes } from './routes/kioskManagementRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { applyMiddleware } from './middleware/middleware';
 import { authenticate, authorize } from './middleware/auth';
@@ -49,9 +51,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // Public routes (no authentication required)
 app.use('/api/auth', authRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/kiosk-attendance', kioskAttendanceRoutes);
 
 // Admin-only routes
 app.use('/api/users', authenticate, authorize(UserRoleEnum.ADMIN), userRoutes);
+app.use('/api/kiosks', apiLimiter, authenticate, authorize(UserRoleEnum.ADMIN), kioskManagementRoutes);
 
 // Protected routes (authentication required)
 app.use('/api/students', authenticate, studentRoutes);
