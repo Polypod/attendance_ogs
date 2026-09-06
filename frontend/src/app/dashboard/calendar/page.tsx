@@ -113,6 +113,11 @@ export default function CalendarPage() {
   const [error, setError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(getTwoWeeksBack());
   const [endDate, setEndDate] = useState(getOneMonthForward());
+  const [selectedSchedules, setSelectedSchedules] = useState<Set<string>>(new Set());
+  const [filterClass, setFilterClass] = useState("all");
+  const [filterDay, setFilterDay] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -214,6 +219,97 @@ export default function CalendarPage() {
       logger.error('CalendarPage.fetchClasses_failed', {
         message: e instanceof Error ? e.message : 'Unknown error',
       });
+    }
+  }
+
+  function getScheduleDate(schedule: Schedule): string {
+    return schedule._instanceDate || schedule.date.split("T")[0];
+  }
+
+  function getSelectionKey(schedule: Schedule): string {
+    return `${schedule._originalScheduleId || schedule._id}:${getScheduleDate(schedule)}`;
+  }
+
+  function getFilteredSchedules(): Schedule[] {
+    return schedules.filter((schedule) => {
+      if (filterClass !== "all" && getClassName(schedule.class_id) !== filterClass) {
+        return false;
+      }
+      if (filterDay !== "all" && getDayOfWeekName(schedule.date) !== filterDay) {
+        return false;
+      }
+      return filterStatus === "all" || schedule.status === filterStatus;
+    });
+  }
+
+  function toggleScheduleSelection(selectionKey: string) {
+    setSelectedSchedules((current) => {
+      const next = new Set(current);
+      if (next.has(selectionKey)) {
+        next.delete(selectionKey);
+      } else {
+        next.add(selectionKey);
+      }
+      return next;
+    });
+  }
+
+  function toggleAllSelection() {
+    const filteredSchedules = getFilteredSchedules();
+    const filteredKeys = filteredSchedules.map(getSelectionKey);
+    const allFilteredSelected = filteredKeys.length > 0 && filteredKeys.every((key) => selectedSchedules.has(key));
+
+    setSelectedSchedules((current) => {
+      const next = new Set(current);
+      if (allFilteredSelected) {
+        filteredKeys.forEach((key) => next.delete(key));
+      } else {
+        filteredKeys.forEach((key) => next.add(key));
+      }
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    if (!session?.accessToken || selectedSchedules.size === 0) {
+      return;
+    }
+
+    setError(null);
+    try {
+      const api = createApiClient((session as any).accessToken);
+      const selectedEntries = schedules.filter((schedule) => selectedSchedules.has(getSelectionKey(schedule)));
+      const recurringDatesBySchedule = new Map<string, Set<string>>();
+      const standaloneScheduleIds = new Set<string>();
+
+      for (const schedule of selectedEntries) {
+        if (schedule._isRecurringInstance && schedule._originalScheduleId) {
+          const dates = recurringDatesBySchedule.get(schedule._originalScheduleId) || new Set<string>();
+          dates.add(getScheduleDate(schedule));
+          recurringDatesBySchedule.set(schedule._originalScheduleId, dates);
+        } else {
+          standaloneScheduleIds.add(schedule._id);
+        }
+      }
+
+      for (const [scheduleId, instanceDates] of recurringDatesBySchedule) {
+        const currentSchedule = await api.get(`/api/schedules/${scheduleId}`);
+        const sessions: ClassScheduleSession[] = currentSchedule.data?.sessions || [];
+        const updatedSessions = sessions.filter(
+          (session: ClassScheduleSession) => !instanceDates.has(session.date.split("T")[0])
+        );
+        await api.put(`/api/schedules/${scheduleId}`, { sessions: updatedSessions });
+      }
+
+      for (const scheduleId of standaloneScheduleIds) {
+        await api.delete(`/api/schedules/${scheduleId}`);
+      }
+
+      setSelectedSchedules(new Set());
+      setBulkDeleteDialogOpen(false);
+      await fetchSchedules();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to delete selected schedules");
     }
   }
 
@@ -660,29 +756,103 @@ export default function CalendarPage() {
           <div className="text-muted-foreground">No classes scheduled in this date range.</div>
         </Card>
       ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
+        <>
+          {selectedSchedules.size > 0 && (
+            <Card className="flex items-center justify-between gap-4 p-4">
+              <p className="text-sm font-medium">
+                {selectedSchedules.size} selected schedule{selectedSchedules.size === 1 ? "" : "s"}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setSelectedSchedules(new Set())}>
+                Clear selection
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => setBulkDeleteDialogOpen(true)}>
+                Delete selected
+                </Button>
+              </div>
+            </Card>
+          )}
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                <TableHead className="w-12">
+                  <input
+                    aria-label="Select all filtered schedules"
+                    type="checkbox"
+                    checked={getFilteredSchedules().length > 0 && getFilteredSchedules().every((schedule) => selectedSchedules.has(getSelectionKey(schedule)))}
+                    onChange={toggleAllSelection}
+                    className="h-4 w-4"
+                  />
+                </TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead>Day</TableHead>
+                <TableHead>
+                  <span className="sr-only">Day</span>
+                  <select
+                    aria-label="Filter by day"
+                    value={filterDay}
+                    onChange={(event) => setFilterDay(event.target.value)}
+                    className="h-8 max-w-28 rounded border bg-background px-2 text-xs font-medium"
+                  >
+                    <option value="all">Day</option>
+                    {Array.from(new Set(schedules.map((schedule) => getDayOfWeekName(schedule.date)))).map((day) => (
+                      <option key={day} value={day}>{day}</option>
+                    ))}
+                  </select>
+                </TableHead>
                 <TableHead>Time</TableHead>
-                <TableHead>Class</TableHead>
+                <TableHead>
+                  <span className="sr-only">Class</span>
+                  <select
+                    aria-label="Filter by class"
+                    value={filterClass}
+                    onChange={(event) => setFilterClass(event.target.value)}
+                    className="h-8 max-w-36 rounded border bg-background px-2 text-xs font-medium"
+                  >
+                    <option value="all">Class</option>
+                    {Array.from(new Set(schedules.map((schedule) => getClassName(schedule.class_id)))).map((className) => (
+                      <option key={className} value={className}>{className}</option>
+                    ))}
+                  </select>
+                </TableHead>
                 <TableHead>Instructor</TableHead>
                 <TableHead>Attendees</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  <span className="sr-only">Status</span>
+                  <select
+                    aria-label="Filter by status"
+                    value={filterStatus}
+                    onChange={(event) => setFilterStatus(event.target.value)}
+                    className="h-8 max-w-32 rounded border bg-background px-2 text-xs font-medium"
+                  >
+                    <option value="all">Status</option>
+                    {Array.from(new Set(schedules.map((schedule) => schedule.status))).map((status) => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {schedules.map((schedule, index) => {
-                const scheduleDate = schedule.date.split('T')[0];
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {getFilteredSchedules().map((schedule, index) => {
+                const scheduleDate = getScheduleDate(schedule);
                 const attendanceKey = `${schedule._id}-${scheduleDate}`;
+                const selectionKey = getSelectionKey(schedule);
                 return (
-                  <TableRow key={`${schedule._id}-${scheduleDate}-${index}`}>
-                    <TableCell
-                      className="cursor-pointer hover:text-primary hover:underline"
-                      onClick={() => openSummaryDialog(schedule)}
+                <TableRow key={`${schedule._id}-${scheduleDate}-${index}`} data-state={selectedSchedules.has(selectionKey) ? "selected" : undefined}>
+                  <TableCell>
+                    <input
+                      aria-label={`Select schedule on ${scheduleDate}`}
+                      type="checkbox"
+                      checked={selectedSchedules.has(selectionKey)}
+                      onChange={() => toggleScheduleSelection(selectionKey)}
+                      className="h-4 w-4"
+                    />
+                  </TableCell>
+                  <TableCell
+                    className="cursor-pointer hover:text-primary hover:underline"
+                    onClick={() => openSummaryDialog(schedule)}
                     >
                       {new Date(schedule.date).toLocaleDateString('sv-SE')}
                     </TableCell>
@@ -728,10 +898,33 @@ export default function CalendarPage() {
                   </TableRow>
                 );
               })}
+              {getFilteredSchedules().length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                    No schedules match the selected filters.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
-        </Card>
+          </Card>
+        </>
       )}
+
+      <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete selected schedules?</DialogTitle>
+            <DialogDescription>
+              {selectedSchedules.size} schedule{selectedSchedules.size === 1 ? "" : "s"} will be deleted. For recurring schedules, only the selected instances are removed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleBulkDelete}>Delete selected</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
