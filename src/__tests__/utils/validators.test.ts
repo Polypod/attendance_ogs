@@ -25,11 +25,11 @@ describe('validators', () => {
 
   it('validates student category', () => {
     mockConfig.isValidCategory.mockReturnValueOnce(true);
-    expect(() => validateStudentCategory('kids')).not.toThrow();
+    expect(() => validateStudentCategory('barn')).not.toThrow();
 
     mockConfig.isValidCategory.mockReturnValueOnce(false);
-    mockConfig.getCategoryValues.mockReturnValueOnce(['kids', 'adult']);
-    expect(() => validateStudentCategory('nope')).toThrow('Invalid student category: nope. Must be one of: kids, adult');
+    mockConfig.getCategoryValues.mockReturnValueOnce(['barn', 'vuxen']);
+    expect(() => validateStudentCategory('nope')).toThrow('Invalid student category: nope. Must be one of: barn, vuxen');
   });
 
   it('validates attendance status', () => {

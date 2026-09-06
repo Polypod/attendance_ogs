@@ -6,7 +6,7 @@ describe('ConfigService', () => {
   const baseConfig: SystemConfig = {
     version: '1.0',
     categories: [
-      { value: 'kids', label: 'Kids', description: 'Kids', order: 1 }
+      { value: 'barn', label: 'Barn', description: 'Barn', order: 1 }
     ],
     belt_levels: [
       { value: '10kyu', label: '10 kyu', rank: 1, color: '#fff' },
@@ -24,14 +24,14 @@ describe('ConfigService', () => {
   });
 
   it('validates values correctly', () => {
-    expect(instance.isValidCategory('kids')).toBe(true);
-    expect(instance.isValidCategory('adult')).toBe(false);
+    expect(instance.isValidCategory('barn')).toBe(true);
+    expect(instance.isValidCategory('vuxen')).toBe(false);
     expect(instance.isValidBeltLevel('10kyu')).toBe(true);
     expect(instance.isValidBeltLevel('black')).toBe(false);
   });
 
   it('gets by value', () => {
-    expect(instance.getCategoryByValue('kids')?.label).toBe('Kids');
+    expect(instance.getCategoryByValue('barn')?.label).toBe('Barn');
     expect(instance.getBeltLevelByValue('9kyu')?.rank).toBe(2);
   });
 

@@ -14,7 +14,7 @@ describe('useConfig', () => {
       status: 200,
       json: async () => ({
         data: {
-          categories: [{ value: 'kids', label: 'Kids', description: '', order: 1 }],
+          categories: [{ value: 'barn', label: 'Barn', description: '', order: 1 }],
           beltLevels: [{ value: '10kyu', label: '10 kyu', rank: 10, color: 'white' }],
         },
       }),
@@ -33,7 +33,7 @@ describe('useConfig', () => {
 
     expect(result.current.error).toBeNull();
     expect(result.current.config).toEqual({
-      categories: [{ value: 'kids', label: 'Kids', description: '', order: 1 }],
+      categories: [{ value: 'barn', label: 'Barn', description: '', order: 1 }],
       beltLevels: [{ value: '10kyu', label: '10 kyu', rank: 10, color: 'white' }],
     });
 

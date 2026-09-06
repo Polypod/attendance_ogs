@@ -597,10 +597,10 @@ export default function ReportsPage() {
                     disabled={mode !== "aggregate"}
                   >
                     <SelectTrigger id="groupBy" className="w-full">
-                      <SelectValue placeholder="Student" />
+                      <SelectValue placeholder="Medlem" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="student">Medlem</SelectItem>
                       <SelectItem value="instructor">Instructor</SelectItem>
                       <SelectItem value="session">Session</SelectItem>
                       <SelectItem value="class">Class</SelectItem>

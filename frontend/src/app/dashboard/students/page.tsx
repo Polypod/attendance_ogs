@@ -164,7 +164,7 @@ export default function StudentsPage() {
         message: e instanceof Error ? e.message : 'Unknown error',
       });
       if (e instanceof Error) setError(e.message);
-      else setError("Failed to fetch students");
+      else setError("Kunde inte hämta medlemmar");
     } finally {
       if (debug) {
         logger.debug('StudentsPage.fetchStudents_complete');
@@ -198,7 +198,7 @@ export default function StudentsPage() {
       });
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
-      else setError("Failed to create student");
+      else setError("Kunde inte skapa medlem");
     }
   }
 
@@ -218,7 +218,7 @@ export default function StudentsPage() {
       setSelectedStudent(null);
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
-      else setError("Failed to update student");
+      else setError("Kunde inte uppdatera medlem");
     }
   }
 
@@ -234,7 +234,7 @@ export default function StudentsPage() {
       setSelectedStudent(null);
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
-      else setError("Failed to delete student");
+      else setError("Kunde inte ta bort medlem");
     }
   }
 
@@ -335,9 +335,9 @@ export default function StudentsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Student Management</h1>
+          <h1 className="text-3xl font-bold">Medlemshantering</h1>
           <p className="text-muted-foreground mt-1">
-            Create and manage students
+            Skapa och hantera medlemmar
           </p>
         </div>
 
@@ -346,15 +346,15 @@ export default function StudentsPage() {
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
-              Create Student
+              Skapa medlem
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleCreateStudent}>
               <DialogHeader>
-                <DialogTitle>Create New Student</DialogTitle>
+                <DialogTitle>Skapa ny medlem</DialogTitle>
                 <DialogDescription>
-                  Add a new student to your system
+                  Lägg till en ny medlem i systemet
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -521,11 +521,11 @@ export default function StudentsPage() {
                       htmlFor="create-active"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                     >
-                      Active Student
+                      Aktiv medlem
                     </label>
                   </div>
                   <p className="text-sm text-gray-500 mt-1 ml-6">
-                    Check this box to mark the student as active (default is checked)
+                    Markera rutan för att ange att medlemmen är aktiv.
                   </p>
                 </div>
               </div>
@@ -538,7 +538,7 @@ export default function StudentsPage() {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={configLoading}>
-                  Create Student
+                  Skapa medlem
                 </Button>
               </DialogFooter>
             </form>
@@ -554,12 +554,12 @@ export default function StudentsPage() {
 
       {(loading || configLoading) ? (
         <Card className="p-6">
-          <p className="text-center text-muted-foreground">Loading students...</p>
+          <p className="text-center text-muted-foreground">Laddar medlemmar...</p>
         </Card>
       ) : students.length === 0 ? (
         <Card className="p-6">
           <p className="text-center text-muted-foreground">
-            No students found. Create your first student to get started.
+            Inga medlemmar hittades. Skapa din första medlem för att komma igång.
           </p>
         </Card>
       ) : (
@@ -575,7 +575,7 @@ export default function StudentsPage() {
                   checked={showOnlyActive}
                   onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
                 />
-                <span>Show only active students</span>
+                <span>Visa endast aktiva medlemmar</span>
               </label>
 
               {availableCategories.length > 0 && (
@@ -729,9 +729,9 @@ export default function StudentsPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleEditStudent}>
             <DialogHeader>
-              <DialogTitle>Edit Student</DialogTitle>
+              <DialogTitle>Redigera medlem</DialogTitle>
               <DialogDescription>
-                Update student information
+                Uppdatera medlemsuppgifter
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -895,11 +895,11 @@ export default function StudentsPage() {
                     htmlFor="edit-active"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    Active Student
+                    Aktiv medlem
                   </label>
                 </div>
                 <p className="text-sm text-gray-500 mt-1 ml-6">
-                  Uncheck this box to mark the student as inactive
+                  Avmarkera rutan för att ange att medlemmen är inaktiv.
                 </p>
               </div>
             </div>
@@ -923,10 +923,10 @@ export default function StudentsPage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Student</DialogTitle>
+            <DialogTitle>Ta bort medlem</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{selectedStudent?.name}&quot;? This action
-              cannot be undone.
+              Är du säker på att du vill ta bort &quot;{selectedStudent?.name}&quot;? Åtgärden
+              kan inte ångras.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -957,7 +957,7 @@ export default function StudentsPage() {
               Attendance – {attendanceStudent?.name}
             </DialogTitle>
             <DialogDescription>
-              All registered attendance records for this student.
+              Alla registrerade närvaroposter för denna medlem.
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">

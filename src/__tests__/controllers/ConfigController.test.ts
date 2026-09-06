@@ -21,7 +21,7 @@ describe('ConfigController', () => {
 
   it('getConfig: returns categories + beltLevels', async () => {
     (ConfigService.getInstance as jest.Mock).mockReturnValue({
-      getCategories: jest.fn(() => ['kids']),
+      getCategories: jest.fn(() => ['barn']),
       getBeltLevels: jest.fn(() => ['white']),
     });
 
@@ -31,7 +31,7 @@ describe('ConfigController', () => {
     expect(res.json).toHaveBeenCalledWith({
       success: true,
       data: {
-        categories: ['kids'],
+        categories: ['barn'],
         beltLevels: ['white'],
       },
     });

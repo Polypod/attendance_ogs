@@ -268,16 +268,16 @@ The system uses a YAML configuration file to manage categories and belt levels, 
 **Location:** `config/system.yaml`
 
 This file defines:
-- **Categories**: Student and class skill/age levels (e.g., kids, youth, adult, advanced)
+- **Categories**: Student and class skill/age levels (e.g., barn, ungdom, vuxen, avancerad)
 - **Belt Levels**: Karate belt progression with ranks and colors (e.g., white, yellow, orange... black)
 
 ### Default Configuration
 
 **Categories (4 default):**
-- Kids - Children's classes (ages 5-10)
-- Youth - Youth classes (ages 11-17)
-- Adult - Adult classes (ages 18+)
-- Advanced - Advanced training for all ages
+- Barn - Barnklasser (5-10 år)
+- Ungdom - Ungdomsklasser (11-17 år)
+- Vuxen - Vuxenklasser (från 18 år)
+- Avancerad - Avancerad träning för alla åldrar
 
 **Belt Levels (10 default):**
 - White Belt (rank 1), etc
@@ -317,7 +317,8 @@ This file defines:
 ### Important Notes
 
 - Changes to the configuration file require a server restart to take effect
-- The `value` field is stored in the database - avoid changing existing values
+- The `value` field is stored in the database. Migrate existing records before changing it.
+- To migrate the legacy English category values (`kids`, `youth`, `adult`, `advanced`) to the Swedish values, first run `pnpm run migrate:categories-sv` for a dry run, then run `pnpm run migrate:categories-sv -- --apply`.
 - The `order` field controls the display order in dropdowns
 - The `rank` field determines belt progression order
 - Before removing a category or belt level, ensure no existing data uses it
@@ -337,9 +338,9 @@ GET /api/config
   "data": {
     "categories": [
       {
-        "value": "kids",
-        "label": "Kids",
-        "description": "Children's classes (ages 5-10)",
+        "value": "barn",
+        "label": "Barn",
+        "description": "Barnklasser (5-10 år)",
         "order": 1
       }
     ],
@@ -520,7 +521,7 @@ frontend/
 
 3. **YAML Configuration**: Categories and belt levels are managed via a YAML file rather than hardcoded or database-stored, providing a balance between flexibility and simplicity. Changes require a server restart.
 
-4. **Multiple Categories per Student/Class**: Students and classes can belong to multiple categories (e.g., a 16-year-old might be in both "youth" and "adult" classes)
+4. **Multiple Categories per Student/Class**: Students and classes can belong to multiple categories (e.g., a 16-year-old might be in both "ungdom" and "vuxen" classes)
 
 5. **Dynamic Validation**: All category and belt level validation uses the ConfigService, ensuring consistency between configuration and validation rules.
 

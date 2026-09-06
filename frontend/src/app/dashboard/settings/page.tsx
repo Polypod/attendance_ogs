@@ -1,5 +1,6 @@
 "use client";
 
+import KioskSettings from "@/components/settings/KioskSettings";
 import StudentDataSettings from "@/components/settings/StudentDataSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,6 +37,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      <KioskSettings />
       <StudentDataSettings />
     </div>
   );

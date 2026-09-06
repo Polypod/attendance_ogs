@@ -183,7 +183,7 @@ export default function TakeAttendancePage() {
 
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
-      else setError("Failed to fetch schedule and students");
+      else setError("Kunde inte hämta schema och medlemmar");
     } finally {
       setLoading(false);
     }
@@ -232,7 +232,7 @@ export default function TakeAttendancePage() {
       });
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
-      else setError('Failed to create student');
+      else setError('Kunde inte skapa medlem');
     }
   }
 
@@ -438,7 +438,7 @@ export default function TakeAttendancePage() {
             htmlFor="show-active-attendance"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
           >
-            Show only active students
+            Visa endast aktiva medlemmar
           </label>
         </div>
 
@@ -446,10 +446,10 @@ export default function TakeAttendancePage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
             <div>
               <h2 className="text-xl font-semibold">
-                Students in Class Categories ({showOnlyActive ? students.filter(s => s.active !== false).length : students.length})
+                Medlemmar i klassens kategorier ({showOnlyActive ? students.filter(s => s.active !== false).length : students.length})
               </h2>
               <p className="text-sm text-muted-foreground">
-                Students matching class categories
+                Medlemmar som matchar klassens kategorier
               </p>
             </div>
             <div className="flex gap-4 items-center">
@@ -467,15 +467,15 @@ export default function TakeAttendancePage() {
                   <DialogTrigger asChild>
                     <Button type="button" variant="outline" size="sm">
                       <Plus className="w-4 h-4 mr-2" />
-                      Create Student
+                      Skapa medlem
                     </Button>
                   </DialogTrigger>
 
                   <DialogContent className="max-w-2xl">
                     <form onSubmit={(e) => { e.stopPropagation(); e.preventDefault(); }}>
                       <DialogHeader>
-                        <DialogTitle>Create New Student</DialogTitle>
-                        <DialogDescription>Add a new student to your system</DialogDescription>
+                        <DialogTitle>Skapa ny medlem</DialogTitle>
+                        <DialogDescription>Lägg till en ny medlem i systemet</DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
                         <div>
@@ -568,7 +568,7 @@ export default function TakeAttendancePage() {
                       </div>
                       <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-                        <Button type="button" onClick={(e) => handleCreateStudent(e)} disabled={configLoading}>Create Student</Button>
+                        <Button type="button" onClick={(e) => handleCreateStudent(e)} disabled={configLoading}>Skapa medlem</Button>
                       </DialogFooter>
                     </form>
                   </DialogContent>
@@ -581,7 +581,7 @@ export default function TakeAttendancePage() {
                   size="sm"
                   onClick={() => setShowAllStudents(!showAllStudents)}
                 >
-                  {showAllStudents ? "Hide" : "Show"} Other Students ({allStudents.length - students.length})
+                  {showAllStudents ? "Dölj" : "Visa"} övriga medlemmar ({allStudents.length - students.length})
                 </Button>
               )}
             </div>
@@ -589,7 +589,7 @@ export default function TakeAttendancePage() {
 
           {students.length === 0 ? (
             <p className="text-muted-foreground">
-              No students found matching class categories.
+              Inga medlemmar matchar klassens kategorier.
             </p>
           ) : (
             <div className="space-y-3">
@@ -655,10 +655,10 @@ export default function TakeAttendancePage() {
           <Card className="p-6 mb-6 bg-gray-50">
             <div className="mb-4">
               <h2 className="text-xl font-semibold">
-                Other Students ({allStudents.length - students.length})
+                Övriga medlemmar ({allStudents.length - students.length})
               </h2>
               <p className="text-sm text-muted-foreground">
-                Students not in class categories but can still attend
+                Medlemmar utanför klassens kategorier som ändå kan närvara
               </p>
             </div>
             <div className="space-y-3">

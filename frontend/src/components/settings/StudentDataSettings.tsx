@@ -101,7 +101,7 @@ const TEMPLATE_HEADERS = [
 ];
 
 const TEMPLATE_EXAMPLE_ROW = [
-  "Example Student",
+  "Exempelmedlem",
   "example.student@example.com",
   "kids|adult",
   "10kyu",
@@ -366,9 +366,9 @@ export default function StudentDataSettings() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Export students</CardTitle>
+          <CardTitle>Exportera medlemmar</CardTitle>
           <CardDescription>
-            Download the current student register as a CSV file that can be reviewed or edited offline.
+            Ladda ner det aktuella medlemsregistret som en CSV-fil för granskning eller redigering offline.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -388,7 +388,7 @@ export default function StudentDataSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Import students</CardTitle>
+          <CardTitle>Importera medlemmar</CardTitle>
           <CardDescription>
             Upload a CSV export, inspect the preview result, and apply it only after the rows validate cleanly. Both comma and semicolon separators are accepted.
           </CardDescription>
@@ -453,7 +453,7 @@ export default function StudentDataSettings() {
                         <span>Skip</span>
                       </label>
                     </TableHead>
-                    <TableHead>Student</TableHead>
+                    <TableHead>Medlem</TableHead>
                     <TableHead>Errors</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -509,7 +509,7 @@ export default function StudentDataSettings() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button asChild size="sm">
-                  <Link href="/dashboard/students">Review students</Link>
+                  <Link href="/dashboard/students">Granska medlemmar</Link>
                 </Button>
                 <Button variant="outline" size="sm" onClick={resetImportState}>
                   Import another file
@@ -523,7 +523,7 @@ export default function StudentDataSettings() {
         <CardHeader>
           <CardTitle>Recent imports</CardTitle>
           <CardDescription>
-            Review the latest student imports completed from this browser session history.
+            Granska de senaste medlemsimporterna från den här webbläsarsessionen.
           </CardDescription>
         </CardHeader>
         <CardContent>

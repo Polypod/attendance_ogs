@@ -11,6 +11,8 @@ import { userRoutes } from './routes/userRoutes';
 import { configRoutes } from './routes/configRoutes';
 import { reportRoutes } from './routes/reportRoutes';
 import { reportPresetRoutes } from './routes/reportPresetRoutes';
+import { kioskAttendanceRoutes } from './routes/kioskAttendanceRoutes';
+import { kioskManagementRoutes } from './routes/kioskManagementRoutes';
 import { metricsRoutes } from './routes/metricsRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { applyMiddleware } from './middleware/middleware';
@@ -51,6 +53,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/config', configRoutes);
 
 // Admin-only routes
+app.use('/api/kiosks', authenticate, authorize(UserRoleEnum.ADMIN), kioskManagementRoutes);
+
+// Kiosk routes use a separate per-device access key instead of a user session.
+app.use('/api/kiosk-attendance', kioskAttendanceRoutes);
+
 app.use('/api/users', authenticate, authorize(UserRoleEnum.ADMIN), userRoutes);
 
 // Protected routes (authentication required)

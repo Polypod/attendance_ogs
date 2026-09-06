@@ -313,7 +313,7 @@ export default function UsersPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="student">Medlem</SelectItem>
                       <SelectItem value="staff">Staff</SelectItem>
                       <SelectItem value="instructor">Instructor</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
@@ -376,7 +376,7 @@ export default function UsersPage() {
                         user.role
                       )}`}
                     >
-                      {user.role}
+                      {user.role === "student" ? "Medlem" : user.role}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -459,7 +459,7 @@ export default function UsersPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="student">Medlem</SelectItem>
                     <SelectItem value="staff">Staff</SelectItem>
                     <SelectItem value="instructor">Instructor</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>

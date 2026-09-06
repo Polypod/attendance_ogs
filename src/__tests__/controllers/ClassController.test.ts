@@ -60,7 +60,7 @@ describe('ClassController', () => {
     const save = (ClassModel as any).__save as jest.Mock;
     save.mockResolvedValue(true);
 
-    const req: any = { body: { name: 'Test', categories: ['kids'] } };
+    const req: any = { body: { name: 'Test', categories: ['barn'] } };
     await controller.createClass(req, res);
 
     expect(ClassModel).toHaveBeenCalledWith(req.body);

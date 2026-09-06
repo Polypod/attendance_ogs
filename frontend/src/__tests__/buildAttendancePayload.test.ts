@@ -8,8 +8,8 @@ describe('buildAttendancePayload', () => {
     } as const;
 
     const allStudents = [
-      { _id: 's1', name: 'Alice', email: 'a@example.com', categories: ['adult'], belt_level: 'blue' },
-      { _id: 's2', name: 'Bob', email: 'b@example.com', categories: ['kids'], belt_level: '10kyu' },
+      { _id: 's1', name: 'Alice', email: 'a@example.com', categories: ['vuxen'], belt_level: 'blue' },
+      { _id: 's2', name: 'Bob', email: 'b@example.com', categories: ['barn'], belt_level: '10kyu' },
     ];
 
     const scheduleId = 'schedule123';
@@ -30,7 +30,7 @@ describe('buildAttendancePayload', () => {
       date: expectedDate,
       status: 'present',
       notes: 'On time',
-      category: 'adult',
+      category: 'vuxen',
     });
 
     expect(byId['s2']).toMatchObject({
@@ -39,7 +39,7 @@ describe('buildAttendancePayload', () => {
       date: expectedDate,
       status: 'absent',
       notes: undefined,
-      category: 'kids',
+      category: 'barn',
     });
   });
 });

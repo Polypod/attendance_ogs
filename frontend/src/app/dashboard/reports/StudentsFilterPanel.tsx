@@ -34,7 +34,7 @@ export function StudentsFilterPanel({
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <label className="block text-sm font-medium">Students</label>
+        <label className="block text-sm font-medium">Medlemmar</label>
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-2 text-xs text-muted-foreground select-none">
             <Checkbox checked={onlyActiveStudents} onCheckedChange={(v) => onOnlyActiveStudentsChange(v === true)} />
@@ -67,7 +67,7 @@ export function StudentsFilterPanel({
       </div>
 
       <div className="mt-1 text-xs text-muted-foreground">
-        {selectedStudentIds.length === 0 ? "All students" : `Selected: ${selectedStudentIds.length}`}
+        {selectedStudentIds.length === 0 ? "Alla medlemmar" : `Valda: ${selectedStudentIds.length}`}
       </div>
     </div>
   );

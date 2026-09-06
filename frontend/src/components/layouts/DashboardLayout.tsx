@@ -12,7 +12,7 @@ import { signOut } from "next-auth/react";
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard", roles: ["admin", "instructor", "staff", "student"] },
-  { href: "/dashboard/students", label: "Students", roles: ["admin", "instructor", "staff"] },
+  { href: "/dashboard/students", label: "Medlemmar", roles: ["admin", "instructor", "staff"] },
   { href: "/dashboard/classes", label: "Classes", roles: ["admin", "instructor", "staff", "student"] },
   { href: "/dashboard/calendar", label: "Calendar", roles: ["admin", "instructor", "staff", "student"] },
   { href: "/dashboard/reports", label: "Reports", roles: ["admin", "instructor"] },

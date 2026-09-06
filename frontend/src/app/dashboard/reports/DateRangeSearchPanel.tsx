@@ -38,7 +38,7 @@ export function DateRangeSearchPanel({ from, to, search, onFromChange, onToChang
           id="search"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search students, classes, instructors..."
+          placeholder="Sök medlemmar, klasser, instruktörer..."
         />
       </div>
     </>

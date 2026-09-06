@@ -4,7 +4,7 @@ export const getRawColumns = (): ColumnDefinition[] => [
   { key: 'date', label: 'Date', width: '6.5rem', sortable: true },
   { key: 'start_time', label: 'Start', width: '4.5rem', sortable: true },
   { key: 'end_time', label: 'End', width: '4.5rem', sortable: true },
-  { key: 'student_name', label: 'Student', width: '12rem', sortable: true },
+  { key: 'student_name', label: 'Medlem', width: '12rem', sortable: true },
   { key: 'class_name', label: 'Class', width: '16rem', sortable: true },
   { key: 'instructor', label: 'Instructor', width: '12rem', sortable: true },
   { key: 'status', label: 'Status', width: '6.5rem', sortable: true },
@@ -29,7 +29,7 @@ export const getAggregatedColumns = (groupBy: AggregatedGroupBy): ColumnDefiniti
 
   if (groupBy === 'student') {
     return [
-      { key: 'student_name', label: 'Student', sortable: true },
+      { key: 'student_name', label: 'Medlem', sortable: true },
       { key: 'presentCount', label: 'Present', sortable: true },
       { key: 'totalCount', label: 'Total', sortable: true },
     ];

@@ -29,7 +29,7 @@ describe('utilities validators schemas', () => {
     const { error } = studentValidationSchema.validate({
       name: 'John Doe',
       email: 'john@example.com',
-      categories: ['kids'],
+      categories: ['barn'],
       belt_level: 'white',
       phone: '+46 70 123 45 67',
       emergency_contact: { name: 'Parent', phone: '+46 70 111 22 33' },
@@ -59,7 +59,7 @@ describe('utilities validators schemas', () => {
     const { error } = studentValidationSchema.validate({
       name: 'John Doe',
       email: 'john@example.com',
-      categories: ['kids'],
+      categories: ['barn'],
       belt_level: 'unknown',
       phone: '+46 70 123 45 67',
       emergency_contact: { name: 'Parent', phone: '+46 70 111 22 33' },

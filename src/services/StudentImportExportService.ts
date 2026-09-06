@@ -1,6 +1,7 @@
 import { StudentModel } from '../models/Student';
 import { ConfigService } from './ConfigService';
 import { detectCsvDelimiter, encodeCsvRow, parseCsv, restoreSanitizedCsvFormula } from '../utils/csv';
+import { normalizeLegacyCategoryValue } from '../utils/categoryMigration';
 import { CreateStudentDto, StudentCategoryEnum, StudentStatusEnum, UpdateStudentDto } from '../types/interfaces';
 
 const STUDENT_EXPORT_HEADERS = [
@@ -71,6 +72,7 @@ const splitCategories = (value: string): string[] => {
   return value
     .split('|')
     .map((item) => item.trim().toLowerCase())
+    .map(normalizeLegacyCategoryValue)
     .filter(Boolean);
 };
 
