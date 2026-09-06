@@ -178,7 +178,7 @@ kill_port_pids 4010
 kill_port_pids 4011
 
 echo "Starting backend on port 4010 with PM2..."
-NODE_ENV=production NODE_OPTIONS=--require=./scripts/tsconfig-paths-dist-register.js PORT=4010 \
+NODE_ENV=production FRONTEND_URL=http://localhost:4011 NODE_OPTIONS=--require=./scripts/tsconfig-paths-dist-register.js PORT=4010 \
   pm2 start "pnpm start" \
     --name "backend" \
     --cwd "$ROOT_DIR" \

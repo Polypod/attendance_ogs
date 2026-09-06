@@ -27,7 +27,7 @@ export const applyMiddleware = (app: Express): void => {
     origin: frontendOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Attendance-Kiosk-Key']
   }));
 
   // Parse JSON bodies
