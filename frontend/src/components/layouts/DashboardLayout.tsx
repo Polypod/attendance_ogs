@@ -16,6 +16,7 @@ const navLinks = [
   { href: "/dashboard/classes", label: "Classes", roles: ["admin", "instructor", "staff", "student"] },
   { href: "/dashboard/calendar", label: "Calendar", roles: ["admin", "instructor", "staff", "student"] },
   { href: "/dashboard/users", label: "Users", roles: ["admin"] },
+  { href: "/dashboard/settings", label: "Settings", roles: ["admin"] },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
