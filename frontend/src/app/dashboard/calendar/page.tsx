@@ -92,15 +92,15 @@ function getTodayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function getThreeMonthsBack() {
+function getTwoWeeksBack() {
   const date = new Date();
-  date.setMonth(date.getMonth() - 3);
+  date.setDate(date.getDate() - 14);
   return date.toISOString().slice(0, 10);
 }
 
-function getThreeMonthsForward() {
+function getOneMonthForward() {
   const date = new Date();
-  date.setMonth(date.getMonth() + 3);
+  date.setMonth(date.getMonth() + 1);
   return date.toISOString().slice(0, 10);
 }
 
@@ -111,8 +111,8 @@ export default function CalendarPage() {
   const [attendanceCounts, setAttendanceCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState(getThreeMonthsBack());
-  const [endDate, setEndDate] = useState(getThreeMonthsForward());
+  const [startDate, setStartDate] = useState(getTwoWeeksBack());
+  const [endDate, setEndDate] = useState(getOneMonthForward());
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
