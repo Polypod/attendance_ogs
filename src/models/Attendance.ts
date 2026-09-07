@@ -2,10 +2,7 @@
 import { Schema, model, Document, Types, Model } from 'mongoose';
 import {
   Attendance,
-  AttendanceStatus,
-  StudentCategory,
-  AttendanceStatusEnum,
-  StudentCategoryEnum
+  AttendanceStatusEnum
 } from '../types/interfaces';
 import { ConfigService } from '../services/ConfigService';
 
@@ -54,11 +51,17 @@ const attendanceSchema = new Schema<IAttendanceDocument>(
       required: [true, 'Category is required'],
       validate: {
         validator: function(value: string) {
-          const configService = ConfigService.getInstance();
+          const configService = ConfigService.tryGetInitializedInstance();
+          if (!configService) {
+            return false;
+          }
           return configService.isValidCategory(value);
         },
         message: function() {
-          const configService = ConfigService.getInstance();
+          const configService = ConfigService.tryGetInitializedInstance();
+          if (!configService) {
+            return 'Configuration has not been initialized. Cannot validate category.';
+          }
           const validCategories = configService.getCategoryValues().join(', ');
           return `Category must be one of: ${validCategories}`;
         }
@@ -85,13 +88,20 @@ const attendanceSchema = new Schema<IAttendanceDocument>(
   }
 );
 
-// Ensure unique attendance per student per class schedule
+// Ensure unique attendance per student per class schedule per date
 attendanceSchema.index(
-  { student_id: 1, class_schedule_id: 1 }, 
+  { student_id: 1, class_schedule_id: 1, date: 1 }, 
   { unique: true }
 );
 
-// Create and export the model
-const Attendance = model<IAttendanceDocument, IAttendanceModel>('Attendance', attendanceSchema);
+// Optimize reporting queries that primarily filter by date range (and often schedule/student/status)
+attendanceSchema.index({ date: 1, class_schedule_id: 1, student_id: 1, status: 1 });
 
-export { Attendance };
+// Additional support for queries filtering by schedule first (e.g. session-focused reports)
+attendanceSchema.index({ class_schedule_id: 1, date: 1, status: 1 });
+
+// Create and export the model
+export const AttendanceModel = model<IAttendanceDocument, IAttendanceModel>('Attendance', attendanceSchema);
+
+// Also export as Attendance for backward compatibility
+export { AttendanceModel as Attendance };

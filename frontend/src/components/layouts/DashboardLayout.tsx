@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Menu, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,27 +15,38 @@ const navLinks = [
   { href: "/dashboard/students", label: "Students", roles: ["admin", "instructor", "staff"] },
   { href: "/dashboard/classes", label: "Classes", roles: ["admin", "instructor", "staff", "student"] },
   { href: "/dashboard/calendar", label: "Calendar", roles: ["admin", "instructor", "staff", "student"] },
+  { href: "/dashboard/reports", label: "Reports", roles: ["admin", "instructor"] },
   { href: "/dashboard/users", label: "Users", roles: ["admin"] },
   { href: "/dashboard/settings", label: "Settings", roles: ["admin"] },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user, isAdmin, isInstructor, isStaff, isStudent } = useAuth();
+  const { user } = useAuth();
 
   // Filter nav links based on user role
   const filteredNavLinks = navLinks.filter(link =>
     user && link.roles.includes(user.role)
   );
 
+  const router = useRouter();
+
   const handleLogout = async () => {
-    await signOut({ callbackUrl: "/login" });
+    // Sign out without server redirect, then navigate client-side to /login
+    await signOut({ redirect: false });
+    // Force same-origin navigation to avoid any absolute NEXTAUTH_URL redirects
+    // (use window.location to ensure current host is used)
+    if (typeof window !== "undefined") {
+      window.location.href = `${window.location.origin}/login`;
+    } else {
+      router.replace('/login');
+    }
   };
 
   return (
     <div className="flex min-h-screen bg-muted">
       {/* Sidebar for desktop/tablet */}
-      <aside className="hidden md:flex flex-col w-64 bg-background border-r border-border p-4">
+      <aside className="hidden md:flex flex-col w-40 bg-background border-r border-border p-3">
         <div className="mb-8 flex items-center gap-2">
           <span className="font-bold text-xl tracking-tight">Karate Attendance</span>
         </div>
@@ -84,7 +95,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <Menu className="w-6 h-6" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">
+          <SheetContent side="left" className="p-0 w-40">
             <div className="p-4">
               <span className="font-bold text-xl tracking-tight">Karate Attendance</span>
             </div>
@@ -134,7 +145,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Main content area */}
-      <main className="flex-1 flex flex-col p-4 md:ml-64 mt-14 md:mt-0">
+      <main className="flex-1 flex flex-col p-3 mt-14 md:mt-0">
         {children}
       </main>
     </div>

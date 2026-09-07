@@ -37,7 +37,7 @@ function errorMessage(error: unknown): string {
 }
 
 async function kioskRequest<T>(path: string, accessKey: string, init?: RequestInit): Promise<T> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: {
@@ -154,7 +154,7 @@ export default function AttendanceKioskPage() {
         accessKey,
         {
           method: "POST",
-          body: JSON.stringify({ presentStudentIds: selectedStudentIds, instructorName }),
+          body: JSON.stringify({ presentStudentIds: selectedStudentIds }),
         }
       );
       setSuccess(`${result.presentCount} närvarande och ${result.absentCount} frånvarande sparades.`);

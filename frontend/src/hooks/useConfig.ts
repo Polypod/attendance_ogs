@@ -29,7 +29,9 @@ export function useConfig() {
   useEffect(() => {
     async function fetchConfig() {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        // If NEXT_PUBLIC_API_URL is not set or empty, use relative URLs (proxy through Next.js)
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const baseUrl = apiUrl && apiUrl.trim() !== '' ? apiUrl : '';
         const response = await fetch(`${baseUrl}/api/config`);
 
         if (!response.ok) {

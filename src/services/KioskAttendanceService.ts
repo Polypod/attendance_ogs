@@ -108,8 +108,7 @@ export class KioskAttendanceService {
   async finalizeSession(
     scheduleId: string,
     presentStudentIds: string[],
-    kiosk: KioskIdentity,
-    instructorName?: string
+    kiosk: KioskIdentity
   ): Promise<{ presentCount: number; absentCount: number }> {
     if (!Types.ObjectId.isValid(scheduleId)) {
       throw new KioskAttendanceError(400, 'Invalid class schedule ID');
@@ -169,7 +168,21 @@ export class KioskAttendanceService {
     if (operations.length > 0) {
       await Attendance.bulkWrite(operations);
     }
-    await this.completeSession(source, instructorName);
+
+    // Note: The completeSession call updates the schedule status separately.
+    // This is a two-step operation without transactional protection. If completeSession fails
+    // after attendance is recorded, the schedule won't be marked as COMPLETED. Consider using
+    // MongoDB transactions if this becomes critical, but for now this is acceptable since:
+    // 1. The core attendance data is persisted
+    // 2. The schedule can be manually completed via the calendar interface
+    // 3. A missed status update doesn't prevent future attendance recording
+    try {
+      await this.completeSession(source);
+    } catch (error) {
+      console.warn('Failed to mark schedule as completed, but attendance was recorded:', error);
+      // Re-throw to inform the caller, but attendance data is safe
+      throw error;
+    }
 
     return {
       presentCount: requestedPresentIds.size,
@@ -178,17 +191,23 @@ export class KioskAttendanceService {
   }
 
   private todayRange(): { dateKey: string; start: Date; end: Date } {
-    const now = moment();
-    return {
-      dateKey: now.format('YYYY-MM-DD'),
-      start: now.clone().startOf('day').toDate(),
-      end: now.clone().endOf('day').toDate(),
-    };
+    // Match the calendar frontend's date calculation to ensure consistent timezone handling.
+    // The frontend uses: new Date().toISOString().slice(0, 10)
+    // This ensures both calendar and kiosk see the same "today" date.
+    const now = new Date();
+    const dateKey = now.toISOString().slice(0, 10);  // "YYYY-MM-DD" in UTC
+    
+    // Create start/end dates using the same dateKey that calendar sends
+    const start = new Date(dateKey);  // Midnight UTC on that date
+    const end = new Date(dateKey);
+    end.setDate(end.getDate() + 1);   // Next day, then subtract 1ms in query
+    
+    return { dateKey, start, end };
   }
 
   private async getSessionSources(start: Date, end: Date): Promise<KioskSessionSource[]> {
     const schedules = await ClassScheduleModel.find({
-      date: { $gte: start, $lte: end },
+      date: { $gte: start, $lt: end },
       status: { $ne: ClassStatusEnum.CANCELLED },
     }).populate<{ class_id: KioskClassInfo }>('class_id', 'name instructor categories').lean<PopulatedSchedule[]>();
 
@@ -223,7 +242,7 @@ export class KioskAttendanceService {
     ]));
   }
 
-  private async completeSession(source: KioskSessionSource, _instructorName?: string): Promise<void> {
+  private async completeSession(source: KioskSessionSource): Promise<void> {
     const schedule = await ClassScheduleModel.findById(source.schedule._id);
     if (!schedule) {
       throw new KioskAttendanceError(404, 'Class schedule no longer exists');

@@ -9,10 +9,14 @@ import {
   CreateUserDto,
   UpdateUserDto,
   LoginDto,
-  ChangePasswordDto
+  ChangePasswordDto,
+  ClassStatusEnum,
+  AttendanceStatusEnum,
+  CreateReportPresetDto,
+  UpdateReportPresetDto,
+  ReportPresetState
 } from './interfaces';
 import { ConfigService } from '../services/ConfigService';
-const classStatuses = ['scheduled', 'cancelled', 'completed'] as const;
 const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 const userRoles = ['admin', 'instructor', 'staff', 'student'] as const;
 const userStatuses = ['active', 'inactive', 'suspended'] as const;
@@ -39,11 +43,12 @@ export const createStudentSchema = Joi.object<CreateStudentDto>({
     }
     return value;
   }),
-  phone: Joi.string().required(),
+  phone: Joi.string().optional().allow(''),
   emergency_contact: Joi.object({
-    name: Joi.string().required(),
-    phone: Joi.string().required()
-  }).required()
+    name: Joi.string().optional().allow(''),
+    phone: Joi.string().optional().allow('')
+  }).optional(),
+  active: Joi.boolean().optional()
 });
 
 export const updateStudentSchema = Joi.object<UpdateStudentDto>({
@@ -64,12 +69,23 @@ export const updateStudentSchema = Joi.object<UpdateStudentDto>({
     }
     return value;
   }),
-  phone: Joi.string(),
+  phone: Joi.string().optional().allow('', null),
   emergency_contact: Joi.object({
-    name: Joi.string(),
-    phone: Joi.string()
-  })
+    name: Joi.string().optional().allow('', null),
+    phone: Joi.string().optional().allow('', null)
+  }).optional().allow(null),
+  active: Joi.boolean().optional()
 }).min(1); // At least one field is required for update
+
+export const studentImportSchema = Joi.object({
+  csvContent: Joi.string().trim().min(1).required(),
+  actionOverrides: Joi.object()
+    .pattern(
+      Joi.string().pattern(/^\d+$/),
+      Joi.string().valid('create', 'update', 'skip')
+    )
+    .optional()
+});
 
 // Class validation schemas
 export const createClassSchema = Joi.object<CreateClassDto>({
@@ -113,23 +129,40 @@ export const createClassScheduleSchema = Joi.object<CreateClassScheduleDto>({
   date: Joi.date().required(),
   start_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
   end_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
-  day_of_week: Joi.string().valid(
-    ...daysOfWeek
-  ).empty(''),
+  day_of_week: Joi.string().valid(...daysOfWeek).empty('').optional(), // Made optional - legacy field
+  days_of_week: Joi.array().items(Joi.number().integer().min(0).max(6)).min(1).optional(), // Array of day numbers (0=Sunday, 6=Saturday)
   recurring: Joi.boolean().default(false),
-  status: Joi.string().valid(...classStatuses)
-});
+  recurrence_end_date: Joi.date().optional().when('recurring', {
+    is: true,
+    then: Joi.date().required().greater(Joi.ref('date')),
+    otherwise: Joi.optional()
+  }),
+  status: Joi.string().valid(...Object.values(ClassStatusEnum)).optional()
+}).options({ stripUnknown: true });
 
 export const updateClassScheduleSchema = Joi.object<UpdateClassScheduleDto>({
   date: Joi.date(),
   start_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
   end_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  day_of_week: Joi.string().valid(
-    ...daysOfWeek
-  ).empty(''),
+  day_of_week: Joi.string().valid(...daysOfWeek).empty('').optional(), // Legacy field
+  days_of_week: Joi.array().items(Joi.number().integer().min(0).max(6)).min(1).optional(), // Array of day numbers
   recurring: Joi.boolean(),
-  status: Joi.string().valid(...classStatuses)
-}).min(1);
+  recurrence_end_date: Joi.date().optional().when('recurring', {
+    is: true,
+    then: Joi.date().greater(Joi.ref('date')),
+    otherwise: Joi.optional()
+  }),
+  status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled').optional(),
+  sessions: Joi.array().items(
+    Joi.object({
+      date: Joi.alternatives().try(Joi.date(), Joi.string().isoDate()).required(),
+      status: Joi.string().valid('scheduled', 'completed', 'cancelled').default('scheduled'),
+      notes: Joi.string().allow('').optional(),
+      'S-instructor': Joi.string().allow('').optional(),
+      _id: Joi.string().optional() // Allow MongoDB _id in updates
+    })
+  ).optional()
+}).min(1).options({ stripUnknown: false }); // Changed to false to allow sessions through
 
 // Authentication validation schemas
 export const loginSchema = Joi.object<LoginDto>({
@@ -175,3 +208,228 @@ export const resetPasswordSchema = Joi.object({
     'string.min': 'New password must be at least 8 characters long'
   })
 });
+
+// Reports validation schemas
+export const rawAttendanceReportQuerySchema = Joi.object({
+  from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+
+  search: Joi.string().trim().min(1).max(100).optional(),
+
+  page: Joi.number().integer().min(1).default(1),
+  pageSize: Joi.number().integer().min(1).max(100).default(25),
+
+  sortBy: Joi.string()
+    .valid(
+      'date',
+      'start_time',
+      'end_time',
+      'student_name',
+      'class_name',
+      'instructor',
+      'status',
+      'category',
+      'notes',
+      'recorded_by',
+      'recorded_at'
+    )
+    .optional(),
+  sortDir: Joi.string().valid('asc', 'desc').optional(),
+
+  onlyActiveStudents: Joi.boolean().optional(),
+
+  studentId: Joi.string().hex().length(24).optional(),
+  studentIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
+  studentName: Joi.string().min(1).max(100).optional(),
+  classScheduleId: Joi.string().hex().length(24).optional(),
+  classScheduleIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
+  sessions: Joi.array()
+    .items(
+      Joi.object({
+        classScheduleId: Joi.string().hex().length(24).required(),
+        date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required()
+      })
+    )
+    .min(1)
+    .optional(),
+  classIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
+  instructor: Joi.string().min(1).max(100).optional(),
+  instructors: Joi.array().items(Joi.string().min(1).max(100)).min(1).optional(),
+  status: Joi.array()
+    .items(Joi.string().valid(...Object.values(AttendanceStatusEnum)))
+    .min(1)
+    .optional()
+}).options({ stripUnknown: true });
+
+export const aggregatedAttendanceReportQuerySchema = Joi.object({
+  from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+
+  search: Joi.string().trim().min(1).max(100).optional(),
+
+  groupBy: Joi.string().valid('student', 'instructor', 'session', 'class').required(),
+
+  page: Joi.number().integer().min(1).default(1),
+  pageSize: Joi.number().integer().min(1).max(100).default(25),
+
+  sortBy: Joi.string()
+    .valid(
+      'date',
+      'start_time',
+      'end_time',
+      'student_name',
+      'class_name',
+      'instructor',
+      'presentCount',
+      'totalCount'
+    )
+    .optional(),
+  sortDir: Joi.string().valid('asc', 'desc').optional(),
+
+  onlyActiveStudents: Joi.boolean().optional(),
+
+  studentId: Joi.string().hex().length(24).optional(),
+  studentIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
+  studentName: Joi.string().min(1).max(100).optional(),
+  classScheduleId: Joi.string().hex().length(24).optional(),
+  classScheduleIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
+  sessions: Joi.array()
+    .items(
+      Joi.object({
+        classScheduleId: Joi.string().hex().length(24).required(),
+        date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required()
+      })
+    )
+    .min(1)
+    .optional(),
+  classIds: Joi.array().items(Joi.string().hex().length(24)).min(1).optional(),
+  instructor: Joi.string().min(1).max(100).optional(),
+  instructors: Joi.array().items(Joi.string().min(1).max(100)).min(1).optional(),
+  status: Joi.array()
+    .items(Joi.string().valid(...Object.values(AttendanceStatusEnum)))
+    .min(1)
+    .optional()
+}).options({ stripUnknown: true });
+
+const rawAttendanceCsvColumnsSchema = Joi.array()
+  .items(
+    Joi.string().valid(
+      'date',
+      'start_time',
+      'end_time',
+      'student_name',
+      'class_name',
+      'instructor',
+      'status',
+      'category',
+      'notes',
+      'recorded_by',
+      'recorded_at'
+    )
+  )
+  .min(1)
+  .required();
+
+const aggregatedAttendanceCsvColumnsSchema = Joi.array()
+  .items(
+    Joi.string().valid(
+      'date',
+      'start_time',
+      'end_time',
+      'student_name',
+      'class_name',
+      'instructor',
+      'presentCount',
+      'totalCount'
+    )
+  )
+  .min(1)
+  .required();
+
+export const rawAttendanceReportExportCsvSchema = rawAttendanceReportQuerySchema.keys({
+  columns: rawAttendanceCsvColumnsSchema
+});
+
+export const aggregatedAttendanceReportExportCsvSchema = aggregatedAttendanceReportQuerySchema.keys({
+  columns: aggregatedAttendanceCsvColumnsSchema
+});
+
+// Report preset validation schemas
+export const reportPresetIdParamSchema = Joi.object({
+  id: Joi.string().hex().length(24).required()
+}).options({ stripUnknown: true });
+
+const reportPresetStateSchema = Joi.object<ReportPresetState>({
+  mode: Joi.string().valid('raw', 'aggregate').required(),
+  groupBy: Joi.string()
+    .valid('student', 'instructor', 'session', 'class')
+    .when('mode', { is: 'aggregate', then: Joi.required(), otherwise: Joi.optional() }),
+
+  from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+
+  search: Joi.string().trim().min(1).max(100).optional(),
+
+  pageSize: Joi.number().integer().min(1).max(100).optional(),
+
+  sortBy: Joi.string()
+    .valid(
+      'date',
+      'start_time',
+      'end_time',
+      'student_name',
+      'class_name',
+      'instructor',
+      'status',
+      'category',
+      'notes',
+      'recorded_by',
+      'recorded_at',
+      'presentCount',
+      'totalCount'
+    )
+    .optional(),
+  sortDir: Joi.string().valid('asc', 'desc').optional(),
+
+  onlyActiveStudents: Joi.boolean().optional(),
+
+  studentIds: Joi.array().items(Joi.string().hex().length(24)).min(1).max(200).optional(),
+  classIds: Joi.array().items(Joi.string().hex().length(24)).min(1).max(200).optional(),
+  instructors: Joi.array().items(Joi.string().trim().min(1).max(100)).min(1).max(200).optional(),
+  status: Joi.array().items(Joi.string().valid(...Object.values(AttendanceStatusEnum))).min(1).max(20).optional(),
+  sessions: Joi.array()
+    .items(
+      Joi.object({
+        classScheduleId: Joi.string().hex().length(24).required(),
+        date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required()
+      }).options({ stripUnknown: true })
+    )
+    .min(1)
+    .max(200)
+    .optional(),
+
+  rawColumnVisibility: Joi.object()
+    .pattern(Joi.string().trim().min(1).max(80), Joi.boolean())
+    .max(250)
+    .optional(),
+  aggregatedColumnVisibility: Joi.object()
+    .pattern(Joi.string().trim().min(1).max(80), Joi.boolean())
+    .max(250)
+    .optional()
+}).options({ stripUnknown: true });
+
+export const createReportPresetSchema = Joi.object<CreateReportPresetDto>({
+  name: Joi.string().trim().min(1).max(80).required(),
+  shared: Joi.boolean().optional(),
+  schemaVersion: Joi.number().integer().min(1).max(10).default(1),
+  state: reportPresetStateSchema.required()
+}).options({ stripUnknown: true });
+
+export const updateReportPresetSchema = Joi.object<UpdateReportPresetDto>({
+  name: Joi.string().trim().min(1).max(80).optional(),
+  shared: Joi.boolean().optional(),
+  schemaVersion: Joi.number().integer().min(1).max(10).optional(),
+  state: reportPresetStateSchema.optional()
+})
+  .or('name', 'shared', 'schemaVersion', 'state')
+  .options({ stripUnknown: true });

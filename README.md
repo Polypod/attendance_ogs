@@ -10,11 +10,17 @@ A comprehensive TypeScript-based attendance management system for karate schools
 -  **Student management** with configurable categories and belt level tracking
 -  **Class scheduling and management** with multi-category support
 -  **Real-time attendance tracking** with category-specific recording
+-  **Session-specific instructors and notes**: Override class default instructor and add notes for individual sessions
+-  **Enhanced calendar view**: 
+   - Display weekday names instead of numeric values
+   - Show attendance count for each session
+   - Display session-specific instructor (falls back to class default instructor)
+-  **Dashboard**: View today's schedules with session-specific instructor display
 -  **User management**: Admin-only user creation with 4 role types (admin, instructor, staff, student)
 -  **Configuration management**: YAML-based category and belt level configuration
 -  **Teacher-friendly interface** optimized for tablets
 -  **Automatic detection** of next upcoming class
--  **Historical attendance editing**
+-  **Historical attendance editing** with session notes
 -  **Comprehensive reporting**
 
 ### Technical Features
@@ -73,7 +79,7 @@ cat > .env.local << EOF
 PORT=4001
 
 # NextAuth Configuration
-NEXTAUTH_SECRET=dev_secret_change_me
+NEXTAUTH_SECRET=change-me-generate-a-secure-random-string
 NEXTAUTH_URL=http://localhost:4001
 
 # Backend API URL (must match PORT in root .env)
@@ -151,6 +157,69 @@ Example: If you change backend PORT to 5000:
 2. Update `NEXT_PUBLIC_API_URL=http://localhost:5000` in `frontend/.env.local`
 3. Restart both servers
 
+---
+
+## Production ports & build notes 🔧
+
+- The `pnpm build` step only **compiles** the application; it does **not** set runtime ports.
+- **Runtime ports are determined when you start the app**: the process reads `process.env.PORT` or falls back to **3000** (both backend and Next.js default to 3000 when PORT is unset).
+- To ensure the same ports in production, **set the `PORT` environment variable** before starting the server (systemd/unit, Docker, or host environment):
+  - Backend (Express): `PORT=4000 node dist/index.js` or export `PORT=4000` in the service environment
+  - Frontend (Next.js): `PORT=4001 pnpm --prefix frontend start` or set `PORT=4001` in the frontend service
+- Alternatively, use a reverse proxy (Nginx) to expose ports 80/443 and proxy to internal app ports.
+
+Set env vars in your host/CI/CD to control production ports and secrets securely.
+### Starting locally in "production" mode (ports 4010/4011) 🔧
+
+A convenience script is included to build and start both backend and frontend on the local host using PM2 (a production-grade process manager):
+
+- Backend: 4010
+- Frontend: 4011
+
+**Prerequisites for the script:**
+- PM2 installed globally (`npm install -g pm2` or `pnpm add -g pm2`)
+- The script will auto-install PM2 if not found
+
+Usage:
+```bash
+# From repository root
+./scripts/start-prod.sh
+```
+
+What the script does:
+- Kills any existing processes listening on ports 4010 and 4011
+- Builds backend (`pnpm build`) and frontend (`cd frontend && pnpm build`)
+- Starts both services with PM2 for automatic restart on crashes
+- Writes logs to `logs/backend-prod.log` and `logs/frontend-prod-error.log`
+- Verifies both services bind to their respective ports
+
+**Managing PM2 processes:**
+
+View status:
+```bash
+pm2 status              # Show all running processes
+pm2 logs                # View all logs (live)
+pm2 logs backend        # View backend logs only
+pm2 logs frontend       # View frontend logs only
+```
+
+Control processes:
+```bash
+pm2 stop backend        # Stop backend without removing
+pm2 stop frontend       # Stop frontend without removing
+pm2 restart backend     # Restart backend
+pm2 delete backend      # Remove backend from PM2
+pm2 kill                # Kill PM2 daemon and all processes
+```
+
+**Benefits of PM2:**
+- Automatic restart if a process crashes
+- Built-in logging and monitoring
+- Process state persistence
+- Easier debugging with live log streaming
+- No need to manually track PIDs
+
+Note: This script is intended for local testing of production builds. In real production deploys, use systemd units, Docker, or orchestration platforms with your host environment and secret management.
 ### Database Schema
 
 The system uses 5 main collections:
@@ -187,8 +256,8 @@ The system uses 5 main collections:
 ### Database Configuration Notes
 
 - **MongoDB Port Mapping**: When using Docker, MongoDB container port 27017 is mapped to host port 27019 to avoid conflicts with locally running MongoDB instances
-- **Default MongoDB Connection**: `mongodb://root:ogsadmin@localhost:27019/attendance?authSource=admin`
-- **Credentials**: Set MONGO_USERNAME and MONGO_PASSWORD in docker-compose.yml as needed
+- **MongoDB Connection (example)**: `mongodb://<user>:<password>@localhost:27019/attendance?authSource=admin`
+- **Credentials**: Must match the values configured in docker-compose.yml (or your local MongoDB)
 
 ## Configuration Management
 

@@ -39,7 +39,8 @@ export class AttendanceController {
   markAttendance = async (req: Request, res: Response): Promise<void> => {
     try {
       const attendanceData: MarkAttendanceDto[] = req.body.attendance;
-      const recordedBy = req.body.recorded_by || 'system';
+      // Use the authenticated user's ID instead of taking from request body
+      const recordedBy = req.user?._id ? String(req.user._id) : 'system';
       
       const result = await this.attendanceService.markMultipleAttendance(attendanceData, recordedBy);
       res.json({ success: true, data: result });
@@ -105,6 +106,21 @@ export class AttendanceController {
       res.status(500).json({
         success: false,
         message: 'Error generating attendance reports',
+        error: (error as Error).message
+      });
+    }
+  };
+
+  // Get all attendance records for a specific student
+  getStudentAttendance = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { studentId } = req.params;
+      const records = await this.attendanceService.getStudentAttendance(studentId);
+      res.json({ success: true, data: records });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: 'Error fetching student attendance',
         error: (error as Error).message
       });
     }

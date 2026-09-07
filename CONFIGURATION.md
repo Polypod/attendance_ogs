@@ -17,17 +17,40 @@ These ports enable CORS communication between services and must be reflected in 
 
 ### 2. API Endpoint Configuration (🔴 MUST MATCH)
 
-All frontend API calls must point to the correct backend URL:
+⚠️ **CRITICAL: Remote SSH Development Configuration**
 
+The `NEXT_PUBLIC_API_URL` setting depends on your development environment:
+
+#### For Remote SSH Development (VS Code Remote, SSH tunneling):
+**In `frontend/.env.local`:**
+```
+NEXT_PUBLIC_API_URL=
+BACKEND_URL=http://localhost:4000
+```
+
+When `NEXT_PUBLIC_API_URL` is **empty**, the frontend uses relative URLs that are proxied through Next.js API routes (`/frontend/src/app/api/[...path]/route.ts`). This is **REQUIRED** when:
+- Your browser runs on a different machine than the backend (e.g., Windows browser, Linux server)
+- You're using VS Code Remote SSH
+- `localhost` in the browser points to a different machine than where the backend runs
+
+#### For Local Development (everything on same machine):
 **In `frontend/.env.local`:**
 ```
 NEXT_PUBLIC_API_URL=http://localhost:4000
+BACKEND_URL=http://localhost:4000
 ```
+
+When `NEXT_PUBLIC_API_URL` has a value, the browser connects directly to the backend URL.
+
+**🔴 IMPORTANT:** If you see "Loading..." forever on dashboard pages:
+1. Check which environment you're in (remote SSH vs local)
+2. Set `NEXT_PUBLIC_API_URL` correctly (empty for remote, URL for local)
+3. Restart frontend: `pnpm run dev:frontend`
 
 This variable is used by:
 - Client-side API calls in dashboard pages
 - NextAuth authentication callbacks
-- API wrapper functions
+- API wrapper functions in `frontend/src/lib/api.ts`
 
 If the backend port changes, this must be updated and both servers restarted.
 
@@ -37,7 +60,7 @@ NextAuth requires both `NEXTAUTH_SECRET` and `NEXTAUTH_URL` to function:
 
 **In `frontend/.env.local`:**
 ```
-NEXTAUTH_SECRET=dev_secret_change_me_in_production
+NEXTAUTH_SECRET=change-me-generate-a-secure-random-string
 NEXTAUTH_URL=http://localhost:4001
 ```
 
@@ -54,12 +77,12 @@ FRONTEND_URL=http://localhost:4001
 
 **In root `.env`:**
 ```
-MONGODB_URI=mongodb://root:ogsadmin@localhost:27019/attendance?authSource=admin
+MONGODB_URI=mongodb://<user>:<password>@localhost:27019/attendance?authSource=admin
 ```
 
 The connection string includes:
 - **Host & Port**: `localhost:27019` (Docker port mapping) or `localhost:27017` (local MongoDB)
-- **Credentials**: `root:ogsadmin` (must match docker-compose.yml)
+- **Credentials**: `<user>:<password>` (must match docker-compose.yml)
 - **Database**: `attendance`
 - **Auth Source**: `admin` (required for authentication)
 
@@ -241,7 +264,7 @@ pnpm test
 
 | Variable | File | Required | Example | Purpose |
 |----------|------|----------|---------|---------|
-| `MONGODB_URI` | `.env` | ✅ | `mongodb://root:ogsadmin@localhost:27019/attendance?authSource=admin` | Database connection |
+| `MONGODB_URI` | `.env` | ✅ | `mongodb://<user>:<password>@localhost:27019/attendance?authSource=admin` | Database connection |
 | `PORT` | `.env` | ✅ | `4000` | Backend server port |
 | `FRONTEND_URL` | `.env` | ✅ | `http://localhost:4001` | Frontend origin for CORS |
 | `JWT_SECRET` | `.env` | ✅ | `[32+ character string]` | JWT signing key |
@@ -259,7 +282,7 @@ pnpm test
 - [ ] Change admin password from `ChangeMe123!`
 - [ ] Update `MONGODB_URI` to production database
 - [ ] Set `NODE_ENV=production` in `.env`
-- [ ] Use secure MongoDB credentials (not default `root:ogsadmin`)
+- [ ] Use secure MongoDB credentials (avoid weak/default local credentials in production)
 - [ ] Configure proper FRONTEND_URL for production domain
 - [ ] Enable HTTPS for all endpoints
 - [ ] Implement rate limiting for API endpoints

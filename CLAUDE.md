@@ -9,18 +9,21 @@ This is a TypeScript Express.js backend for a karate school attendance managemen
 ## Development Commands
 
 ### Core Development
+
 - `pnpm run dev` - Start development server with hot reload using ts-node-dev
 - `pnpm run build` - Compile TypeScript to JavaScript in dist/ directory  
 - `pnpm start` - Start production server from compiled dist/index.js
 - `pnpm test` - Run Jest test suite with coverage reporting
 
 ### Database
+
 - `docker-compose up -d` - Start MongoDB container on port 27018
 - MongoDB connection: localhost:27018 with credentials in docker-compose.yml
 
 ## Architecture
 
 ### Core Structure
+
 - **Models** (`src/models/`): Mongoose schemas with validation and indexing
 - **Services** (`src/services/`): Business logic layer (e.g., AttendanceService for complex attendance operations)  
 - **Controllers** (`src/controllers/`): HTTP request handlers that use services
@@ -28,6 +31,7 @@ This is a TypeScript Express.js backend for a karate school attendance managemen
 - **Types** (`src/types/interfaces.ts`): TypeScript interfaces and enums for type safety
 
 ### Key Design Patterns
+
 - **Multiple Categories**: Students and classes support multiple categories (kids, youth, adult, advanced)
 - **Category-specific Attendance**: Attendance tracked per category for mixed-level classes
 - **Separated Schedules**: Classes and ClassSchedules are separate entities for flexible scheduling
@@ -35,12 +39,14 @@ This is a TypeScript Express.js backend for a karate school attendance managemen
 - **Service Layer**: Complex business logic isolated in service classes
 
 ### Database Schema
+
 - **Students**: Personal info, multiple categories, belt levels, emergency contacts
 - **Classes**: Class definitions with categories, instructor, capacity
 - **ClassSchedules**: Specific class instances with dates/times, recurring support  
 - **Attendance**: Individual records linking students to specific class schedules
 
 ### Type System
+
 - Comprehensive TypeScript interfaces in `src/types/interfaces.ts`
 - Enums for categories, statuses, days of week
 - DTOs for API requests/responses
@@ -65,3 +71,7 @@ This is a TypeScript Express.js backend for a karate school attendance managemen
 - **moment**: Date/time manipulation for class scheduling
 - **helmet**: Security middleware
 - **cors**: Cross-origin resource sharing
+
+## GitNexus
+
+Use GitNexus tools for symbol/context/impact analysis before non-trivial edits and run change detection before committing.

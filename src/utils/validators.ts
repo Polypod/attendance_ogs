@@ -1,9 +1,6 @@
 import { Types } from 'mongoose';
 import {
-  StudentCategoryEnum,
-  AttendanceStatusEnum,
-  StudentCategory,
-  AttendanceStatus
+  AttendanceStatusEnum
 } from '../types/interfaces';
 import { ConfigService } from '../services/ConfigService';
 

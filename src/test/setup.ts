@@ -1,7 +1,11 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose, { Connection } from 'mongoose';
+import { ConfigService } from '../services/ConfigService';
 
 let mongoServer: MongoMemoryServer;
+
+// MongoMemoryServer startup can exceed Jest's default 5s timeout in CI/containers
+jest.setTimeout(30000);
 
 // Set up in-memory MongoDB for testing
 beforeAll(async () => {
@@ -11,6 +15,9 @@ beforeAll(async () => {
   
   // Set mongoose options
   mongoose.set('strictQuery', false);
+
+  // Initialize configuration service for validators that depend on it
+  await ConfigService.initialize();
 });
 
 // Clear all test data after each test
@@ -24,5 +31,7 @@ afterEach(async () => {
 // Close the connection and stop the server
 afterAll(async () => {
   await mongoose.disconnect();
-  await mongoServer.stop();
+  if (mongoServer) {
+    await mongoServer.stop();
+  }
 });

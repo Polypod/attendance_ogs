@@ -28,50 +28,79 @@ categories:
     order: 4
 
 # Belt level progression
-# Defines the ranking system for students
-# to be changed to a kyu/dan system 
+# Defines the ranking system for students (Goju-ryu karate system)
 belt_levels:
-  - value: "white"
-    label: "White Belt"
+  - value: "10kyu"
+    label: "10 Kyu"
     rank: 1
     color: "#FFFFFF"
 
-  - value: "yellow"
-    label: "Yellow Belt"
+  - value: "9kyu"
+    label: "9 Kyu"
     rank: 2
+    color: "#FFF8DC"
+
+  - value: "8kyu"
+    label: "8 Kyu"
+    rank: 3
     color: "#FFD700"
 
-  - value: "orange"
-    label: "Orange Belt"
-    rank: 3
-    color: "#FFA500"
-
-  - value: "green"
-    label: "Green Belt"
+  - value: "7kyu"
+    label: "7 Kyu"
     rank: 4
-    color: "#00FF00"
+    color: "#ADFF2F"
 
-  - value: "blue"
-    label: "Blue Belt"
+  - value: "6kyu"
+    label: "6 Kyu"
     rank: 5
-    color: "#0000FF"
+    color: "#00AA00"
 
-  - value: "brown"
-    label: "Brown Belt"
+  - value: "5kyu"
+    label: "5 Kyu"
     rank: 6
+    color: "#20B2AA"
+
+  - value: "4kyu"
+    label: "4 Kyu"
+    rank: 7
+    color: "#0000CD"
+
+  - value: "3kyu"
+    label: "3 Kyu"
+    rank: 8
+    color: "#654321"
+
+  - value: "2kyu"
+    label: "2 Kyu"
+    rank: 9
     color: "#8B4513"
+
+  - value: "1kyu"
+    label: "1 Kyu"
+    rank: 10
+    color: "#2C1810"
 
   - value: "black_1st"
     label: "Black Belt (1st Dan)"
-    rank: 7
+    rank: 11
     color: "#000000"
 
   - value: "black_2nd"
     label: "Black Belt (2nd Dan)"
-    rank: 8
+    rank: 12
     color: "#000000"
 
   - value: "black_3rd"
     label: "Black Belt (3rd Dan)"
-    rank: 9
+    rank: 13
+    color: "#000000"
+
+  - value: "black_4th"
+    label: "Black Belt (4th Dan)"
+    rank: 14
+    color: "#000000"
+
+  - value: "black_5th"
+    label: "Black Belt (5th Dan)"
+    rank: 15
     color: "#000000"

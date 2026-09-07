@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { useSession } from "next-auth/react";
+import { createApiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Table,
@@ -31,6 +32,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Trash2, Edit, Key, UserPlus } from "lucide-react";
+import { logger } from "@/lib/logger";
+import {
+  buildEditUserFormFromUser,
+  formatLastLogin,
+  getRoleBadgeColor,
+  getStatusBadgeColor,
+} from "./userHelpers";
 
 type User = {
   _id: string;
@@ -43,6 +51,7 @@ type User = {
 };
 
 export default function UsersPage() {
+  const { data: session, status } = useSession();
   const { isAdmin } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,15 +84,30 @@ export default function UsersPage() {
 
   // Fetch users
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    const debug = logger.isDebugEnabled();
+    if (debug) {
+      logger.debug('UsersPage.session_state', {
+        status,
+        hasSession: !!session,
+        hasAccessToken: !!session?.accessToken,
+      });
+    }
+    if (status === 'authenticated' && session?.accessToken) {
+      fetchUsers();
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
+      setError('Not authenticated');
+    }
+  }, [status, session]);
 
   async function fetchUsers() {
+    if (!session?.accessToken) return;
     setLoading(true);
     setError(null);
     try {
+      const api = createApiClient((session as any)?.accessToken);
       const data = await api.get("/api/users");
-      setUsers(data.users || []);
+      setUsers(data.data || []);
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
       else setError("Failed to fetch users");
@@ -95,10 +119,12 @@ export default function UsersPage() {
   // Create user
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
+    if (!session?.accessToken) return;
     setError(null);
     try {
+      const api = createApiClient((session as any)?.accessToken);
       const data = await api.post("/api/users", createForm);
-      setUsers((prev) => [...prev, data.user]);
+      setUsers((prev) => [...prev, data.data]);
       setCreateDialogOpen(false);
       setCreateForm({ name: "", email: "", password: "", role: "student" });
     } catch (e: unknown) {
@@ -110,12 +136,13 @@ export default function UsersPage() {
   // Edit user
   async function handleEditUser(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedUser) return;
+    if (!selectedUser || !session?.accessToken) return;
     setError(null);
     try {
+      const api = createApiClient((session as any)?.accessToken);
       const data = await api.put(`/api/users/${selectedUser._id}`, editForm);
       setUsers((prev) =>
-        prev.map((u) => (u._id === selectedUser._id ? data.user : u))
+        prev.map((u) => (u._id === selectedUser._id ? data.data : u))
       );
       setEditDialogOpen(false);
       setSelectedUser(null);
@@ -127,9 +154,10 @@ export default function UsersPage() {
 
   // Delete user
   async function handleDeleteUser() {
-    if (!selectedUser) return;
+    if (!selectedUser || !session?.accessToken) return;
     setError(null);
     try {
+      const api = createApiClient((session as any)?.accessToken);
       await api.delete(`/api/users/${selectedUser._id}`);
       setUsers((prev) => prev.filter((u) => u._id !== selectedUser._id));
       setDeleteDialogOpen(false);
@@ -143,9 +171,10 @@ export default function UsersPage() {
   // Reset password
   async function handleResetPassword(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedUser) return;
+    if (!selectedUser || !session?.accessToken) return;
     setError(null);
     try {
+      const api = createApiClient((session as any)?.accessToken);
       await api.put(`/api/users/${selectedUser._id}/reset-password`, {
         newPassword,
       });
@@ -161,11 +190,7 @@ export default function UsersPage() {
   // Open edit dialog with user data
   function openEditDialog(user: User) {
     setSelectedUser(user);
-    setEditForm({
-      name: user.name,
-      role: user.role,
-      status: user.status,
-    });
+    setEditForm(buildEditUserFormFromUser(user));
     setEditDialogOpen(true);
   }
 
@@ -182,35 +207,6 @@ export default function UsersPage() {
     setResetPasswordDialogOpen(true);
   }
 
-  // Get role badge color
-  function getRoleBadgeColor(role: User["role"]) {
-    switch (role) {
-      case "admin":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      case "instructor":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "staff":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "student":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  }
-
-  // Get status badge color
-  function getStatusBadgeColor(status: User["status"]) {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "inactive":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
-      case "suspended":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  }
 
   // Redirect if not admin
   if (!isAdmin) {
@@ -393,9 +389,7 @@ export default function UsersPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    {user.last_login
-                      ? new Date(user.last_login).toLocaleDateString()
-                      : "Never"}
+                    {formatLastLogin(user.last_login)}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button

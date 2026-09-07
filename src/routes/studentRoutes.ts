@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { studentController } from '@/controllers/StudentController';
 import { validateRequest } from '@/middleware/validation';
-import { createStudentSchema, updateStudentSchema } from '@/types/validation';
+import { createStudentSchema, studentImportSchema, updateStudentSchema } from '@/types/validation';
 import { authorize } from '@/middleware/auth';
 import { UserRoleEnum } from '@/types/interfaces';
 
@@ -19,6 +19,26 @@ router.get(
   '/category/:category',
   authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
   studentController.getStudentsByCategory
+);
+
+router.get(
+  '/export/csv',
+  authorize(UserRoleEnum.ADMIN),
+  studentController.exportStudentsCsv
+);
+
+router.post(
+  '/import/preview',
+  authorize(UserRoleEnum.ADMIN),
+  validateRequest(studentImportSchema),
+  studentController.previewStudentImport
+);
+
+router.post(
+  '/import/apply',
+  authorize(UserRoleEnum.ADMIN),
+  validateRequest(studentImportSchema),
+  studentController.applyStudentImport
 );
 
 // Admin-only routes for creating, updating, and deleting students

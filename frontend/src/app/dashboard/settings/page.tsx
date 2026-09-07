@@ -32,9 +32,10 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Manage kiosk devices and activation links.
+          Manage kiosk access and security settings.
         </p>
       </div>
+
       <KioskSettings />
     </div>
   );

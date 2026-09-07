@@ -1,6 +1,6 @@
 // src/models/Class.ts - Class Mongoose model
 import { Schema, model, Document, Types } from 'mongoose';
-import { Class, StudentCategory } from '../types/interfaces';
+import { Class } from '../types/interfaces';
 import { ConfigService } from '../services/ConfigService';
 
 interface IClassDocument extends Omit<Class, '_id'>, Document {
@@ -21,22 +21,28 @@ const classSchema = new Schema<IClassDocument>({
     required: [true, 'Class description is required'],
     trim: true
   },
-  categories: [{
-    type: String,
+  categories: {
+    type: [String],
     required: [true, 'At least one category is required'],
     validate: {
       validator: function(this: any, values: string[]) {
         if (!values || values.length === 0) return false;
-        const configService = ConfigService.getInstance();
+        const configService = ConfigService.tryGetInitializedInstance();
+        if (!configService) {
+          return false;
+        }
         return values.every(val => configService.isValidCategory(val));
       },
       message: function() {
-        const configService = ConfigService.getInstance();
+        const configService = ConfigService.tryGetInitializedInstance();
+        if (!configService) {
+          return 'Configuration has not been initialized. Cannot validate class categories.';
+        }
         const validCategories = configService.getCategoryValues().join(', ');
         return `Invalid class category. Must be one of: ${validCategories}`;
       }
     }
-  }],
+  },
   instructor: { 
     type: String, 
     required: [true, 'Instructor name is required'],

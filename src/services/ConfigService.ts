@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { SystemConfig, CategoryConfig, BeltLevelConfig } from '../types/config';
+import { logger } from '../utils/logger';
 
 export class ConfigService {
   private static instance: ConfigService;
@@ -35,9 +36,12 @@ export class ConfigService {
       // Store config
       instance.config = config;
 
-      console.log(`✅ Configuration loaded: ${config.categories.length} categories, ${config.belt_levels.length} belt levels`);
+      logger.info('config_loaded', {
+        categories: config.categories.length,
+        beltLevels: config.belt_levels.length,
+      });
     } catch (error: any) {
-      console.error('❌ Failed to load configuration:', error.message);
+      logger.error('config_load_failed', { message: error?.message }, error);
       throw error;
     }
   }
@@ -50,6 +54,26 @@ export class ConfigService {
       ConfigService.instance = new ConfigService();
     }
     return ConfigService.instance;
+  }
+
+  /**
+   * Get the singleton instance only if configuration has been initialized.
+   *
+   * This is primarily intended for synchronous validation paths (e.g. Mongoose
+   * schema validators) where we must not throw if config hasn't been loaded yet.
+   */
+  public static tryGetInitializedInstance(): ConfigService | null {
+    const instance = ConfigService.instance;
+    if (!instance) {
+      return null;
+    }
+
+    // Note: `config` is only set by `initialize()`.
+    if (!(instance as any).config) {
+      return null;
+    }
+
+    return instance;
   }
 
   /**

@@ -1,5 +1,3 @@
-
-
 // src/index.ts - Main application entry point
 import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
@@ -11,26 +9,42 @@ import { attendanceRoutes } from './routes/attendanceRoutes';
 import { authRoutes } from './routes/authRoutes';
 import { userRoutes } from './routes/userRoutes';
 import { configRoutes } from './routes/configRoutes';
+import { reportRoutes } from './routes/reportRoutes';
+import { reportPresetRoutes } from './routes/reportPresetRoutes';
+import { metricsRoutes } from './routes/metricsRoutes';
 import { kioskAttendanceRoutes } from './routes/kioskAttendanceRoutes';
 import { kioskManagementRoutes } from './routes/kioskManagementRoutes';
-import { apiLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { applyMiddleware } from './middleware/middleware';
 import { authenticate, authorize } from './middleware/auth';
+import { apiLimiter } from './middleware/rateLimiter';
 import { UserRoleEnum } from './types/interfaces';
 import { ConfigService } from './services/ConfigService';
+import { logger } from './utils/logger';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+// Only trust proxy headers from loopback. This prevents arbitrary clients from
+// spoofing X-Forwarded-For while still supporting local reverse proxies.
+app.set('trust proxy', 'loopback');
+// Ensure PORT is a number (env vars are strings)
+const PORT = Number(process.env.PORT ?? 3000);
 
 // Apply common middleware
 applyMiddleware(app);
 
+// Metrics endpoint (restricted). Mount before rate limiting.
+app.use('/api/metrics', metricsRoutes);
+
+// General API rate limiting
+app.use('/api', apiLimiter);
+
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  if (logger.isDebugEnabled()) {
+    logger.debug('http_request', { requestId: req.requestId, method: req.method, path: req.path });
+  }
   next();
 });
 
@@ -48,6 +62,8 @@ app.use('/api/students', authenticate, studentRoutes);
 app.use('/api/classes', authenticate, classRoutes);
 app.use('/api/schedules', authenticate, scheduleRoutes);
 app.use('/api/attendance', authenticate, attendanceRoutes);
+app.use('/api/reports', authenticate, reportRoutes);
+app.use('/api/report-presets', authenticate, reportPresetRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
@@ -68,6 +84,7 @@ app.use((req: Request, res: Response) => {
   res.status(404).json({ 
     success: false, 
     message: 'Resource not found',
+    requestId: req.requestId,
     path: req.path
   });
 });
@@ -83,26 +100,26 @@ const MONGODB_OPTIONS = {
 
 mongoose.connect(MONGODB_URI, MONGODB_OPTIONS)
   .then(async () => {
-    console.log('✅ Connected to MongoDB');
+    logger.info('mongodb_connected');
 
     // Initialize ConfigService after database connection
     try {
       await ConfigService.initialize();
     } catch (error: any) {
-      console.error('❌ Failed to initialize configuration:', error.message);
+      logger.error('config_initialize_failed', { message: error?.message }, error);
       process.exit(1); // Critical: cannot run without config
     }
 
     // Start the server only after successful DB connection AND config load
-    const server = app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      logger.info('server_listening', { port: PORT });
     });
 
     // Handle graceful shutdown
     const gracefulShutdown = () => {
-      console.log('🛑 Shutting down gracefully...');
+      logger.info('server_shutdown_start');
       server.close(() => {
-        console.log('💤 Server shut down');
+        logger.info('server_shutdown_complete');
         process.exit(0);
       });
     };
@@ -112,12 +129,12 @@ mongoose.connect(MONGODB_URI, MONGODB_OPTIONS)
     process.on('SIGINT', gracefulShutdown);
   })
   .catch((error: Error) => {
-    console.error('❌ MongoDB connection error:', error);
+    logger.error('mongodb_connection_error', undefined, error);
     process.exit(1);
   });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason: Error | any, promise: Promise<any>) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error('unhandled_rejection', { promise: String(promise) }, reason);
   // Consider logging to an external service in production
 });

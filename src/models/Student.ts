@@ -1,6 +1,6 @@
 // src/models/Student.ts - Student Mongoose model
 import { Schema, model, Document, Types } from 'mongoose';
-import { Student, StudentCategory, StudentStatus, StudentStatusEnum } from '../types/interfaces';
+import { Student, StudentStatusEnum } from '../types/interfaces';
 import { ConfigService } from '../services/ConfigService';
 
 interface IStudentDocument extends Omit<Student, '_id'>, Document {
@@ -17,11 +17,11 @@ interface IEmergencyContact {
 const emergencyContactSchema = new Schema<IEmergencyContact>({
   name: { 
     type: String, 
-    required: [true, 'Emergency contact name is required'] 
+    required: false
   },
   phone: { 
     type: String, 
-    required: [true, 'Emergency contact phone is required'] 
+    required: false
   }
 }, { _id: false, timestamps: false });
 
@@ -36,32 +36,46 @@ const studentSchema = new Schema<IStudentDocument>({
     unique: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address']
   },
-  categories: [{
-    type: String,
+  categories: {
+    type: [String],
     required: [true, 'At least one category is required'],
     validate: {
       validator: function(this: any, values: string[]) {
         if (!values || values.length === 0) return false;
-        const configService = ConfigService.getInstance();
+        const configService = ConfigService.tryGetInitializedInstance();
+        if (!configService) {
+          return false;
+        }
         return values.every(val => configService.isValidCategory(val));
       },
       message: function() {
-        const configService = ConfigService.getInstance();
+        const configService = ConfigService.tryGetInitializedInstance();
+        if (!configService) {
+          return 'Configuration has not been initialized. Cannot validate student categories.';
+        }
         const validCategories = configService.getCategoryValues().join(', ');
         return `Invalid student category. Must be one of: ${validCategories}`;
       }
     }
-  }],
+  },
+
   belt_level: {
     type: String,
-    required: [true, 'Belt level is required'],
+    required: false,
     validate: {
       validator: function(value: string) {
-        const configService = ConfigService.getInstance();
+        if (!value) return true;
+        const configService = ConfigService.tryGetInitializedInstance();
+        if (!configService) {
+          return false;
+        }
         return configService.isValidBeltLevel(value);
       },
       message: function() {
-        const configService = ConfigService.getInstance();
+        const configService = ConfigService.tryGetInitializedInstance();
+        if (!configService) {
+          return 'Configuration has not been initialized. Cannot validate belt level.';
+        }
         const validBeltLevels = configService.getBeltLevelValues().join(', ');
         return `Invalid belt level. Must be one of: ${validBeltLevels}`;
       }
@@ -73,11 +87,11 @@ const studentSchema = new Schema<IStudentDocument>({
   },
   phone: { 
     type: String, 
-    required: [true, 'Phone number is required'] 
+    required: false
   },
   emergency_contact: { 
     type: emergencyContactSchema, 
-    required: [true, 'Emergency contact information is required'] 
+    required: false
   },
   status: {
     type: String,
@@ -86,6 +100,11 @@ const studentSchema = new Schema<IStudentDocument>({
       message: `Status must be one of: ${Object.values(StudentStatusEnum).join(', ')}`
     },
     default: StudentStatusEnum.ACTIVE
+  },
+  active: {
+    type: Boolean,
+    default: true,
+    required: false
   }
 }, {
   timestamps: { 
@@ -94,6 +113,10 @@ const studentSchema = new Schema<IStudentDocument>({
   },
   versionKey: false
 });
+
+// Reporting pipelines often filter out inactive students after lookup.
+// This compound index supports those filters when pushed down.
+studentSchema.index({ active: 1, status: 1 });
 
 
 

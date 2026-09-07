@@ -2,252 +2,524 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { createApiClient } from "@/lib/api";
 import { useConfig } from "@/hooks/useConfig";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
+import { Trash2, Edit, Plus } from "lucide-react";
+import {
+  buildClassFormFromClass,
+  extractClassesFromApiResponse,
+  formatCategoriesForDisplay,
+  toggleCategorySelection,
+} from "./classHelpers";
 
 type Class = {
   _id: string;
   name: string;
-  categories: string[]; // Changed from category to categories
-  description?: string;
+  description: string;
+  categories: string[];
   instructor: string;
-  max_capacity?: number;
-  duration_minutes?: number;
+  max_capacity: number;
+  duration_minutes: number;
 };
 
-export default function ClassesPage() {
+export default function CalendarPage() {
   const { data: session, status } = useSession();
+  const { config } = useConfig();
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch config for dropdowns
-  const { config, loading: configLoading } = useConfig();
+  // Dialog states
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
 
-  // Form state
-  const [name, setName] = useState("");
-  const [categories, setCategories] = useState<string[]>([]); // Changed to array
-  const [description, setDescription] = useState("");
-  const [instructor, setInstructor] = useState("");
-  const [maxCapacity, setMaxCapacity] = useState("20");
-  const [durationMinutes, setDurationMinutes] = useState("60");
+  // Form states for create class
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    description: "",
+    categories: [] as string[],
+    instructor: "",
+    max_capacity: 20,
+    duration_minutes: 60,
+  });
 
-  // Helper function to make authenticated requests
-  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    const token = (session as any)?.accessToken;
-    const headers = {
-      "Content-Type": "application/json",
-      ...options.headers,
-      ...(token && { Authorization: `Bearer ${token}` })
-    };
-    return fetch(url, { ...options, headers });
-  };
+  // Form states for edit class
+  const [editForm, setEditForm] = useState({
+    name: "",
+    description: "",
+    categories: [] as string[],
+    instructor: "",
+    max_capacity: 20,
+    duration_minutes: 60,
+  });
 
   // Fetch classes
   useEffect(() => {
-    if (status !== "authenticated") return;
-
-    async function fetchClasses() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/classes`);
-        if (!res.ok) throw new Error("Failed to fetch classes");
-        const data = await res.json();
-        setClasses(data.classes || []);
-      } catch (e: unknown) {
-        if (e instanceof Error) setError(e.message);
-        else setError("Unknown error");
-      }
+    if (status === 'authenticated' && session?.accessToken) {
+      fetchClasses();
+    } else if (status === 'unauthenticated') {
       setLoading(false);
+      setError('Not authenticated');
     }
-    fetchClasses();
-  }, [session, status]);
+  }, [status, session]);
 
-  // Add class
-  async function handleAddClass(e: React.FormEvent) {
-    e.preventDefault();
+  async function fetchClasses() {
+    if (!session?.accessToken) return;
+    setLoading(true);
     setError(null);
     try {
-      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/classes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          categories, // Array of categories
-          description: description || "Class description",
-          instructor,
-          max_capacity: parseInt(maxCapacity),
-          duration_minutes: parseInt(durationMinutes),
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to add class");
-      }
-      const data = await res.json();
-      setClasses((prev) => [...prev, data.class]);
-      setName("");
-      setCategories([]);
-      setDescription("");
-      setInstructor("");
-      setMaxCapacity("20");
-      setDurationMinutes("60");
+      const api = createApiClient((session as any)?.accessToken);
+      const data = await api.get("/api/classes");
+      setClasses(extractClassesFromApiResponse(data));
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
-      else setError("Unknown error");
+      else setError("Failed to fetch classes");
+    } finally {
+      setLoading(false);
     }
   }
 
+  // Create class
+  async function handleCreateClass(e: React.FormEvent) {
+    e.preventDefault();
+    if (!session?.accessToken) return;
+    setError(null);
+    try {
+      const api = createApiClient((session as any)?.accessToken);
+      const data = await api.post("/api/classes", createForm);
+      setClasses((prev) => [...prev, data.data]);
+      setCreateDialogOpen(false);
+      setCreateForm({
+        name: "",
+        description: "",
+        categories: [],
+        instructor: "",
+        max_capacity: 20,
+        duration_minutes: 60,
+      });
+    } catch (e: unknown) {
+      if (e instanceof Error) setError(e.message);
+      else setError("Failed to create class");
+    }
+  }
+
+  // Edit class
+  async function handleEditClass(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedClass || !session?.accessToken) return;
+    setError(null);
+    try {
+      const api = createApiClient((session as any)?.accessToken);
+      const data = await api.put(`/api/classes/${selectedClass._id}`, editForm);
+      setClasses((prev) =>
+        prev.map((c) => (c._id === selectedClass._id ? data.data : c))
+      );
+      setEditDialogOpen(false);
+      setSelectedClass(null);
+    } catch (e: unknown) {
+      if (e instanceof Error) setError(e.message);
+      else setError("Failed to update class");
+    }
+  }
+
+  // Delete class
+  async function handleDeleteClass() {
+    if (!selectedClass || !session?.accessToken) return;
+    setError(null);
+    try {
+      const api = createApiClient((session as any)?.accessToken);
+      await api.delete(`/api/classes/${selectedClass._id}`);
+      setClasses((prev) => prev.filter((c) => c._id !== selectedClass._id));
+      setDeleteDialogOpen(false);
+      setSelectedClass(null);
+    } catch (e: unknown) {
+      if (e instanceof Error) setError(e.message);
+      else setError("Failed to delete class");
+    }
+  }
+
+  // Open edit dialog with class data
+  function openEditDialog(cls: Class) {
+    setSelectedClass(cls);
+    setEditForm(buildClassFormFromClass(cls));
+    setEditDialogOpen(true);
+  }
+
+  // Open delete dialog
+  function openDeleteDialog(cls: Class) {
+    setSelectedClass(cls);
+    setDeleteDialogOpen(true);
+  }
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Classes</h1>
-
-      <form className="mb-6 flex flex-col gap-2 max-w-md" onSubmit={handleAddClass}>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <label htmlFor="class-name" className="block font-medium">
-            Name
-          </label>
-          <input
-            id="class-name"
-            className="border rounded px-2 py-1 w-full"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            required
-          />
+          <h1 className="text-3xl font-bold">Classes</h1>
+          <p className="text-muted-foreground mt-1">
+            View and manage class definitions
+          </p>
         </div>
 
-        <div>
-          <label htmlFor="class-categories" className="block font-medium">
-            Categories (hold Ctrl/Cmd to select multiple)
-          </label>
-          <select
-            id="class-categories"
-            className="border rounded px-2 py-1 w-full"
-            multiple
-            size={4}
-            value={categories}
-            onChange={(e) => {
-              const selected = Array.from(e.target.selectedOptions, option => option.value);
-              setCategories(selected);
-            }}
-            required
-            disabled={configLoading}
-          >
-            {config?.categories
-              .sort((a, b) => a.order - b.order)
-              .map((cat) => (
-                <option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </option>
-              ))}
-          </select>
-          {categories.length > 0 && (
-            <p className="text-sm text-gray-600 mt-1">
-              Selected: {categories.join(", ")}
-            </p>
-          )}
-        </div>
+        {/* Create Class Dialog */}
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Class
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <form onSubmit={handleCreateClass}>
+              <DialogHeader>
+                <DialogTitle>Create New Class</DialogTitle>
+                <DialogDescription>
+                  Add a new class definition.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <label htmlFor="create-name" className="block text-sm font-medium mb-1">
+                    Class Name *
+                  </label>
+                  <Input
+                    id="create-name"
+                    value={createForm.name}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, name: e.target.value })
+                    }
+                    required
+                    placeholder="Beginner Karate"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="create-description" className="block text-sm font-medium mb-1">
+                    Description *
+                  </label>
+                  <Textarea
+                    id="create-description"
+                    value={createForm.description}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, description: e.target.value })
+                    }
+                    required
+                    placeholder="Description of the class"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="create-instructor" className="block text-sm font-medium mb-1">
+                    Instructor *
+                  </label>
+                  <Input
+                    id="create-instructor"
+                    value={createForm.instructor}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, instructor: e.target.value })
+                    }
+                    required
+                    placeholder="Sensei Name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="create-duration" className="block text-sm font-medium mb-1">
+                    Duration (minutes) *
+                  </label>
+                  <Input
+                    id="create-duration"
+                    type="number"
+                    value={createForm.duration_minutes}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, duration_minutes: parseInt(e.target.value) })
+                    }
+                    required
+                    min="15"
+                    max="240"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="create-capacity" className="block text-sm font-medium mb-1">
+                    Max Capacity *
+                  </label>
+                  <Input
+                    id="create-capacity"
+                    type="number"
+                    value={createForm.max_capacity}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, max_capacity: parseInt(e.target.value) })
+                    }
+                    required
+                    min="1"
+                    max="100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Categories *
+                  </label>
+                  <div className="space-y-2">
+                    {config?.categories.map((cat) => (
+                      <label key={cat.value} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={createForm.categories.includes(cat.value)}
+                          onChange={(e) => {
+                            setCreateForm({
+                              ...createForm,
+                              categories: toggleCategorySelection(
+                                createForm.categories,
+                                cat.value,
+                                e.target.checked
+                              ),
+                            });
+                          }}
+                          className="mr-2"
+                        />
+                        {cat.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Create Class</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-        <div>
-          <label htmlFor="class-description" className="block font-medium">
-            Description
-          </label>
-          <textarea
-            id="class-description"
-            className="border rounded px-2 py-1 w-full"
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            rows={2}
-            placeholder="Optional"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="class-instructor" className="block font-medium">
-            Instructor
-          </label>
-          <input
-            id="class-instructor"
-            className="border rounded px-2 py-1 w-full"
-            value={instructor}
-            onChange={e => setInstructor(e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label htmlFor="class-max-capacity" className="block font-medium">
-              Max Capacity
-            </label>
-            <input
-              id="class-max-capacity"
-              className="border rounded px-2 py-1 w-full"
-              type="number"
-              min="1"
-              max="100"
-              value={maxCapacity}
-              onChange={e => setMaxCapacity(e.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="class-duration" className="block font-medium">
-              Duration (min)
-            </label>
-            <input
-              id="class-duration"
-              className="border rounded px-2 py-1 w-full"
-              type="number"
-              min="15"
-              max="240"
-              value={durationMinutes}
-              onChange={e => setDurationMinutes(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded mt-2 disabled:bg-gray-400"
-          type="submit"
-          disabled={configLoading}
-        >
-          Add Class
-        </button>
-      </form>
-
-      {error && <div className="text-red-600 mb-4">{error}</div>}
-
-      {(loading || configLoading) ? (
-        <div>Loading...</div>
-      ) : (
-        <table className="min-w-full border">
-          <thead>
-            <tr>
-              <th className="border px-2 py-1">Name</th>
-              <th className="border px-2 py-1">Categories</th>
-              <th className="border px-2 py-1">Instructor</th>
-              <th className="border px-2 py-1">Capacity</th>
-              <th className="border px-2 py-1">Duration</th>
-            </tr>
-          </thead>
-          <tbody>
-            {classes.map((cls) => (
-              <tr key={cls._id}>
-                <td className="border px-2 py-1">{cls.name}</td>
-                <td className="border px-2 py-1">
-                  {cls.categories?.join(", ") || "N/A"}
-                </td>
-                <td className="border px-2 py-1">{cls.instructor}</td>
-                <td className="border px-2 py-1">{cls.max_capacity || "N/A"}</td>
-                <td className="border px-2 py-1">{cls.duration_minutes ? `${cls.duration_minutes} min` : "N/A"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {error && (
+        <Card className="p-4 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
+          <p className="text-red-600 dark:text-red-400">{error}</p>
+        </Card>
       )}
+
+      {loading ? (
+        <Card className="p-8 text-center">
+          <div className="text-muted-foreground">Loading classes...</div>
+        </Card>
+      ) : classes.length === 0 ? (
+        <Card className="p-8 text-center">
+          <div className="text-muted-foreground">
+            No classes found. Create your first class to get started.
+          </div>
+        </Card>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Class Name</TableHead>
+                <TableHead>Instructor</TableHead>
+                <TableHead>Categories</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Capacity</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {classes.map((cls) => (
+                <TableRow key={cls._id}>
+                  <TableCell className="font-medium">{cls.name}</TableCell>
+                  <TableCell>{cls.instructor}</TableCell>
+                  <TableCell>
+                    {formatCategoriesForDisplay(cls.categories)}
+                  </TableCell>
+                  <TableCell>{cls.duration_minutes} min</TableCell>
+                  <TableCell>{cls.max_capacity}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditDialog(cls)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDeleteDialog(cls)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      {/* Edit Class Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <form onSubmit={handleEditClass}>
+            <DialogHeader>
+              <DialogTitle>Edit Class</DialogTitle>
+              <DialogDescription>
+                Update class information.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <label htmlFor="edit-name" className="block text-sm font-medium mb-1">
+                  Class Name *
+                </label>
+                <Input
+                  id="edit-name"
+                  value={editForm.name}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-description" className="block text-sm font-medium mb-1">
+                  Description *
+                </label>
+                <Textarea
+                  id="edit-description"
+                  value={editForm.description}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, description: e.target.value })
+                  }
+                  required
+                  rows={3}
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-instructor" className="block text-sm font-medium mb-1">
+                  Instructor *
+                </label>
+                <Input
+                  id="edit-instructor"
+                  value={editForm.instructor}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, instructor: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-duration" className="block text-sm font-medium mb-1">
+                  Duration (minutes) *
+                </label>
+                <Input
+                  id="edit-duration"
+                  type="number"
+                  value={editForm.duration_minutes}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, duration_minutes: parseInt(e.target.value) })
+                  }
+                  required
+                  min="15"
+                  max="240"
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-capacity" className="block text-sm font-medium mb-1">
+                  Max Capacity *
+                </label>
+                <Input
+                  id="edit-capacity"
+                  type="number"
+                  value={editForm.max_capacity}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, max_capacity: parseInt(e.target.value) })
+                  }
+                  required
+                  min="1"
+                  max="100"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Categories *
+                </label>
+                <div className="space-y-2">
+                  {config?.categories.map((cat) => (
+                    <label key={cat.value} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.categories.includes(cat.value)}
+                        onChange={(e) => {
+                          setEditForm({
+                            ...editForm,
+                            categories: toggleCategorySelection(
+                              editForm.categories,
+                              cat.value,
+                              e.target.checked
+                            ),
+                          });
+                        }}
+                        className="mr-2"
+                      />
+                      {cat.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Class</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{selectedClass?.name}"? This action
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteClass}>
+              Delete Class
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

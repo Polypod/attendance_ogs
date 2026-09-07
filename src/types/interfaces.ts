@@ -3,7 +3,6 @@
 
 // Enums for better type safety and value usage
 export enum StudentCategoryEnum {
-  BEGINNER = 'beginner',
   KIDS = 'kids',
   YOUTH = 'youth',
   ADULT = 'adult',
@@ -13,11 +12,13 @@ export enum StudentCategoryEnum {
 export enum AttendanceStatusEnum {
   PRESENT = 'present',
   ABSENT = 'absent',
-  LATE = 'late'
+  LATE = 'late',
+  EXCUSED = 'excused'
 }
 
 export enum ClassStatusEnum {
   SCHEDULED = 'scheduled',
+  IN_PROGRESS = 'in_progress',
   CANCELLED = 'cancelled',
   COMPLETED = 'completed'
 }
@@ -87,6 +88,7 @@ export interface Student {
   phone: string;
   emergency_contact: EmergencyContact;
   status: StudentStatusEnum;
+  active?: boolean;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -103,15 +105,25 @@ export interface Class {
   updated_at?: Date;
 }
 
+export interface ClassScheduleSession {
+  date: Date;
+  instructor: string;
+  status?: ClassStatusEnum;
+  notes?: string;
+}
+
 export interface ClassSchedule {
   _id?: string;
   class_id: string;
   date: Date;
   start_time: string;
   end_time: string;
-  day_of_week: DayOfWeekEnum;
+  day_of_week?: DayOfWeekEnum; // Made optional - legacy field
+  days_of_week?: number[]; // New field - array of weekdays (0=Sunday, 1=Monday, etc)
   recurring: boolean;
+  recurrence_end_date?: Date; // New field for recurring schedules
   status: ClassStatusEnum;
+  sessions?: ClassScheduleSession[]; // Array of session-specific data
   created_at?: Date;
   updated_at?: Date;
 }
@@ -148,10 +160,12 @@ export interface CreateStudentDto {
   belt_level: string;
   phone: string;
   emergency_contact: EmergencyContact;
+  active?: boolean;
 }
 
 export interface UpdateStudentDto extends Partial<Omit<CreateStudentDto, 'email' | 'emergency_contact'>> {
   emergency_contact?: Partial<EmergencyContact>;
+  active?: boolean;
 }
 
 export interface CreateClassDto {
@@ -170,16 +184,29 @@ export interface CreateClassScheduleDto {
   date: Date;
   start_time: string;
   end_time: string;
-  day_of_week?: DayOfWeek;
+  day_of_week?: DayOfWeek; // Legacy field - optional
+  days_of_week?: DayOfWeek[]; // New field - array of days
   recurring: boolean;
+  recurrence_end_date?: Date; // New field for recurring end date
   status?: ClassStatusEnum;
 }
 
-export interface UpdateClassScheduleDto extends Partial<Omit<CreateClassScheduleDto, 'class_id'>> {}
+export interface UpdateClassScheduleSession {
+  date: Date | string;
+  status?: ClassStatusEnum;
+  notes?: string;
+  'S-instructor'?: string;
+  _id?: string;
+}
+
+export interface UpdateClassScheduleDto extends Partial<Omit<CreateClassScheduleDto, 'class_id'>> {
+  sessions?: UpdateClassScheduleSession[];
+}
 
 export interface MarkAttendanceDto {
   student_id: string;
   class_schedule_id: string;
+  date?: Date | string; // Optional date for the attendance record
   status: AttendanceStatusEnum;
   category: StudentCategoryEnum;
   notes?: string;
@@ -192,6 +219,7 @@ export interface AttendanceReport {
   present_count: number;
   absent_count: number;
   late_count: number;
+  excused_count: number;
   attendance_percentage: number;
 }
 
@@ -225,4 +253,70 @@ export interface AuthResponse {
   token: string;
   refreshToken?: string;
   user: Omit<User, 'password'>;
+}
+
+// Report presets (private + shared)
+export type ReportViewMode = 'raw' | 'aggregate';
+
+export type AggregatedGroupBy = 'student' | 'instructor' | 'session' | 'class';
+
+export type ReportSortDir = 'asc' | 'desc';
+
+export type ReportSortBy =
+  | 'date'
+  | 'start_time'
+  | 'end_time'
+  | 'student_name'
+  | 'class_name'
+  | 'instructor'
+  | 'status'
+  | 'category'
+  | 'notes'
+  | 'recorded_by'
+  | 'recorded_at'
+  | 'presentCount'
+  | 'totalCount';
+
+export interface ReportPresetSessionFilter {
+  classScheduleId: string;
+  date: string; // YYYY-MM-DD
+}
+
+export interface ReportPresetState {
+  mode: ReportViewMode;
+  groupBy?: AggregatedGroupBy;
+
+  from: string; // YYYY-MM-DD
+  to: string; // YYYY-MM-DD
+
+  search?: string;
+
+  pageSize?: number;
+
+  sortBy?: ReportSortBy;
+  sortDir?: ReportSortDir;
+
+  studentIds?: string[];
+  classIds?: string[];
+  instructors?: string[];
+  status?: AttendanceStatusEnum[];
+  sessions?: ReportPresetSessionFilter[];
+  onlyActiveStudents?: boolean;
+
+  rawColumnVisibility?: Record<string, boolean>;
+  aggregatedColumnVisibility?: Record<string, boolean>;
+}
+
+export interface CreateReportPresetDto {
+  name: string;
+  shared?: boolean;
+  schemaVersion?: number;
+  state: ReportPresetState;
+}
+
+export interface UpdateReportPresetDto {
+  name?: string;
+  shared?: boolean;
+  schemaVersion?: number;
+  state?: ReportPresetState;
 }

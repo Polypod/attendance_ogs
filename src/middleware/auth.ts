@@ -22,6 +22,7 @@ export const authenticate = async (
     if (!token) {
       res.status(401).json({
         success: false,
+        requestId: req.requestId,
         message: 'Authentication required. Please provide a valid token.'
       });
       return;
@@ -34,6 +35,7 @@ export const authenticate = async (
     } catch (error) {
       res.status(401).json({
         success: false,
+        requestId: req.requestId,
         message: error instanceof Error ? error.message : 'Invalid token'
       });
       return;
@@ -44,6 +46,7 @@ export const authenticate = async (
     if (!user) {
       res.status(401).json({
         success: false,
+        requestId: req.requestId,
         message: 'User no longer exists'
       });
       return;
@@ -53,6 +56,7 @@ export const authenticate = async (
     if (user.status !== UserStatusEnum.ACTIVE) {
       res.status(403).json({
         success: false,
+        requestId: req.requestId,
         message: `Account is ${user.status}. Please contact an administrator.`
       });
       return;
@@ -62,14 +66,21 @@ export const authenticate = async (
     if (decoded.iat && user.changedPasswordAfter(decoded.iat)) {
       res.status(401).json({
         success: false,
+        requestId: req.requestId,
         message: 'Password was recently changed. Please log in again.'
       });
       return;
     }
 
     // 6. Update last login timestamp
-    user.last_login = new Date();
-    await user.save({ validateBeforeSave: false });
+    // Uppdatera endast var 5:e minut
+    const lastUpdate = user.last_login ?
+      Date.now() - user.last_login.getTime() : Infinity;
+
+    if (lastUpdate > 5 * 60 * 1000) {  // 5 minuter
+      user.last_login = new Date();
+      await user.save({ validateBeforeSave: false });
+    }
 
     // 7. Attach user to request (without password)
     req.user = {
@@ -89,6 +100,7 @@ export const authenticate = async (
   } catch (error) {
     res.status(500).json({
       success: false,
+      requestId: req.requestId,
       message: 'Authentication error',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -105,6 +117,7 @@ export const authorize = (...roles: UserRoleEnum[]) => {
     if (!req.user) {
       res.status(401).json({
         success: false,
+        requestId: req.requestId,
         message: 'Authentication required'
       });
       return;
@@ -114,6 +127,7 @@ export const authorize = (...roles: UserRoleEnum[]) => {
     if (!roles.includes(req.user.role)) {
       res.status(403).json({
         success: false,
+        requestId: req.requestId,
         message: 'You do not have permission to perform this action'
       });
       return;
@@ -136,6 +150,7 @@ export const restrictToOwnResource = (
   if (!req.user) {
     res.status(401).json({
       success: false,
+      requestId: req.requestId,
       message: 'Authentication required'
     });
     return;
@@ -153,6 +168,7 @@ export const restrictToOwnResource = (
     if (resourceId !== req.user._id) {
       res.status(403).json({
         success: false,
+        requestId: req.requestId,
         message: 'You can only access your own resources'
       });
       return;
