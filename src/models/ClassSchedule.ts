@@ -107,7 +107,7 @@ classScheduleSchema.pre('save', async function() {
   }
 });
 
-classScheduleSchema.pre('validate', function(next) {
+classScheduleSchema.pre('validate', function() {
   const normalizedDayOfWeek = TimeHelpers.normalizeScheduleDayOfWeek({
     date: this.date,
     day_of_week: this.day_of_week
@@ -116,14 +116,11 @@ classScheduleSchema.pre('validate', function(next) {
   if (normalizedDayOfWeek) {
     this.day_of_week = normalizedDayOfWeek;
   }
-
-  next();
 });
 
-classScheduleSchema.pre('findOneAndUpdate', async function(next) {
+classScheduleSchema.pre('findOneAndUpdate', async function() {
   const rawUpdate = this.getUpdate();
   if (!rawUpdate) {
-    next();
     return;
   }
 
@@ -146,9 +143,8 @@ classScheduleSchema.pre('findOneAndUpdate', async function(next) {
   } else if (update.day_of_week === '') {
     delete update.day_of_week;
   }
-
   this.setUpdate(rawUpdate);
-  next();
+  this.setUpdate(rawUpdate);
 });
 
 export const ClassScheduleModel = model<IClassScheduleDocument>('ClassSchedule', classScheduleSchema);
