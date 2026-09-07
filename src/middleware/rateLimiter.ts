@@ -6,6 +6,7 @@ export const authLimiterStore = new MemoryStore();
 export const refreshTokenLimiterStore = new MemoryStore();
 
 const getClientRateLimitKey = (req: any): string => {
+  // Check for Bearer token (JWT auth)
   const authHeader = req.headers?.authorization;
   if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice('Bearer '.length).trim();
@@ -13,6 +14,13 @@ const getClientRateLimitKey = (req: any): string => {
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex').slice(0, 16);
       return `bearer:${tokenHash}`;
     }
+  }
+
+  // Check for kiosk authentication
+  const kioskKey = req.headers?.['x-attendance-kiosk-key'];
+  if (typeof kioskKey === 'string' && kioskKey) {
+    const kioskHash = crypto.createHash('sha256').update(kioskKey).digest('hex').slice(0, 16);
+    return `kiosk:${kioskHash}`;
   }
 
   // IP-based fallback. When the app runs behind a trusted reverse proxy, Express
@@ -23,7 +31,13 @@ const getClientRateLimitKey = (req: any): string => {
 
 const isAuthenticatedRequest = (req: any): boolean => {
   const authHeader = req.headers?.authorization;
-  return typeof authHeader === 'string' && authHeader.startsWith('Bearer ');
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    return true;
+  }
+  
+  // Also treat kiosk requests as authenticated
+  const kioskKey = req.headers?.['x-attendance-kiosk-key'];
+  return typeof kioskKey === 'string' && !!kioskKey;
 };
 
 /**
