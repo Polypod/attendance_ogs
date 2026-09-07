@@ -170,7 +170,7 @@ export interface CreateClassScheduleDto {
   date: Date;
   start_time: string;
   end_time: string;
-  day_of_week: DayOfWeek;
+  day_of_week?: DayOfWeek;
   recurring: boolean;
   status?: ClassStatusEnum;
 }

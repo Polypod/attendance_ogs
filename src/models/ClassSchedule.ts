@@ -1,6 +1,7 @@
 // src/models/ClassSchedule.ts - Class Schedule model
 import { Schema, model, Document, Types } from 'mongoose';
 import { ClassSchedule, ClassStatus, ClassStatusEnum, DayOfWeekEnum } from '../types/interfaces';
+import { TimeHelpers } from '../utilities/timeHelpers';
 
 export interface IClassScheduleDocument extends Omit<ClassSchedule, '_id' | 'class_id'>, Document {
   _id: Types.ObjectId;
@@ -104,6 +105,45 @@ classScheduleSchema.pre('save', async function() {
   if (!classExists) {
     throw new Error('Referenced class does not exist');
   }
+});
+
+classScheduleSchema.pre('validate', function() {
+  const normalizedDayOfWeek = TimeHelpers.normalizeScheduleDayOfWeek({
+    date: this.date,
+    day_of_week: this.day_of_week
+  });
+
+  if (normalizedDayOfWeek) {
+    this.day_of_week = normalizedDayOfWeek;
+  }
+});
+
+classScheduleSchema.pre('findOneAndUpdate', async function() {
+  const rawUpdate = this.getUpdate();
+  if (!rawUpdate) {
+    return;
+  }
+
+  const update = ('$set' in rawUpdate ? rawUpdate.$set : rawUpdate) as Record<string, any>;
+
+  const existingSchedule = !update.date || !update.day_of_week
+    ? await this.model.findOne(this.getQuery()).select('date')
+    : null;
+
+  const normalizedDayOfWeek = TimeHelpers.normalizeScheduleDayOfWeek(
+    {
+      date: update.date,
+      day_of_week: update.day_of_week
+    },
+    existingSchedule?.date
+  );
+
+  if (normalizedDayOfWeek) {
+    update.day_of_week = normalizedDayOfWeek;
+  } else if (update.day_of_week === '') {
+    delete update.day_of_week;
+  }
+  this.setUpdate(rawUpdate);
 });
 
 export const ClassScheduleModel = model<IClassScheduleDocument>('ClassSchedule', classScheduleSchema);

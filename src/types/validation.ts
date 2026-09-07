@@ -115,8 +115,9 @@ export const createClassScheduleSchema = Joi.object<CreateClassScheduleDto>({
   end_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
   day_of_week: Joi.string().valid(
     ...daysOfWeek
-  ).required(),
-  recurring: Joi.boolean().default(false)
+  ).empty(''),
+  recurring: Joi.boolean().default(false),
+  status: Joi.string().valid(...classStatuses)
 });
 
 export const updateClassScheduleSchema = Joi.object<UpdateClassScheduleDto>({
@@ -125,8 +126,9 @@ export const updateClassScheduleSchema = Joi.object<UpdateClassScheduleDto>({
   end_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
   day_of_week: Joi.string().valid(
     ...daysOfWeek
-  ),
-  recurring: Joi.boolean()
+  ).empty(''),
+  recurring: Joi.boolean(),
+  status: Joi.string().valid(...classStatuses)
 }).min(1);
 
 // Authentication validation schemas
