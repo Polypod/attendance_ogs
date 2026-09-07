@@ -178,17 +178,23 @@ export class KioskAttendanceService {
   }
 
   private todayRange(): { dateKey: string; start: Date; end: Date } {
-    const now = moment();
-    return {
-      dateKey: now.format('YYYY-MM-DD'),
-      start: now.clone().startOf('day').toDate(),
-      end: now.clone().endOf('day').toDate(),
-    };
+    // Match the calendar frontend's date calculation to ensure consistent timezone handling.
+    // The frontend uses: new Date().toISOString().slice(0, 10)
+    // This ensures both calendar and kiosk see the same "today" date.
+    const now = new Date();
+    const dateKey = now.toISOString().slice(0, 10);  // "YYYY-MM-DD" in UTC
+    
+    // Create start/end dates using the same dateKey that calendar sends
+    const start = new Date(dateKey);  // Midnight UTC on that date
+    const end = new Date(dateKey);
+    end.setDate(end.getDate() + 1);   // Next day, then subtract 1ms in query
+    
+    return { dateKey, start, end };
   }
 
   private async getSessionSources(start: Date, end: Date): Promise<KioskSessionSource[]> {
     const schedules = await ClassScheduleModel.find({
-      date: { $gte: start, $lte: end },
+      date: { $gte: start, $lt: end },
       status: { $ne: ClassStatusEnum.CANCELLED },
     }).populate<{ class_id: KioskClassInfo }>('class_id', 'name instructor categories').lean<PopulatedSchedule[]>();
 
