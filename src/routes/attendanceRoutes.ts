@@ -33,8 +33,8 @@ router.get('/search', attendanceController.searchPastClasses);
 // Routes for staff who can mark attendance
 router.post(
   '/mark',
-  validateRequest(markAttendanceSchema),
   authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  validateRequest(markAttendanceSchema),
   attendanceController.markAttendance
 );
 
