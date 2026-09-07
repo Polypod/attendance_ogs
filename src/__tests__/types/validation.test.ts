@@ -28,4 +28,14 @@ describe('class schedule validation', () => {
 
     expect(error).toBeUndefined();
   });
+
+  it('allows updating a non-recurring schedule with empty recurrence_end_date', () => {
+    const { error } = updateClassScheduleSchema.validate({
+      date: '2026-09-07',
+      recurring: false,
+      recurrence_end_date: ''
+    });
+
+    expect(error).toBeUndefined();
+  });
 });

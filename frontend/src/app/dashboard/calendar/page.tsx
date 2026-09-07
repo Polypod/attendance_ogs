@@ -433,7 +433,7 @@ export default function CalendarPage() {
         );
       } else {
         // For non-recurring schedules, update normally
-        const { class_id: _classId, ...updateData } = editForm;
+        const { class_id: _classId, recurrence_end_date, ...updateData } = editForm;
         const daysAsNumbers = dayValuesToNumbers(
           editForm.days_of_week,
           editForm.date,
@@ -441,7 +441,10 @@ export default function CalendarPage() {
           daysOfWeek
         );
         
-        const payload = { ...updateData, days_of_week: daysAsNumbers };
+        const payload: Record<string, unknown> = { ...updateData, days_of_week: daysAsNumbers };
+        if (editForm.recurring && recurrence_end_date) {
+          payload.recurrence_end_date = recurrence_end_date;
+        }
         const data = await api.put(`/api/schedules/${selectedSchedule._id}`, payload);
         setSchedules((prev) =>
           prev.map((s) => (s._id === selectedSchedule._id ? data.data : s))

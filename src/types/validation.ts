@@ -132,7 +132,7 @@ export const createClassScheduleSchema = Joi.object<CreateClassScheduleDto>({
   day_of_week: Joi.string().valid(...daysOfWeek).empty('').optional(), // Made optional - legacy field
   days_of_week: Joi.array().items(Joi.number().integer().min(0).max(6)).min(1).optional(), // Array of day numbers (0=Sunday, 6=Saturday)
   recurring: Joi.boolean().default(false),
-  recurrence_end_date: Joi.date().optional().when('recurring', {
+  recurrence_end_date: Joi.date().empty('').optional().when('recurring', {
     is: true,
     then: Joi.date().required().greater(Joi.ref('date')),
     otherwise: Joi.optional()
@@ -147,7 +147,7 @@ export const updateClassScheduleSchema = Joi.object<UpdateClassScheduleDto>({
   day_of_week: Joi.string().valid(...daysOfWeek).empty('').optional(), // Legacy field
   days_of_week: Joi.array().items(Joi.number().integer().min(0).max(6)).min(1).optional(), // Array of day numbers
   recurring: Joi.boolean(),
-  recurrence_end_date: Joi.date().optional().when('recurring', {
+  recurrence_end_date: Joi.date().empty('').optional().when('recurring', {
     is: true,
     then: Joi.date().greater(Joi.ref('date')),
     otherwise: Joi.optional()
