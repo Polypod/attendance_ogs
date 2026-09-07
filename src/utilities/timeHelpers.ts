@@ -1,5 +1,6 @@
 // src/utils/timeHelpers.ts - Time utility functions
 import moment from 'moment';
+import { DayOfWeekEnum } from '../types/interfaces';
 
 export class TimeHelpers {
   static getCurrentTime(): string {
@@ -40,7 +41,31 @@ export class TimeHelpers {
     return `${startTime}-${endTime}`;
   }
 
-  static getDayOfWeek(date: Date): string {
-    return moment(date).format('dddd').toLowerCase();
+  static getDayOfWeek(date: Date | string): DayOfWeekEnum | undefined {
+    const parsedDate = moment.utc(date);
+
+    if (!parsedDate.isValid()) {
+      return undefined;
+    }
+
+    return parsedDate.format('dddd').toLowerCase() as DayOfWeekEnum;
+  }
+
+  static normalizeScheduleDayOfWeek(
+    schedule: { date?: Date | string; day_of_week?: string | null },
+    fallbackDate?: Date | string
+  ): DayOfWeekEnum | undefined {
+    const normalizedDayOfWeek = schedule.day_of_week?.trim().toLowerCase();
+
+    if (normalizedDayOfWeek) {
+      return normalizedDayOfWeek as DayOfWeekEnum;
+    }
+
+    const date = schedule.date ?? fallbackDate;
+    if (!date) {
+      return undefined;
+    }
+
+    return TimeHelpers.getDayOfWeek(date);
   }
 }
