@@ -17,7 +17,7 @@ const markAttendanceSchema = Joi.object({
       student_id: Joi.string().required(),
       class_schedule_id: Joi.string().required(),
       status: Joi.string().valid('present', 'absent', 'late', 'excused').required(),
-      category: Joi.string().required()
+      category: Joi.string().required(),
       notes: Joi.string().optional()
     })
   ).required(),
