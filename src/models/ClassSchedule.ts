@@ -144,7 +144,6 @@ classScheduleSchema.pre('findOneAndUpdate', async function() {
     delete update.day_of_week;
   }
   this.setUpdate(rawUpdate);
-  this.setUpdate(rawUpdate);
 });
 
 export const ClassScheduleModel = model<IClassScheduleDocument>('ClassSchedule', classScheduleSchema);
