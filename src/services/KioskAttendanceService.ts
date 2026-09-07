@@ -72,16 +72,18 @@ const KIOSK_DATE_RANGE_DAYS = 3;
 export class KioskAttendanceService {
   async getSessionsForDate(requestedDate?: string): Promise<{ date: string; sessions: KioskSessionView[] }> {
     const { dateKey, start, end } = this.resolveDateRange(requestedDate);
-    console.log(`[KioskAttendance] getSessionsForDate: requested="${requestedDate}" dateKey="${dateKey}" start=${start.toISOString()} end=${end.toISOString()}`);
     const sources = await this.getSessionSources(start, end);
-    console.log(`[KioskAttendance] Found ${sources.length} schedules for date range`);
     const attendanceBySessionAndStudent = await this.getAttendanceStatuses(sources, start, end);
+    const instructorsBySchedule = await this.getInstructorsBySchedule(sources, start, end);
     const allStudents = await this.getStudents();
 
     const sessions = sources.map(({ schedule }) => {
       const scheduleId = schedule._id.toString();
       const students = allStudents.filter((student) => this.isInClassCategories(student, schedule.class_id.categories));
       const otherStudents = allStudents.filter((student) => !this.isInClassCategories(student, schedule.class_id.categories));
+      // Use saved instructor name from attendance if available, otherwise use class default
+      const savedInstructor = instructorsBySchedule.get(scheduleId);
+      const instructorName = savedInstructor || schedule.class_id.instructor;
       return {
         id: scheduleId,
         className: schedule.class_id.name,
@@ -89,7 +91,7 @@ export class KioskAttendanceService {
         endTime: schedule.end_time,
         categories: schedule.class_id.categories,
         status: schedule.status,
-        instructorName: schedule.class_id.instructor,
+        instructorName,
         students: students.map((student) => this.toStudentView(
           student,
           schedule.class_id.categories,
@@ -242,23 +244,10 @@ export class KioskAttendanceService {
   }
 
   private async getSessionSources(start: Date, end: Date): Promise<KioskSessionSource[]> {
-    console.log(`[KioskAttendance] Query: schedules with date between ${start.toISOString()} and ${end.toISOString()}`);
-    
     const schedules = await ClassScheduleModel.find({
       date: { $gte: start, $lt: end },
       status: { $ne: ClassStatusEnum.CANCELLED },
     }).populate<{ class_id: KioskClassInfo }>('class_id', 'name instructor categories').lean<PopulatedSchedule[]>();
-    
-    console.log(`[KioskAttendance] Query returned ${schedules.length} schedules`);
-    if (schedules.length === 0) {
-      const allCount = await ClassScheduleModel.countDocuments({});
-      const sampleCount = Math.min(3, allCount);
-      const sampleSchedules = await ClassScheduleModel.find({}).limit(sampleCount).lean();
-      console.log(`[KioskAttendance] Total schedules in DB: ${allCount}, sample dates:`);
-      sampleSchedules.forEach((s: any) => {
-        console.log(`  - Stored date: ${s.date.toISOString()}`);
-      });
-    }
 
     return schedules.map((schedule) => ({ schedule }));
   }
@@ -268,6 +257,36 @@ export class KioskAttendanceService {
       .select('name belt_level categories active status')
       .sort({ name: 1 })
       .lean<KioskStudent[]>();
+  }
+
+  private async getInstructorsBySchedule(
+    sources: KioskSessionSource[],
+    start: Date,
+    end: Date
+  ): Promise<Map<string, string>> {
+    const scheduleIds = sources.map(({ schedule }) => schedule._id);
+    if (scheduleIds.length === 0) {
+      return new Map();
+    }
+
+    // Get the most recent instructor name for each schedule
+    const attendance = await Attendance.find({
+      class_schedule_id: { $in: scheduleIds },
+      date: { $gte: start, $lte: end },
+      instructor: { $exists: true, $ne: null },
+    }).select('class_schedule_id instructor recorded_at').sort({ recorded_at: -1 }).lean();
+
+    const instructorMap = new Map<string, string>();
+    // Build map with most recent instructor per schedule (results are sorted by recorded_at desc)
+    attendance.forEach((entry) => {
+      const scheduleId = entry.class_schedule_id.toString();
+      // Only set if not already set (we iterate in descending order by recorded_at)
+      if (!instructorMap.has(scheduleId) && entry.instructor) {
+        instructorMap.set(scheduleId, entry.instructor);
+      }
+    });
+
+    return instructorMap;
   }
 
   private async getAttendanceStatuses(

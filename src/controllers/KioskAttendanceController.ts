@@ -16,7 +16,6 @@ export class KioskAttendanceController {
   getToday = async (req: Request, res: Response): Promise<void> => {
     try {
       const requestedDate = typeof req.query.date === 'string' ? req.query.date : undefined;
-      console.log(`[KioskController] getToday called with date="${requestedDate}"`);
       const data = await this.kioskAttendanceService.getSessionsForDate(requestedDate);
       res.status(200).json({ success: true, data });
     } catch (error: unknown) {
