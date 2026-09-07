@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Check, ChevronLeft, LogIn, RefreshCw, Search, Users } from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, LogIn, RefreshCw, Search, Users } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
 const KIOSK_STORAGE_KEY = "attendance-kiosk-key";
+const MAX_DAY_OFFSET = 3;
+
+function dateKeyForOffset(offset: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 type KioskStudent = {
@@ -57,6 +67,7 @@ async function kioskRequest<T>(path: string, accessKey: string, init?: RequestIn
 export default function AttendanceKioskPage() {
   const [accessKey, setAccessKey] = useState<string | null>(null);
   const [date, setDate] = useState("");
+  const [dayOffset, setDayOffset] = useState(0);
   const [sessions, setSessions] = useState<KioskSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -81,12 +92,15 @@ export default function AttendanceKioskPage() {
     setAccessKey(storedKey);
   }, []);
 
-  const loadSessions = async (key = accessKey) => {
+  const loadSessions = async (key = accessKey, offset = dayOffset) => {
     if (!key) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await kioskRequest<{ date: string; sessions: KioskSession[] }>("/api/kiosk-attendance/today", key);
+      const data = await kioskRequest<{ date: string; sessions: KioskSession[] }>(
+        `/api/kiosk-attendance/today?date=${dateKeyForOffset(offset)}`,
+        key
+      );
       setDate(data.date);
       setSessions(data.sessions);
     } catch (nextError: unknown) {
@@ -96,6 +110,13 @@ export default function AttendanceKioskPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const changeDayOffset = (offset: number) => {
+    if (offset < -MAX_DAY_OFFSET || offset > MAX_DAY_OFFSET) return;
+    setDayOffset(offset);
+    setSelectedSessionId(null);
+    loadSessions(accessKey, offset);
   };
 
   useEffect(() => {
@@ -154,11 +175,11 @@ export default function AttendanceKioskPage() {
         accessKey,
         {
           method: "POST",
-          body: JSON.stringify({ presentStudentIds: selectedStudentIds }),
+          body: JSON.stringify({ presentStudentIds: selectedStudentIds, date }),
         }
       );
       setSuccess(`${result.presentCount} närvarande och ${result.absentCount} frånvarande sparades.`);
-      await loadSessions(accessKey);
+      await loadSessions(accessKey, dayOffset);
     } catch (nextError: unknown) {
       setError(errorMessage(nextError));
     } finally {
@@ -323,7 +344,7 @@ export default function AttendanceKioskPage() {
           </div>
           <div className="mt-4">
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-red-300">Okinawa Goju-Ryu Södertörn</p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">Dagens närvaro</h1>
+            <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">{dayOffset === 0 ? "Dagens närvaro" : "Närvaro"}</h1>
             <div className="mt-4 flex items-center gap-2 text-lg text-slate-300">
               <CalendarDays className="size-5 text-red-300" />
               <p>{new Date(`${date}T12:00:00`).toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long" })}</p>
@@ -344,11 +365,54 @@ export default function AttendanceKioskPage() {
             <RefreshCw className="size-4" /><span className="hidden sm:inline">Uppdatera</span>
           </Button>
         </div>
+        <div className="mb-6 flex items-center gap-1 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 rounded-xl"
+            onClick={() => changeDayOffset(dayOffset - 1)}
+            disabled={dayOffset <= -MAX_DAY_OFFSET}
+            aria-label="Föregående dag"
+          >
+            <ChevronLeft className="size-5" />
+          </Button>
+          <div className="flex flex-1 justify-between gap-1 overflow-x-auto sm:gap-2">
+            {Array.from({ length: MAX_DAY_OFFSET * 2 + 1 }, (_, index) => index - MAX_DAY_OFFSET).map((offset) => {
+              const optionDate = new Date(`${dateKeyForOffset(offset)}T12:00:00`);
+              const active = offset === dayOffset;
+              return (
+                <button
+                  key={offset}
+                  type="button"
+                  onClick={() => changeDayOffset(offset)}
+                  className={`flex min-w-14 flex-1 flex-col items-center rounded-xl px-2 py-2 text-center transition-colors ${
+                    active ? "bg-red-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wide">
+                    {offset === 0 ? "Idag" : optionDate.toLocaleDateString("sv-SE", { weekday: "short" })}
+                  </span>
+                  <span className="text-sm font-bold">{optionDate.toLocaleDateString("sv-SE", { day: "numeric", month: "short" })}</span>
+                </button>
+              );
+            })}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 rounded-xl"
+            onClick={() => changeDayOffset(dayOffset + 1)}
+            disabled={dayOffset >= MAX_DAY_OFFSET}
+            aria-label="Nästa dag"
+          >
+            <ChevronRight className="size-5" />
+          </Button>
+        </div>
         {error && <p role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 font-medium text-red-800">{error}</p>}
         {sessions.length === 0 ? (
           <Card className="border-0 bg-white py-0 shadow-sm">
             <CardContent className="p-8 text-center">
-              <p className="text-lg font-semibold">Det finns inga pass att registrera i dag.</p>
+              <p className="text-lg font-semibold">Det finns inga pass att registrera {dayOffset === 0 ? "i dag" : "denna dag"}.</p>
               <p className="mt-2 text-slate-500">När nya pass läggs in visas de här.</p>
             </CardContent>
           </Card>

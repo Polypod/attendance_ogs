@@ -18,6 +18,7 @@ const finalizeAttendanceSchema = Joi.object({
     .max(200)
     .required(),
   instructorName: Joi.string().trim().min(2).max(100).allow('').optional(),
+  date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
 }).options({ stripUnknown: true });
 
 router.use((_req, res, next) => {

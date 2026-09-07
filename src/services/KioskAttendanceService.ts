@@ -67,10 +67,14 @@ export class KioskAttendanceError extends Error {
   }
 }
 
+const KIOSK_DATE_RANGE_DAYS = 3;
+
 export class KioskAttendanceService {
-  async getTodaySessions(): Promise<{ date: string; sessions: KioskSessionView[] }> {
-    const { dateKey, start, end } = this.todayRange();
+  async getSessionsForDate(requestedDate?: string): Promise<{ date: string; sessions: KioskSessionView[] }> {
+    const { dateKey, start, end } = this.resolveDateRange(requestedDate);
+    console.log(`[KioskAttendance] getSessionsForDate: requested="${requestedDate}" dateKey="${dateKey}" start=${start.toISOString()} end=${end.toISOString()}`);
     const sources = await this.getSessionSources(start, end);
+    console.log(`[KioskAttendance] Found ${sources.length} schedules for date range`);
     const attendanceBySessionAndStudent = await this.getAttendanceStatuses(sources, start, end);
     const allStudents = await this.getStudents();
 
@@ -108,7 +112,8 @@ export class KioskAttendanceService {
   async finalizeSession(
     scheduleId: string,
     presentStudentIds: string[],
-    kiosk: KioskIdentity
+    kiosk: KioskIdentity,
+    requestedDate?: string
   ): Promise<{ presentCount: number; absentCount: number }> {
     if (!Types.ObjectId.isValid(scheduleId)) {
       throw new KioskAttendanceError(400, 'Invalid class schedule ID');
@@ -117,11 +122,11 @@ export class KioskAttendanceService {
       throw new KioskAttendanceError(400, 'Invalid student ID');
     }
 
-    const { dateKey, start, end } = this.todayRange();
+    const { start, end } = this.resolveDateRange(requestedDate);
     const sources = await this.getSessionSources(start, end);
     const source = sources.find(({ schedule }) => schedule._id.toString() === scheduleId);
     if (!source) {
-      throw new KioskAttendanceError(404, 'No active session found for this schedule today');
+      throw new KioskAttendanceError(404, 'No active session found for this schedule on the selected date');
     }
 
     const allStudents = await this.getStudents();
@@ -190,26 +195,68 @@ export class KioskAttendanceService {
     };
   }
 
-  private todayRange(): { dateKey: string; start: Date; end: Date } {
-    // Match the calendar frontend's date calculation to ensure consistent timezone handling.
-    // The frontend uses: new Date().toISOString().slice(0, 10)
-    // This ensures both calendar and kiosk see the same "today" date.
-    const now = new Date();
-    const dateKey = now.toISOString().slice(0, 10);  // "YYYY-MM-DD" in UTC
-    
-    // Create start/end dates using the same dateKey that calendar sends
-    const start = new Date(dateKey);  // Midnight UTC on that date
-    const end = new Date(dateKey);
-    end.setDate(end.getDate() + 1);   // Next day, then subtract 1ms in query
-    
+  private todayKey(): string {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // Validates the requested date (if any) is a real calendar date within the allowed
+  // +/- window from today, then builds the UTC start/end range used to query schedules.
+  private resolveDateRange(requestedDate?: string): { dateKey: string; start: Date; end: Date } {
+    const todayKey = this.todayKey();
+    if (!requestedDate) {
+      return this.dateRangeFor(todayKey);
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+      throw new KioskAttendanceError(400, 'Invalid date format, expected YYYY-MM-DD');
+    }
+
+    const [reqYear, reqMonth, reqDay] = requestedDate.split('-').map(Number);
+    const requested = new Date(reqYear, reqMonth - 1, reqDay);
+    if (Number.isNaN(requested.getTime())) {
+      throw new KioskAttendanceError(400, 'Invalid date');
+    }
+
+    const [todayYear, todayMonth, todayDay] = todayKey.split('-').map(Number);
+    const today = new Date(todayYear, todayMonth - 1, todayDay);
+
+    const diffDays = Math.round((requested.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+    if (diffDays < -KIOSK_DATE_RANGE_DAYS || diffDays > KIOSK_DATE_RANGE_DAYS) {
+      throw new KioskAttendanceError(400, `Date must be within ${KIOSK_DATE_RANGE_DAYS} days of today`);
+    }
+
+    return this.dateRangeFor(requestedDate);
+  }
+
+  private dateRangeFor(dateKey: string): { dateKey: string; start: Date; end: Date } {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const start = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const end = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
     return { dateKey, start, end };
   }
 
   private async getSessionSources(start: Date, end: Date): Promise<KioskSessionSource[]> {
+    console.log(`[KioskAttendance] Query: schedules with date between ${start.toISOString()} and ${end.toISOString()}`);
+    
     const schedules = await ClassScheduleModel.find({
       date: { $gte: start, $lt: end },
       status: { $ne: ClassStatusEnum.CANCELLED },
     }).populate<{ class_id: KioskClassInfo }>('class_id', 'name instructor categories').lean<PopulatedSchedule[]>();
+    
+    console.log(`[KioskAttendance] Query returned ${schedules.length} schedules`);
+    if (schedules.length === 0) {
+      const allCount = await ClassScheduleModel.countDocuments({});
+      const sampleCount = Math.min(3, allCount);
+      const sampleSchedules = await ClassScheduleModel.find({}).limit(sampleCount).lean();
+      console.log(`[KioskAttendance] Total schedules in DB: ${allCount}, sample dates:`);
+      sampleSchedules.forEach((s: any) => {
+        console.log(`  - Stored date: ${s.date.toISOString()}`);
+      });
+    }
 
     return schedules.map((schedule) => ({ schedule }));
   }

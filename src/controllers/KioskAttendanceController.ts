@@ -13,9 +13,11 @@ function sendKioskError(res: Response, error: unknown): void {
 export class KioskAttendanceController {
   private readonly kioskAttendanceService = new KioskAttendanceService();
 
-  getToday = async (_req: Request, res: Response): Promise<void> => {
+  getToday = async (req: Request, res: Response): Promise<void> => {
     try {
-      const data = await this.kioskAttendanceService.getTodaySessions();
+      const requestedDate = typeof req.query.date === 'string' ? req.query.date : undefined;
+      console.log(`[KioskController] getToday called with date="${requestedDate}"`);
+      const data = await this.kioskAttendanceService.getSessionsForDate(requestedDate);
       res.status(200).json({ success: true, data });
     } catch (error: unknown) {
       sendKioskError(res, error);
@@ -32,7 +34,8 @@ export class KioskAttendanceController {
       const data = await this.kioskAttendanceService.finalizeSession(
         req.params.scheduleId,
         req.body.presentStudentIds,
-        { id: req.kiosk._id, name: req.kiosk.name }
+        { id: req.kiosk._id, name: req.kiosk.name },
+        req.body.date
       );
       res.status(200).json({ success: true, data });
     } catch (error: unknown) {
