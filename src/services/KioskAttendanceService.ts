@@ -113,7 +113,8 @@ export class KioskAttendanceService {
     scheduleId: string,
     presentStudentIds: string[],
     kiosk: KioskIdentity,
-    requestedDate?: string
+    requestedDate?: string,
+    instructorName?: string
   ): Promise<{ presentCount: number; absentCount: number }> {
     if (!Types.ObjectId.isValid(scheduleId)) {
       throw new KioskAttendanceError(400, 'Invalid class schedule ID');
@@ -163,6 +164,7 @@ export class KioskAttendanceService {
               notes: '',
               recorded_by: `kiosk:${kiosk.name}`,
               recorded_at: new Date(),
+              ...(instructorName && { instructor: instructorName }),
             },
           },
           upsert: true,

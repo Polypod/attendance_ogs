@@ -35,7 +35,8 @@ export class KioskAttendanceController {
         req.params.scheduleId,
         req.body.presentStudentIds,
         { id: req.kiosk._id, name: req.kiosk.name },
-        req.body.date
+        req.body.date,
+        req.body.instructorName
       );
       res.status(200).json({ success: true, data });
     } catch (error: unknown) {

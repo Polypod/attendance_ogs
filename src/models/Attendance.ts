@@ -78,6 +78,11 @@ const attendanceSchema = new Schema<IAttendanceDocument>(
     recorded_at: { 
       type: Date, 
       default: Date.now 
+    },
+    instructor: {
+      type: String,
+      default: undefined,
+      sparse: true
     }
   },
   {
