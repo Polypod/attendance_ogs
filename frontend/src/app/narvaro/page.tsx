@@ -270,7 +270,10 @@ export default function AttendanceKioskPage() {
             <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{selectedSession.className}</h1>
-                <p className="mt-2 text-lg text-slate-300">{selectedSession.startTime}–{selectedSession.endTime}</p>
+                <div className="mt-2 flex flex-col gap-1">
+                  <p className="text-lg text-slate-300">{selectedSession.startTime}–{selectedSession.endTime}</p>
+                  <p className="text-sm text-slate-400">{new Date(`${date}T12:00:00`).toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long" })}</p>
+                </div>
               </div>
               <div className="rounded-2xl bg-white/10 px-5 py-3 text-center">
                 <p className="text-2xl font-bold">{selectedStudentIds.length}</p>
@@ -430,7 +433,8 @@ export default function AttendanceKioskPage() {
                           <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600">{session.endTime}</span>
                         </div>
                         <h2 className="mt-5 text-2xl font-bold tracking-tight">{session.className}</h2>
-                        <p className="mt-2 text-sm font-medium text-slate-500">{session.categories.join(" · ")}</p>
+                        <p className="mt-2 text-sm font-medium text-slate-500">{session.instructorName}</p>
+                        <p className="mt-1 text-sm font-medium text-slate-500">{session.categories.join(" · ")}</p>
                       </div>
                       <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
                         <span className="text-sm font-semibold text-slate-500">{presentCount} registrerade</span>
