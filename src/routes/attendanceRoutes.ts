@@ -16,7 +16,7 @@ const markAttendanceSchema = Joi.object({
     Joi.object({
       student_id: Joi.string().required(),
       class_schedule_id: Joi.string().required(),
-      status: Joi.string().valid('present', 'absent', 'late', 'excused'),
+      status: Joi.string().valid('present', 'absent', 'late', 'excused').required(),
       category: Joi.string().required(),
       notes: Joi.string().optional()
     })
@@ -33,8 +33,8 @@ router.get('/search', attendanceController.searchPastClasses);
 // Routes for staff who can mark attendance
 router.post(
   '/mark',
-  validateRequest(markAttendanceSchema),
   authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  validateRequest(markAttendanceSchema),
   attendanceController.markAttendance
 );
 

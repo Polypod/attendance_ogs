@@ -40,7 +40,7 @@ export class AttendanceController {
     try {
       const attendanceData: MarkAttendanceDto[] = req.body.attendance;
       // Use the authenticated user's ID instead of taking from request body
-      const recordedBy = req.user?._id || 'system';
+      const recordedBy = req.user?._id ? String(req.user._id) : 'system';
       
       const result = await this.attendanceService.markMultipleAttendance(attendanceData, recordedBy);
       res.json({ success: true, data: result });
