@@ -16,8 +16,9 @@ function extractToken(req: Request): string | undefined {
 }
 
 export const requireMetricsAccess = (req: Request, res: Response, next: NextFunction): void => {
-  // Always allow scraping from loopback.
-  if (isLoopbackIp(req.ip)) {
+  // Always allow scraping from loopback based on the real peer address.
+  const remoteIp = req.socket?.remoteAddress;
+  if (isLoopbackIp(remoteIp)) {
     next();
     return;
   }
