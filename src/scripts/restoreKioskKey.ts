@@ -10,7 +10,13 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/karate
 
 // The access key from the activation link
 const KIOSK_NAME = process.env.RESTORE_KIOSK_NAME || 'Entré-iPad';
-const ACCESS_KEY = process.env.RESTORE_ACCESS_KEY || 'NWE9ZO01j6YboLJy_bXx7Du3zmYN6_ti_4O0_JhLWDs';
+const ACCESS_KEY = process.env.RESTORE_ACCESS_KEY;
+
+if (!ACCESS_KEY) {
+  console.error('❌ Error: RESTORE_ACCESS_KEY environment variable must be set');
+  console.error('   Usage: RESTORE_ACCESS_KEY=<key> RESTORE_KIOSK_NAME=<name> npm run restore:kiosk');
+  process.exit(1);
+}
 
 function hashKioskAccessKey(key: string): string {
   return crypto.createHash('sha256').update(key).digest('hex');

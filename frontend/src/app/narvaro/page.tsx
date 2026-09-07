@@ -154,7 +154,7 @@ export default function AttendanceKioskPage() {
         accessKey,
         {
           method: "POST",
-          body: JSON.stringify({ presentStudentIds: selectedStudentIds, instructorName }),
+          body: JSON.stringify({ presentStudentIds: selectedStudentIds }),
         }
       );
       setSuccess(`${result.presentCount} närvarande och ${result.absentCount} frånvarande sparades.`);

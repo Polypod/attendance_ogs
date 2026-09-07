@@ -32,8 +32,7 @@ export class KioskAttendanceController {
       const data = await this.kioskAttendanceService.finalizeSession(
         req.params.scheduleId,
         req.body.presentStudentIds,
-        { id: req.kiosk._id, name: req.kiosk.name },
-        req.body.instructorName
+        { id: req.kiosk._id, name: req.kiosk.name }
       );
       res.status(200).json({ success: true, data });
     } catch (error: unknown) {
