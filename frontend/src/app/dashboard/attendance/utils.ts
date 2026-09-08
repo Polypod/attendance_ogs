@@ -25,7 +25,7 @@ export function buildAttendancePayload(
       date: formatDateToIso(sessionDate),
       status: record.status,
       notes: record.notes || undefined,
-      category: student?.categories[0] || "adult",
+      category: student?.categories[0] || "vuxen",
     };
   });
 }

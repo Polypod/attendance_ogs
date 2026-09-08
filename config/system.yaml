@@ -7,24 +7,24 @@ version: "1.0"
 # Student and class categories
 # These define the different skill/age levels for classes and students
 categories:
-  - value: "kids"
-    label: "Kids"
-    description: "Children's classes (ages 8-11)"
+  - value: "barn"
+    label: "Barn"
+    description: "Barnträning (8-11 år)"
     order: 1
 
-  - value: "youth"
-    label: "Youth"
-    description: "Youth classes (ages 12-17)"
+  - value: "ungdom"
+    label: "Ungdom"
+    description: "Ungdomsträning (12-17 år)"
     order: 2
 
-  - value: "adult"
-    label: "Adult"
-    description: "Adult classes (ages 18+)"
+  - value: "vuxen"
+    label: "Vuxen"
+    description: "Vuxenträning (18+ år)"
     order: 3
 
-  - value: "advanced"
-    label: "Advanced"
-    description: "Advanced training for all ages"
+  - value: "avancerad"
+    label: "Avancerad"
+    description: "Avancerad träning för alla åldrar"
     order: 4
 
 # Belt level progression

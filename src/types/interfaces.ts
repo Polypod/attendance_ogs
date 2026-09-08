@@ -3,10 +3,10 @@
 
 // Enums for better type safety and value usage
 export enum StudentCategoryEnum {
-  KIDS = 'kids',
-  YOUTH = 'youth',
-  ADULT = 'adult',
-  ADVANCED = 'advanced'
+  KIDS = 'barn',
+  YOUTH = 'ungdom',
+  ADULT = 'vuxen',
+  ADVANCED = 'avancerad'
 }
 
 export enum AttendanceStatusEnum {
