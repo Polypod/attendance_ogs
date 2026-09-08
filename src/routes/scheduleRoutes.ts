@@ -34,10 +34,10 @@ router.put(
   scheduleController.updateSchedule
 );
 
-// Admin-only route for deleting schedules
+// Admin and instructor routes for deleting schedules
 router.delete(
   '/:id',
-  authorize(UserRoleEnum.ADMIN),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
   scheduleController.deleteSchedule
 );
 
