@@ -1,74 +1,75 @@
 # Frontend
 
-Next.js 16-gränssnittet för närvarosystemet. Det använder NextAuth för
-sessioner och Express-backenden för verksamhetsdata.
+The Next.js 16 interface for the attendance system. It uses NextAuth for
+sessions and the Express backend for application data.
 
-## Starta lokalt
+## Local startup
 
-Kör först backend och MongoDB enligt rotprojektets [README](../README.md).
+Start the backend and MongoDB first by following the root project's
+[README](../README.md).
 
 ```bash
 pnpm install
 ```
 
-Skapa därefter `frontend/.env.local`:
+Then create `frontend/.env.local`:
 
 ```dotenv
 PORT=4001
 NEXTAUTH_URL=http://localhost:4001
-NEXTAUTH_SECRET=<slumpmässig-hemlighet>
+NEXTAUTH_SECRET=<random-secret>
 BACKEND_URL=http://localhost:4000
 NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
 
-Starta appen:
+Start the application:
 
 ```bash
 pnpm run dev
 ```
 
-Frontend finns på [http://localhost:4001](http://localhost:4001).
+The frontend is available at [http://localhost:4001](http://localhost:4001).
 
-## Miljövariabler
+## Environment variables
 
-| Variabel | Användning |
+| Variable | Usage |
 | --- | --- |
-| `PORT` | Next.js-port, normalt `4001`. |
-| `NEXTAUTH_URL` | Den externa adress som användaren öppnar. |
-| `NEXTAUTH_SECRET` | Hemlighet för NextAuth-sessioner. |
-| `BACKEND_URL` | Backend-adress för serverkod, inloggning och API-proxy. |
-| `NEXT_PUBLIC_API_URL` | Backend-adress som används av klientkod; lämna tom för relativa proxy-anrop. |
+| `PORT` | Next.js port, normally `4001`. |
+| `NEXTAUTH_URL` | External URL that the user opens. |
+| `NEXTAUTH_SECRET` | Secret for NextAuth sessions. |
+| `BACKEND_URL` | Backend URL for server code, login, and the API proxy. |
+| `NEXT_PUBLIC_API_URL` | Backend URL used by client code; leave empty for relative proxy requests. |
 
-För fjärrutveckling kan `NEXT_PUBLIC_API_URL` lämnas tomt, men `BACKEND_URL`
-måste fortfarande peka på en adress som Next.js-servern når. I produktion
-måste minst en av dessa två backend-adresser vara satt.
+For remote development, `NEXT_PUBLIC_API_URL` may be empty, but `BACKEND_URL`
+must still point to an address that the Next.js server can reach. In
+production, at least one of these two backend URLs must be set.
 
-## API-anrop och autentisering
+## API requests and authentication
 
-Klientkod använder `fetchWithAuth` eller `createApiClient` från
-`src/lib/api.ts`. De lägger till användarens access-token och använder den
-relativa `/api/...`-proxyn när `NEXT_PUBLIC_API_URL` är tom. Proxyn skickar
-begäran vidare till Express-backenden.
+Client code uses `fetchWithAuth` or `createApiClient` from `src/lib/api.ts`.
+They add the user's access token and use the relative `/api/...` proxy when
+`NEXT_PUBLIC_API_URL` is empty. The proxy forwards the request to the Express
+backend.
 
-NextAuth skickar inloggningsuppgifter till backendens
-`POST /api/auth/login`. Sessionen innehåller access- och refresh-token;
-access-token läggs på autentiserade API-anrop.
+NextAuth sends login credentials to the backend's `POST /api/auth/login`.
+The session contains access and refresh tokens; the access token is attached
+to authenticated API requests.
 
-## Kommandon
+## Commands
 
-| Kommando | Beskrivning |
+| Command | Description |
 | --- | --- |
-| `pnpm run dev` | Startar utvecklingsservern. |
-| `pnpm run build` | Skapar produktionsbygge. |
-| `pnpm start` | Startar produktionsbygget. |
-| `pnpm run lint` | Kör Next.js lint-kommando. |
+| `pnpm run dev` | Starts the development server. |
+| `pnpm run build` | Creates a production build. |
+| `pnpm start` | Starts the production build. |
+| `pnpm run lint` | Runs the Next.js lint command. |
 
-## Struktur
+## Structure
 
 ```text
-src/app/                 Sidor och Next.js route handlers
-src/app/api/[...path]/   Proxy till Express API
-src/components/          Delade komponenter
-src/hooks/               React-hooks
-src/lib/                 API-, autentiserings- och loggningshjälpmedel
+src/app/                 Pages and Next.js route handlers
+src/app/api/[...path]/   Proxy to the Express API
+src/components/          Shared components
+src/hooks/               React hooks
+src/lib/                 API, authentication, and logging helpers
 ```

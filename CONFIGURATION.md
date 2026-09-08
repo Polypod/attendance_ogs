@@ -1,111 +1,110 @@
-# Konfigurationsguide
+# Configuration guide
 
-Applikationen har två konfigurationsfiler som inte ska versionshanteras:
-`.env` för Express-backenden och `frontend/.env.local` för Next.js.
+The application has two configuration files that must not be versioned:
+`.env` for the Express backend and `frontend/.env.local` for Next.js.
 
 ## Backend: `.env`
 
-Börja med `cp .env.example .env` och ersätt alla platshållare.
+Start with `cp .env.example .env` and replace all placeholders.
 
-| Variabel | Krävs | Beskrivning |
+| Variable | Required | Description |
 | --- | --- | --- |
-| `MONGODB_URI` | Ja | MongoDB-anslutning för applikationen. |
-| `MONGO_INITDB_ROOT_USERNAME` | Vid Docker | Administratörsnamn som Docker MongoDB skapar. |
-| `MONGO_INITDB_ROOT_PASSWORD` | Vid Docker | Administratörslösenord som Docker MongoDB använder. |
-| `MONGO_INITDB_DATABASE` | Nej | Databas som initieras av Docker; standard är `attendance`. |
-| `PORT` | Ja | Backendens lyssningsport; lokal standard i mallen är `4000`. |
-| `FRONTEND_URL` | Ja | Frontendens origin för CORS, normalt `http://localhost:4001`. |
-| `JWT_SECRET` | Ja | Hemlighet för access-token. |
-| `JWT_REFRESH_SECRET` | Ja | Hemlighet för refresh-token. |
-| `JWT_EXPIRES_IN` | Nej | Giltighetstid för access-token; standard `24h`. |
-| `JWT_REFRESH_EXPIRES_IN` | Nej | Giltighetstid för refresh-token; standard `7d`. |
-| `METRICS_TOKEN` | För `/api/metrics` | Token som skyddar mätvärdes-endpointen. |
-| `LOG_LEVEL` | Nej | Loggnivå. |
-| `SLOW_REQUEST_THRESHOLD_MS` | Nej | Gräns för loggning av långsamma anrop. |
-| `SEED_ADMIN_EMAIL` | Nej | E-post för `seed:admin`; standard är `admin@karateattendance.com`. |
-| `SEED_ADMIN_PASSWORD` | Nej | Lösenord för `seed:admin`; standard är `ChangeMe123!`. |
+| `MONGODB_URI` | Yes | MongoDB connection string for the application. |
+| `MONGO_INITDB_ROOT_USERNAME` | With Docker | Administrator username created by Docker MongoDB. |
+| `MONGO_INITDB_ROOT_PASSWORD` | With Docker | Administrator password used by Docker MongoDB. |
+| `MONGO_INITDB_DATABASE` | No | Database initialized by Docker; defaults to `attendance`. |
+| `PORT` | Yes | Backend listening port; the local template default is `4000`. |
+| `FRONTEND_URL` | Yes | Frontend origin for CORS, normally `http://localhost:4001`. |
+| `JWT_SECRET` | Yes | Access-token secret. |
+| `JWT_REFRESH_SECRET` | Yes | Refresh-token secret. |
+| `JWT_EXPIRES_IN` | No | Access-token lifetime; defaults to `24h`. |
+| `JWT_REFRESH_EXPIRES_IN` | No | Refresh-token lifetime; defaults to `7d`. |
+| `METRICS_TOKEN` | For `/api/metrics` | Token protecting the metrics endpoint. |
+| `LOG_LEVEL` | No | Log level. |
+| `SLOW_REQUEST_THRESHOLD_MS` | No | Threshold for logging slow requests. |
+| `SEED_ADMIN_EMAIL` | No | Email for `seed:admin`; defaults to `admin@karateattendance.com`. |
+| `SEED_ADMIN_PASSWORD` | No | Password for `seed:admin`; defaults to `ChangeMe123!`. |
 
-`BCRYPT_ROUNDS` är inte en aktiv inställning; lösenord hash-as med 10 rundor i
-modellen. Lägg därför inte till variabeln i driftkonfiguration i förväntan att
-den ändrar beteendet.
+`BCRYPT_ROUNDS` is not an active setting; passwords are hashed with 10 rounds
+in the model. Do not add it to deployment configuration expecting it to alter
+application behavior.
 
 ## Frontend: `frontend/.env.local`
 
-Skapa filen manuellt; projektet har ingen `frontend/.env.example`.
+Create this file manually; the project has no `frontend/.env.example`.
 
 ```dotenv
 PORT=4001
 NEXTAUTH_URL=http://localhost:4001
-NEXTAUTH_SECRET=<slumpmässig-hemlighet>
+NEXTAUTH_SECRET=<random-secret>
 BACKEND_URL=http://localhost:4000
 NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
 
-| Variabel | Krävs | Beskrivning |
+| Variable | Required | Description |
 | --- | --- | --- |
-| `PORT` | Ja | Next.js-porten, normalt `4001`. |
-| `NEXTAUTH_URL` | Ja | URL:en som användaren öppnar i webbläsaren. |
-| `NEXTAUTH_SECRET` | Ja | Hemlighet för NextAuth-sessioner. |
-| `BACKEND_URL` | Rekommenderas | Intern backend-adress för NextAuth och Next.js API-proxy. |
-| `NEXT_PUBLIC_API_URL` | Nej | Backend-adress för klientkod. En tom sträng använder Next.js-proxyn. |
-| `NEXT_PUBLIC_LOG_LEVEL` | Nej | Loggnivå i klientmiljö. |
+| `PORT` | Yes | Next.js port, normally `4001`. |
+| `NEXTAUTH_URL` | Yes | URL that the user opens in the browser. |
+| `NEXTAUTH_SECRET` | Yes | Secret for NextAuth sessions. |
+| `BACKEND_URL` | Recommended | Internal backend URL for NextAuth and the Next.js API proxy. |
+| `NEXT_PUBLIC_API_URL` | No | Backend URL for client-side code. An empty string uses the Next.js proxy. |
+| `NEXT_PUBLIC_LOG_LEVEL` | No | Client-side log level. |
 
-Backend-adress väljs i denna ordning: `BACKEND_URL`,
-`NEXT_PUBLIC_API_URL`, och i utvecklingsläge sist `http://localhost:4000`.
-I produktion finns ingen lokal reservadress, så minst en backend-adress måste
-vara satt.
+The backend URL is selected in this order: `BACKEND_URL`,
+`NEXT_PUBLIC_API_URL`, then `http://localhost:4000` in development. Production
+has no local fallback, so at least one backend URL must be set.
 
-## Lokala portar och Docker
+## Local ports and Docker
 
-| Tjänst | Värdport | Intern port |
+| Service | Host port | Internal port |
 | --- | --- | --- |
-| Express-backend | 4000 | 4000 |
-| Next.js-frontend | 4001 | 4001 |
-| MongoDB via Docker | 27019 | 27017 |
+| Express backend | 4000 | 4000 |
+| Next.js frontend | 4001 | 4001 |
+| MongoDB through Docker | 27019 | 27017 |
 
-Använd `docker compose up -d` för MongoDB. Din `MONGODB_URI` måste använda
-port 27019 och samma autentiseringsuppgifter som
-`MONGO_INITDB_ROOT_USERNAME` och `MONGO_INITDB_ROOT_PASSWORD`.
+Use `docker compose up -d` for MongoDB. Your `MONGODB_URI` must use port 27019
+and the same credentials as `MONGO_INITDB_ROOT_USERNAME` and
+`MONGO_INITDB_ROOT_PASSWORD`.
 
-Om portarna ändras ska `FRONTEND_URL`, `NEXTAUTH_URL`, `BACKEND_URL` och
-`NEXT_PUBLIC_API_URL` uppdateras så att de fortsätter peka på rätt tjänst.
+If ports change, update `FRONTEND_URL`, `NEXTAUTH_URL`, `BACKEND_URL`, and
+`NEXT_PUBLIC_API_URL` so they continue to point to the correct service.
 
-## Säker drift
+## Secure deployment
 
-- Generera unika, starka hemligheter för JWT och NextAuth.
-- Använd aldrig standardlösenordet för administratören i produktion.
-- Sätt `NODE_ENV=production` och använd HTTPS framför applikationen.
-- Spara hemligheter i driftplattformens hemlighetshantering, inte i Git.
-- Sätt `METRICS_TOKEN` innan `/api/metrics` exponeras.
+- Generate unique, strong secrets for JWT and NextAuth.
+- Never use the default administrator password in production.
+- Set `NODE_ENV=production` and use HTTPS in front of the application.
+- Store secrets in the deployment platform's secret manager, not in Git.
+- Set `METRICS_TOKEN` before exposing `/api/metrics`.
 
 ## Rate limiting
 
-Gränserna är kodkonstanter, inte miljövariabler:
+The limits are code constants, not environment variables:
 
-| Endpointtyp | Gräns |
+| Endpoint type | Limit |
 | --- | --- |
-| Inloggning | 5 försök per 15 minuter |
-| Tokenförnyelse | 30 försök per 15 minuter |
-| Övriga API-anrop | 100 per 15 minuter, eller 1 000 för autentiserade anrop |
+| Login | 5 attempts per 15 minutes |
+| Token refresh | 30 attempts per 15 minutes |
+| Other API requests | 100 per 15 minutes, or 1,000 for authenticated requests |
 
-## Felsökning
+## Troubleshooting
 
-**MongoDB går inte att ansluta**
+**MongoDB cannot connect**
 
-Kontrollera `docker compose ps`, port 27019 och att uppgifterna i `.env`
-matchar Docker-konfigurationen.
+Check `docker compose ps`, port 27019, and that credentials in `.env` match
+the Docker configuration.
 
-**CORS eller ”Failed to fetch”**
+**CORS or “Failed to fetch”**
 
-Kontrollera att `FRONTEND_URL` exakt motsvarar frontendens origin och starta
-om backend.
+Check that `FRONTEND_URL` exactly matches the frontend origin and restart the
+backend.
 
-**Inloggning misslyckas**
+**Login fails**
 
-Kontrollera att backend är nåbar på port 4000, att `BACKEND_URL` når den från
-Next.js-servern och att administratören har seedats.
+Check that the backend is reachable on port 4000, that `BACKEND_URL` can reach
+it from the Next.js server, and that the administrator has been seeded.
 
-**Dashboarden laddar inte vid fjärrutveckling**
+**The dashboard does not load during remote development**
 
-Lämna `NEXT_PUBLIC_API_URL` tomt för att använda proxyn, och konfigurera
-`BACKEND_URL` till en adress som Next.js-servern kan nå.
+Leave `NEXT_PUBLIC_API_URL` empty to use the proxy, and configure `BACKEND_URL`
+to an address reachable by the Next.js server.

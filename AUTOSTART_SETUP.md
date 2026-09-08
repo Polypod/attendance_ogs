@@ -1,12 +1,12 @@
-# Automatisk start med PM2 och systemd
+# Automatic startup with PM2 and systemd
 
-Den här guiden beskriver en generell installation. Den tidigare
-maskinspecifika statusrapporten och absoluta sökvägarna är medvetet borttagna:
-de kan inte användas som instruktion för andra installationer.
+This guide describes a general installation. The previous machine-specific
+status report and absolute paths were intentionally removed because they
+cannot serve as instructions for other installations.
 
-## Förberedelser
+## Preparation
 
-1. Bygg backend och frontend från projektets rot:
+1. Build the backend and frontend from the project root:
 
    ```bash
    pnpm install
@@ -15,16 +15,16 @@ de kan inte användas som instruktion för andra installationer.
    BACKEND_URL=http://127.0.0.1:4010 pnpm -C frontend run build
    ```
 
-2. Installera PM2 för driftanvändaren och skapa en egen
-   `ecosystem.config.js` med rätt sökvägar, domän, hemligheter och backend-URL.
-   Den inkluderade filen innehåller exempelvärden från en specifik server och
-   ska inte användas direkt utan granskning.
+2. Install PM2 for the deployment user and create a dedicated
+   `ecosystem.config.js` with the correct paths, domain, secrets, and backend
+   URL. The included file contains example values from a specific server and
+   must not be used directly without review.
 
-3. Kontrollera att backendens produktionsmiljö har `MONGODB_URI`,
-   `JWT_SECRET`, `JWT_REFRESH_SECRET` och `FRONTEND_URL`, och att frontendens
-   miljö har `NEXTAUTH_URL`, `NEXTAUTH_SECRET` och `BACKEND_URL`.
+3. Confirm that the backend production environment has `MONGODB_URI`,
+   `JWT_SECRET`, `JWT_REFRESH_SECRET`, and `FRONTEND_URL`, and that the frontend
+   environment has `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, and `BACKEND_URL`.
 
-## Start och kontroll
+## Start and check
 
 ```bash
 pm2 start ecosystem.config.js --env production
@@ -32,27 +32,27 @@ pm2 status
 pm2 logs
 ```
 
-Verifiera att hälsokontrollen svarar innan autostart aktiveras:
+Verify that the health check responds before enabling automatic startup:
 
 ```bash
 curl --fail http://127.0.0.1:4010/api/health
 ```
 
-## Aktivera vid omstart
+## Enable at reboot
 
-Använd PM2:s installationskommando för den driftanvändare som ska äga
-processerna och följ instruktionerna som kommandot skriver ut:
+Use PM2's setup command for the deployment user that will own the processes,
+then follow the instructions printed by the command:
 
 ```bash
 pm2 startup
 pm2 save
 ```
 
-Systemtjänsten och användarens hemkatalog är miljöspecifika. Granska
-genererad systemd-konfiguration, ägarskap, miljövariabler och loggkataloger
-innan tjänsten aktiveras.
+The system service and the user's home directory are environment-specific.
+Review the generated systemd configuration, ownership, environment variables,
+and log directories before enabling the service.
 
-## Drift
+## Operations
 
 ```bash
 pm2 status
@@ -62,6 +62,6 @@ pm2 restart backend
 pm2 restart frontend
 ```
 
-Konfigurera loggrotation för PM2-loggar. Projektet innehåller
-`scripts/setup-pm2-logrotate.sh`, som kan användas när PM2 och dess
-behörigheter är korrekt installerade.
+Configure log rotation for PM2 logs. The project includes
+`scripts/setup-pm2-logrotate.sh`, which can be used once PM2 and its
+permissions are installed correctly.

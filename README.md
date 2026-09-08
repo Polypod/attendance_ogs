@@ -1,145 +1,148 @@
-# Närvarosystem för karateklubb
+# Karate School Attendance System
 
-Ett fullstack-system för elever, pass, närvaro, rapporter och obemannad
-närvaroregistrering. Backend är en Express-applikation med MongoDB och
-frontend är en Next.js-applikation.
+A full-stack system for managing students, classes, attendance, reports, and
+unattended attendance registration. The backend is an Express application with
+MongoDB, and the frontend is a Next.js application.
 
-## Funktioner
+## Features
 
-- Inloggning och behörighet för administratör, instruktör, personal och elev.
-- Hantering av elever, klasser och enskilda schematillfällen.
-- Närvaro per elev, tillfälle och kategori.
-- Rapporter och CSV-import/export av elever.
-- Konfigurerbara kategorier och bältesgrader i `config/system.yaml`.
-- Kiosk-läge med egna enhetsnycklar för närvaroregistrering.
+- Authentication and authorization for administrators, instructors, staff, and students.
+- Management of students, classes, and individual scheduled sessions.
+- Attendance per student, session, and category.
+- Reports and CSV student import/export.
+- Configurable categories and belt levels in `config/system.yaml`.
+- Kiosk mode with dedicated device keys for attendance registration.
 
-## Förutsättningar
+## Prerequisites
 
-- Node.js 20 eller senare
+- Node.js 20 or later
 - pnpm
-- MongoDB, lokalt eller via Docker Compose
+- MongoDB, locally or through Docker Compose
 
-## Kom igång lokalt
+## Local setup
 
-1. Installera beroenden:
+1. Install dependencies:
 
    ```bash
    pnpm install
    pnpm --dir frontend install
    ```
 
-2. Skapa backend-konfiguration:
+2. Create backend configuration:
 
    ```bash
    cp .env.example .env
    ```
 
-   Sätt minst `MONGO_INITDB_ROOT_PASSWORD` och ersätt platshållarna i
-   `MONGODB_URI`, `JWT_SECRET` och `JWT_REFRESH_SECRET`. När Docker används
-   ska användarnamn, lösenord och databas i `.env` matcha Compose-konfigurationen.
+   Set at least `MONGO_INITDB_ROOT_PASSWORD`, and replace the placeholders in
+   `MONGODB_URI`, `JWT_SECRET`, and `JWT_REFRESH_SECRET`. When using Docker,
+   the username, password, and database in `.env` must match the Compose configuration.
 
-3. Skapa `frontend/.env.local`. Det finns ingen frontend-mallfil; använd detta
-   lokala exempel:
+3. Create `frontend/.env.local`. There is no frontend template file; use this
+   local example:
 
    ```dotenv
    PORT=4001
    NEXTAUTH_URL=http://localhost:4001
-   NEXTAUTH_SECRET=<slumpmässig-hemlighet>
+   NEXTAUTH_SECRET=<random-secret>
    BACKEND_URL=http://localhost:4000
    NEXT_PUBLIC_API_URL=http://localhost:4000
    ```
 
-4. Starta databasen:
+4. Start the database:
 
    ```bash
    docker compose up -d
    ```
 
-5. Skapa första administratören:
+5. Create the first administrator:
 
    ```bash
    pnpm run seed:admin
    ```
 
-   Standardkontot är `admin@karateattendance.com` med lösenordet
-   `ChangeMe123!`. Byt lösenordet direkt efter första inloggningen. I miljöer
-   där standardkontot inte ska användas kan `SEED_ADMIN_EMAIL` och
-   `SEED_ADMIN_PASSWORD` sättas före kommandot.
+   The default account is `admin@karateattendance.com` with password
+   `ChangeMe123!`. Change the password immediately after the first login. In
+   environments where the default account should not be used, set
+   `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` before running the command.
 
-6. Starta båda utvecklingsservrarna:
+6. Start both development servers:
 
    ```bash
    ./scripts/start-dev.sh
    ```
 
-   Eller starta dem separat med `pnpm run dev` och `pnpm run dev:frontend`.
+   Alternatively, start them separately with `pnpm run dev` and
+   `pnpm run dev:frontend`.
 
-Öppna sedan [http://localhost:4001](http://localhost:4001). Backendens
-hälsokontroll finns på [http://localhost:4000/api/health](http://localhost:4000/api/health).
+Then open [http://localhost:4001](http://localhost:4001). The backend health
+check is available at [http://localhost:4000/api/health](http://localhost:4000/api/health).
 
-> `scripts/start-dev.sh` avslutar processer som redan lyssnar på port 4000
-> eller 4001. Använd de separata kommandona om det inte är önskvärt.
+> `scripts/start-dev.sh` terminates processes already listening on ports 4000
+> and 4001. Use the separate commands if that is not desired.
 
-## Konfiguration
+## Configuration
 
-Se [CONFIGURATION.md](CONFIGURATION.md) för samtliga miljövariabler,
-portkonfiguration och felsökning.
+See [CONFIGURATION.md](CONFIGURATION.md) for all environment variables, port
+configuration, and troubleshooting.
 
-Kategorier och bältesgrader läses från `config/system.yaml`. Ändringar kräver
-omstart av backend. Ändra inte ett befintligt `value` om det redan används i
-databasen.
+Categories and belt levels are read from `config/system.yaml`. Changes require
+a backend restart. Do not change an existing `value` once it is used in the
+database.
 
-## Vanliga kommandon
+## Common commands
 
-| Kommando | Beskrivning |
+| Command | Description |
 | --- | --- |
-| `pnpm run dev` | Startar backend i utvecklingsläge. |
-| `pnpm run dev:frontend` | Startar frontend med variabler från `frontend/.env.local`. |
-| `pnpm run dev:all` | Startar båda utvecklingsservrarna. |
-| `pnpm test` | Kör backendtester. |
-| `pnpm run build` | Bygger backend. |
-| `pnpm -C frontend run build` | Bygger frontend. |
-| `pnpm run verify` | Kör tester och bygger båda apparna. |
-| `pnpm run seed:admin` | Skapar eller uppdaterar administratörskontot. |
-| `pnpm run seed:kiosks` | Skapar exempeldata för kiosk-enheter. |
+| `pnpm run dev` | Starts the backend in development mode. |
+| `pnpm run dev:frontend` | Starts the frontend with variables from `frontend/.env.local`. |
+| `pnpm run dev:all` | Starts both development servers. |
+| `pnpm test` | Runs backend tests. |
+| `pnpm run build` | Builds the backend. |
+| `pnpm -C frontend run build` | Builds the frontend. |
+| `pnpm run verify` | Runs tests and builds both applications. |
+| `pnpm run seed:admin` | Creates or updates the administrator account. |
+| `pnpm run seed:kiosks` | Creates kiosk device sample data. |
 
-## API i korthet
+## API overview
 
-Alla `/api`-endpoints begränsas av generell rate limiting. Utöver de publika
-auth-, config- och kiosk-endpointarna krävs en JWT i `Authorization`-huvudet.
+All `/api` endpoints are subject to general rate limiting. In addition to the
+public authentication, configuration, and kiosk endpoints, a JWT in the
+`Authorization` header is required.
 
-| Resurs | Basadress | Åtkomst |
+| Resource | Base path | Access |
 | --- | --- | --- |
-| Hälsa | `GET /api/health` | Publik |
-| Konfiguration | `GET /api/config` | Publik |
-| Autentisering | `/api/auth` | Inloggning och tokenförnyelse är publika |
-| Elever | `/api/students` | Inloggad; ändringar kräver administratör |
-| Klasser och schema | `/api/classes`, `/api/schedules` | Inloggad, rollstyrd |
-| Närvaro | `/api/attendance` | Inloggad; registrering för admin/instruktör/personal |
-| Rapporter | `/api/reports`, `/api/report-presets` | Admin eller instruktör |
-| Kiosker | `/api/kiosks` | Administratör |
-| Kiosk-närvaro | `/api/kiosk-attendance` | Enhetsnyckel |
-| Mätvärden | `GET /api/metrics` | Kräver `METRICS_TOKEN` |
+| Health | `GET /api/health` | Public |
+| Configuration | `GET /api/config` | Public |
+| Authentication | `/api/auth` | Login and token refresh are public |
+| Students | `/api/students` | Authenticated; changes require administrator |
+| Classes and schedules | `/api/classes`, `/api/schedules` | Authenticated, role-based |
+| Attendance | `/api/attendance` | Authenticated; recording for admin/instructor/staff |
+| Reports | `/api/reports`, `/api/report-presets` | Administrator or instructor |
+| Kiosks | `/api/kiosks` | Administrator |
+| Kiosk attendance | `/api/kiosk-attendance` | Device key |
+| Metrics | `GET /api/metrics` | Requires `METRICS_TOKEN` |
 
-Routedefinitionerna i `src/routes/` är den fullständiga och aktuella
-referensen för parametrar, validering och behörighet.
+The route definitions in `src/routes/` are the complete and current reference
+for parameters, validation, and authorization.
 
-## Produktion
+## Production
 
-Bygg båda apparna och sätt miljövariabler i driftmiljön. I produktion måste
-frontend ha `BACKEND_URL` (eller `NEXT_PUBLIC_API_URL`) för serveranrop och
-Next.js-proxyn. Kör inte med standardhemligheter eller standardlösenord.
+Build both applications and set environment variables in the deployment
+environment. In production, the frontend must have `BACKEND_URL` (or
+`NEXT_PUBLIC_API_URL`) for server-side calls and the Next.js proxy. Do not use
+default secrets or passwords.
 
-`./scripts/start-prod.sh` är avsedd för lokal produktionslik testning. Den
-bygger apparna, använder PM2 och startar backend på 4010 samt frontend på
-4011. Se [AUTOSTART_SETUP.md](AUTOSTART_SETUP.md) för en generell
-PM2/systemd-installation.
+`./scripts/start-prod.sh` is intended for local production-like testing. It
+builds both applications, uses PM2, and starts the backend on 4010 and the
+frontend on 4011. See [AUTOSTART_SETUP.md](AUTOSTART_SETUP.md) for a general
+PM2/systemd installation.
 
-## Projektstruktur
+## Project structure
 
 ```text
-src/                 Express: routes, controllers, services och modeller
-config/system.yaml   Kategorier och bältesgrader
-frontend/            Next.js-app
-scripts/             Utveckling, drift och seedning
+src/                 Express routes, controllers, services, and models
+config/system.yaml   Categories and belt levels
+frontend/            Next.js application
+scripts/             Development, operations, and seed scripts
 ```

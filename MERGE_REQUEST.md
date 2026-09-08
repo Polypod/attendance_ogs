@@ -1,12 +1,12 @@
-# Historik
+# History
 
-Den här filen ersätter en gammal, tidsbunden merge request-beskrivning.
-Informationen där gällde en tidigare sammanslagning och innehöll föråldrade
-versionsuppgifter, portnummer och testpåståenden.
+This file replaces an old, time-bound merge request description. Its contents
+described a previous merge and included outdated version details, port numbers,
+and test claims.
 
-Aktuell information finns i:
+Current information is available in:
 
-- [README.md](README.md) för installation, användning och API-översikt.
-- [CONFIGURATION.md](CONFIGURATION.md) för miljövariabler och felsökning.
-- [AUTOSTART_SETUP.md](AUTOSTART_SETUP.md) för generell PM2/systemd-drift.
-- `src/routes/` för den auktoritativa API-routningen.
+- [README.md](README.md) for installation, usage, and the API overview.
+- [CONFIGURATION.md](CONFIGURATION.md) for environment variables and troubleshooting.
+- [AUTOSTART_SETUP.md](AUTOSTART_SETUP.md) for general PM2/systemd operations.
+- `src/routes/` for the authoritative API routing.
