@@ -106,7 +106,7 @@ database.
 
 ## API overview
 
-All `/api` endpoints are subject to general rate limiting. In addition to the
+Most `/api` endpoints are subject to rate limiting (auth endpoints use dedicated limits; `/api/health` and `/api/metrics` are excluded). In addition to the
 public authentication, configuration, and kiosk endpoints, a JWT in the
 `Authorization` header is required.
 
