@@ -15,7 +15,7 @@ MongoDB, and the frontend is a Next.js application.
 
 ## Prerequisites
 
-- Node.js 20 or later
+- Node.js 20.9.0 or later
 - pnpm
 - MongoDB, locally or through Docker Compose
 
