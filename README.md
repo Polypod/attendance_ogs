@@ -95,8 +95,8 @@ database.
 | Command | Description |
 | --- | --- |
 | `pnpm run dev` | Starts the backend in development mode. |
-| `pnpm run dev:frontend` | Starts the frontend with variables from `frontend/.env.local`. |
-| `pnpm run dev:all` | Starts both development servers. |
+|| `pnpm run dev:frontend` | Starts the frontend in development mode (POSIX-only script; Windows: use `pnpm -C frontend run dev`). |
+|| `pnpm run dev:all` | Starts both development servers in one shell (POSIX-only; Windows: use two terminals). |
 | `pnpm test` | Runs backend tests. |
 | `pnpm run build` | Builds the backend. |
 | `pnpm -C frontend run build` | Builds the frontend. |
