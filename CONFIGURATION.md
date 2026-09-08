@@ -90,18 +90,22 @@ Gränserna är kodkonstanter, inte miljövariabler:
 
 ## Felsökning
 
-**MongoDB går inte att ansluta**  
+**MongoDB går inte att ansluta**
+
 Kontrollera `docker compose ps`, port 27019 och att uppgifterna i `.env`
 matchar Docker-konfigurationen.
 
-**CORS eller ”Failed to fetch”**  
+**CORS eller ”Failed to fetch”**
+
 Kontrollera att `FRONTEND_URL` exakt motsvarar frontendens origin och starta
 om backend.
 
-**Inloggning misslyckas**  
+**Inloggning misslyckas**
+
 Kontrollera att backend är nåbar på port 4000, att `BACKEND_URL` når den från
 Next.js-servern och att administratören har seedats.
 
-**Dashboarden laddar inte vid fjärrutveckling**  
+**Dashboarden laddar inte vid fjärrutveckling**
+
 Lämna `NEXT_PUBLIC_API_URL` tomt för att använda proxyn, och konfigurera
 `BACKEND_URL` till en adress som Next.js-servern kan nå.
