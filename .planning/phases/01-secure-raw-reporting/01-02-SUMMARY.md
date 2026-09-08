@@ -4,9 +4,9 @@
 
 ## What shipped
 
-- Reports-sida: `/dashboard/reports`
-- Reports-länk i dashboard-nav för rollerna **admin** och **instructor**
-- Filter + råtabell (en rad per attendance) + server-side paginering
+- Reports page: `/dashboard/reports`
+- Reports link in the dashboard nav for the roles **admin** and **instructor**
+- Filters + raw table (one row per attendance) + server-side pagination
 
 ## Files
 
@@ -18,10 +18,10 @@
 ## Verification
 
 - Automated smoke checks:
-  - Prod-start via PM2 (backend 4010 + frontend 4011)
-  - `GET /api/auth/session` svarar från NextAuth (dvs proxy interceptar inte `/api/auth/*`)
-  - `POST /api/reports/attendance/raw` proxas till backend och returnerar JSON (t.ex. 401 när oautentiserad)
+  - Prod start via PM2 (backend 4010 + frontend 4011)
+  - `GET /api/auth/session` responds from NextAuth (i.e. the proxy does not intercept `/api/auth/*`)
+  - `POST /api/reports/attendance/raw` is proxied to the backend and returns JSON (e.g. 401 when unauthenticated)
 
 ## Notes
 
-- Den manuella visuella/verifieringen av hela UX-flödet (logga in → öppna Reports → klicka runt) är inte loggad här, men sidan och proxyn är funktionellt “wired” och körbar i prod-läge.
+- The full manual visual/UX verification flow (log in → open Reports → click around) is not logged here, but the page and proxy are functionally “wired” and runnable in prod mode.

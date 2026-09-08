@@ -1,74 +1,74 @@
 # Requirements: Attendance OGS
 
 **Defined:** 2026-04-13
-**Core Value:** Admin och instruktörer kan snabbt få fram korrekt närvarodata (rådata eller summeringar), återanvända sparade vyer och exportera resultatet.
+**Core Value:** Admins and instructors can quickly access accurate attendance data (raw data or summaries), reuse saved views, and export the results.
 
 ## v1 Requirements
 
 ### Security & Access
 
-- [x] **SEC-01**: Endast rollerna **ADMIN** och **INSTRUCTOR** kan komma åt rapportsidan och rapport-API:t
-- [x] **SEC-02**: Instruktörer kan se all data i v1 (ingen “bara egna pass”-begränsning)
+- [x] **SEC-01**: Only the **ADMIN** and **INSTRUCTOR** roles can access the reporting page and the report API
+- [x] **SEC-02**: Instructors can see all data in v1 (no “only their own sessions” restriction)
 
-### Reporting Views (Rådata + Aggregerat)
+### Reporting Views (Raw Data + Aggregated)
 
-- [x] **RPT-01**: Användaren kan växla mellan **Rådata** och **Aggregerat** läge
-- [x] **RPT-02**: Rådata-läget visar en tabell med en rad per närvaro-registrering
-- [x] **RPT-03**: Aggregerat läge erbjuder en **valbar aggregeringsnivå** (standard-grupperingar): **student**, **instruktör**, **tillfälle (pass/session)**, **klass**
-- [x] **RPT-04**: Aggregerat läge visar minst nyckeltalen **antal närvarande** och **total antal registreringar**
-- [ ] **RPT-05**: Användaren kan visa/dölja kolumner i listan; dolda kolumner ska inte exporteras
-- [x] **RPT-06**: Filtret **Sessions (Class schedule)** stödjer multi-val av **enskilda tillfällen** (classScheduleId + datum), inte bara ”alla liknande” via ett schedule-id
+- [x] **RPT-01**: The user can switch between **Raw Data** and **Aggregated** mode
+- [x] **RPT-02**: Raw Data mode displays a table with one row per attendance record
+- [x] **RPT-03**: Aggregated mode offers a **selectable aggregation level** (standard groupings): **student**, **instructor**, **session (class/session)**, **class**
+- [x] **RPT-04**: Aggregated mode displays at least the key metrics **number present** and **total number of records**
+- [ ] **RPT-05**: The user can show/hide columns in the list; hidden columns must not be exported
+- [x] **RPT-06**: The **Sessions (Class schedule)** filter supports multi-select of **individual sessions** (classScheduleId + date), not just “all similar ones” via a schedule-id
 
-### Query (Filter, Sort, Sök)
+### Query (Filter, Sort, Search)
 
-- [x] **QRY-01**: Användaren kan filtrera på **datumintervall (från–till)** med en konsekvent och dokumenterad tidszonsregel
-- [x] **QRY-02**: Användaren kan filtrera per fält (minst: student, instruktör, klass/pass, status)
-- [ ] **QRY-03**: Användaren kan sortera på valda kolumner genom att klicka på kolumnrubriken (server-side när relevant)
-- [ ] **QRY-04**: Användaren har global fri-text-sök som söker inom ett definierat fältset (minst namn/klass)
-- [x] **QRY-05**: Resultat listas med server-side paginering så att stora datamängder hanteras stabilt
-- [x] **QRY-06**: Det ska vara möjligt att välja flera studenter, förslagsvis via checkbox
-- [x] **QRY-07**: Det ska vara möjligt att välja flera instruktörer, förslagsvis via checkbox
+- [x] **QRY-01**: The user can filter by **date range (from–to)** with a consistent and documented timezone rule
+- [x] **QRY-02**: The user can filter per field (at minimum: student, instructor, class/session, status)
+- [ ] **QRY-03**: The user can sort by selected columns by clicking the column header (server-side where relevant)
+- [ ] **QRY-04**: The user has global free-text search that searches within a defined field set (at minimum name/class)
+- [x] **QRY-05**: Results are listed with server-side pagination so that large data sets are handled reliably
+- [x] **QRY-06**: It must be possible to select multiple students, preferably via checkbox
+- [x] **QRY-07**: It must be possible to select multiple instructors, preferably via checkbox
 
-### Presets (Privata + Delade)
+### Presets (Private + Shared)
 
-- [ ] **PRS-01**: Användaren kan spara en preset som innehåller: vy-läge, valda kolumner, sortering, filter, gruppering och nyckeltal
-- [ ] **PRS-02**: Presets lagras server-side per användare och kan återanvändas mellan enheter
-- [ ] **PRS-03**: Användaren kan lista, uppdatera och radera sina egna presets
-- [ ] **PRS-04**: Presets kan markeras som **delade** (globala); andra användare kan se och använda delade presets
-- [ ] **PRS-05**: Det finns en tydlig behörighetsmodell för delade presets (vem får skapa/ändra/radera)
-- [ ] **PRS-06**: Presets är versionerade (t.ex. `schemaVersion`) och valideras vid inläsning
+- [ ] **PRS-01**: The user can save a preset that includes: view mode, selected columns, sorting, filters, grouping, and key metrics
+- [ ] **PRS-02**: Presets are stored server-side per user and can be reused across devices
+- [ ] **PRS-03**: The user can list, update, and delete their own presets
+- [ ] **PRS-04**: Presets can be marked as **shared** (global); other users can see and use shared presets
+- [ ] **PRS-05**: There is a clear permission model for shared presets (who may create/update/delete)
+- [ ] **PRS-06**: Presets are versioned (e.g. `schemaVersion`) and validated when loaded
 
 ### Export (CSV)
 
-- [ ] **EXP-01**: Användaren kan exportera CSV för hela filtrerade resultatet med de kolumner som är aktiva i vyn
-- [ ] **EXP-02**: CSV-export använder samma query-definition som tabellen (ingen mismatch mellan vy och export)
-- [ ] **EXP-03**: CSV-export är robust för större datamängder (server-side streaming/backpressure)
-- [ ] **EXP-04**: CSV-export skyddar mot formel-/CSV-injektion i vanliga kalkylprogram
+- [ ] **EXP-01**: The user can export CSV for the full filtered result with the columns active in the view
+- [ ] **EXP-02**: CSV export uses the same query definition as the table (no mismatch between view and export)
+- [ ] **EXP-03**: CSV export is robust for larger data sets (server-side streaming/backpressure)
+- [ ] **EXP-04**: CSV export protects against formula/CSV injection in common spreadsheet programs
 
 ## v2 Requirements (Deferred)
 
 ### Reporting Enhancements
 
-- **RPTX-01**: Drill-down från aggregerad rad till motsvarande rådatafilter
-- **RPTX-02**: Fler nyckeltal (t.ex. närvaroprocent) med tydliga definitioner
-- **RPTX-03**: Snabbfilterchips (t.ex. ”senaste 7 dagar”, ”endast frånvaro”)
+- **RPTX-01**: Drill-down from aggregated row to the corresponding raw-data filter
+- **RPTX-02**: More key metrics (e.g. attendance percentage) with clear definitions
+- **RPTX-03**: Quick filter chips (e.g. ”last 7 days”, ”absence only”)
 
 ### Export Enhancements
 
-- **EXPX-01**: Export som bakgrundsjobb (kö + notifiering) för mycket stora exports
+- **EXPX-01**: Export as a background job (queue + notification) for very large exports
 - **EXPX-02**: Excel/XLSX export
 
 ### Access Enhancements
 
-- **SECX-01**: Valfri begränsning för instruktörer till ”egna pass/klasser”
+- **SECX-01**: Optional restriction for instructors to ”their own sessions/classes”
 
 ## Out of Scope
 
 | Feature | Reason |
 | ------- | ------ |
-| Pivot/BI-byggare (fri group-by/pivot) | Scope-explosion och hög komplexitet |
-| Diagram/BI-dashboard i v1 | Kräver fler semantikbeslut; fokus på korrekt tabell/agg först |
-| PDF-export i v1 | Underhållstungt; CSV räcker initialt |
+| Pivot/BI builder (free group-by/pivot) | Scope explosion and high complexity |
+| Charts/BI dashboard in v1 | Requires more semantic decisions; focus on correct table/aggregation first |
+| PDF export in v1 | High maintenance; CSV is sufficient initially |
 
 ## Traceability
 

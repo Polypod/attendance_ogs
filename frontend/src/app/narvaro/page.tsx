@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Check, ChevronLeft, LogIn, RefreshCw, Search, Users } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, LogIn, RefreshCw, Save, Search, Users } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
 const KIOSK_STORAGE_KEY = "attendance-kiosk-key";
+const MAX_DAY_OFFSET = 3;
+
+function dateKeyForOffset(offset: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 type KioskStudent = {
@@ -57,17 +67,28 @@ async function kioskRequest<T>(path: string, accessKey: string, init?: RequestIn
 export default function AttendanceKioskPage() {
   const [accessKey, setAccessKey] = useState<string | null>(null);
   const [date, setDate] = useState("");
+  const [dayOffset, setDayOffset] = useState(0);
   const [sessions, setSessions] = useState<KioskSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [instructorName, setInstructorName] = useState("");
+  const [savedInstructorName, setSavedInstructorName] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [showOtherStudents, setShowOtherStudents] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [savingAttendance, setSavingAttendance] = useState(false);
+  const [savingInstructor, setSavingInstructor] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSelectedIdsRef = useRef<string[] | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -81,12 +102,15 @@ export default function AttendanceKioskPage() {
     setAccessKey(storedKey);
   }, []);
 
-  const loadSessions = async (key = accessKey) => {
+  const loadSessions = async (key = accessKey, offset = dayOffset) => {
     if (!key) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await kioskRequest<{ date: string; sessions: KioskSession[] }>("/api/kiosk-attendance/today", key);
+      const data = await kioskRequest<{ date: string; sessions: KioskSession[] }>(
+        `/api/kiosk-attendance/today?date=${dateKeyForOffset(offset)}`,
+        key
+      );
       setDate(data.date);
       setSessions(data.sessions);
     } catch (nextError: unknown) {
@@ -96,6 +120,13 @@ export default function AttendanceKioskPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const changeDayOffset = (offset: number) => {
+    if (offset < -MAX_DAY_OFFSET || offset > MAX_DAY_OFFSET) return;
+    setDayOffset(offset);
+    setSelectedSessionId(null);
+    loadSessions(accessKey, offset);
   };
 
   useEffect(() => {
@@ -131,38 +162,89 @@ export default function AttendanceKioskPage() {
         .map((student) => student.id)
     );
     setInstructorName(session.instructorName);
+    setSavedInstructorName(session.instructorName);
     setSearch("");
     setShowInactive(false);
     setShowOtherStudents(false);
     setSuccess(null);
-  };
-
-  const toggleStudent = (studentId: string) => {
-    setSelectedStudentIds((current) => current.includes(studentId)
-      ? current.filter((id) => id !== studentId)
-      : [...current, studentId]);
-  };
-
-  const finalizeAttendance = async () => {
-    if (!accessKey || !selectedSession) return;
-    setSaving(true);
     setError(null);
-    setSuccess(null);
+  };
+
+  // Persists attendance + instructor together, since the backend saves both in one call
+  const persistAttendance = async (
+    presentStudentIds: string[],
+    instructorOverride: string
+  ): Promise<{ presentCount: number; absentCount: number } | null> => {
+    if (!accessKey || !selectedSession) return null;
     try {
-      const result = await kioskRequest<{ presentCount: number; absentCount: number }>(
+      return await kioskRequest<{ presentCount: number; absentCount: number }>(
         `/api/kiosk-attendance/sessions/${selectedSession.id}/finalize`,
         accessKey,
         {
           method: "POST",
-          body: JSON.stringify({ presentStudentIds: selectedStudentIds }),
+          body: JSON.stringify({ presentStudentIds, date, instructorName: instructorOverride }),
         }
       );
-      setSuccess(`${result.presentCount} närvarande och ${result.absentCount} frånvarande sparades.`);
-      await loadSessions(accessKey);
     } catch (nextError: unknown) {
       setError(errorMessage(nextError));
-    } finally {
-      setSaving(false);
+      return null;
+    }
+  };
+
+  // Flushes any debounced attendance save immediately (e.g. before navigating away)
+  const flushAttendanceAutoSave = async () => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
+    }
+    const pending = pendingSelectedIdsRef.current;
+    pendingSelectedIdsRef.current = null;
+    if (!pending) return;
+    setSavingAttendance(true);
+    const result = await persistAttendance(pending, savedInstructorName);
+    setSavingAttendance(false);
+    if (result) {
+      setSuccess("Närvaro sparad.");
+    }
+  };
+
+  const toggleStudent = (studentId: string) => {
+    setSelectedStudentIds((current) => {
+      const next = current.includes(studentId)
+        ? current.filter((id) => id !== studentId)
+        : [...current, studentId];
+
+      // Attendance changes save automatically a moment after the last tap
+      setSuccess(null);
+      pendingSelectedIdsRef.current = next;
+      if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        void flushAttendanceAutoSave();
+      }, 500);
+
+      return next;
+    });
+  };
+
+  const saveInstructorName = async () => {
+    if (!selectedSession) return;
+    const trimmed = instructorName.trim();
+    if (trimmed.length < 2) return;
+
+    // The instructor edit supersedes any pending debounced attendance save
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
+    }
+    pendingSelectedIdsRef.current = null;
+
+    setSavingInstructor(true);
+    setError(null);
+    const result = await persistAttendance(selectedStudentIds, trimmed);
+    setSavingInstructor(false);
+    if (result) {
+      setSavedInstructorName(trimmed);
+      setSuccess("Instruktör sparad.");
     }
   };
 
@@ -234,11 +316,11 @@ export default function AttendanceKioskPage() {
       <main className="min-h-screen bg-[#f7f7f5] text-slate-950">
         <header className="border-b border-white/10 bg-slate-950 text-white">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
-            <Button variant="ghost" className="min-h-12 px-3 text-base text-white hover:bg-white/10 hover:text-white" onClick={() => setSelectedSessionId(null)}>
+            <Button variant="ghost" className="min-h-12 px-3 text-base text-white hover:bg-white/10 hover:text-white" onClick={() => { void flushAttendanceAutoSave(); setSelectedSessionId(null); }}>
               <ChevronLeft />Alla pass
             </Button>
             <p className="hidden text-sm font-semibold tracking-wide text-slate-300 sm:block">Okinawa Goju-Ryu Södertörn</p>
-            <Button variant="ghost" className="min-h-12 px-3 text-white hover:bg-white/10 hover:text-white" onClick={() => loadSessions()} disabled={saving}>
+            <Button variant="ghost" className="min-h-12 px-3 text-white hover:bg-white/10 hover:text-white" onClick={() => { void flushAttendanceAutoSave(); loadSessions(); }} disabled={savingAttendance}>
               <RefreshCw className="size-5" /><span className="hidden sm:inline">Uppdatera</span>
             </Button>
           </div>
@@ -249,7 +331,10 @@ export default function AttendanceKioskPage() {
             <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{selectedSession.className}</h1>
-                <p className="mt-2 text-lg text-slate-300">{selectedSession.startTime}–{selectedSession.endTime}</p>
+                <div className="mt-2 flex flex-col gap-1">
+                  <p className="text-lg text-slate-300">{selectedSession.startTime}–{selectedSession.endTime}</p>
+                  <p className="text-sm text-slate-400">{new Date(`${date}T12:00:00`).toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long" })}</p>
+                </div>
               </div>
               <div className="rounded-2xl bg-white/10 px-5 py-3 text-center">
                 <p className="text-2xl font-bold">{selectedStudentIds.length}</p>
@@ -260,13 +345,26 @@ export default function AttendanceKioskPage() {
           <Card className="mb-4 border-0 bg-white py-0 shadow-sm">
             <CardContent className="p-5 sm:p-6">
               <label htmlFor="kiosk-instructor" className="mb-2 block text-sm font-bold text-slate-700">Instruktör för detta pass</label>
-              <Input
-                id="kiosk-instructor"
-                value={instructorName}
-                onChange={(event) => setInstructorName(event.target.value)}
-                maxLength={100}
-                className="min-h-13 border-slate-200 bg-slate-50 text-lg font-medium"
-              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Input
+                  id="kiosk-instructor"
+                  value={instructorName}
+                  onChange={(event) => setInstructorName(event.target.value)}
+                  maxLength={100}
+                  className="min-h-13 flex-1 border-slate-200 bg-slate-50 text-lg font-medium"
+                />
+                <Button
+                  type="button"
+                  onClick={saveInstructorName}
+                  disabled={savingInstructor || instructorName.trim().length < 2 || instructorName.trim() === savedInstructorName.trim()}
+                  className="min-h-13 shrink-0 rounded-xl bg-red-700 font-bold hover:bg-red-800"
+                >
+                  <Save className="size-4" />{savingInstructor ? "Sparar..." : "Spara instruktör"}
+                </Button>
+              </div>
+              {instructorName.trim() !== savedInstructorName.trim() && (
+                <p className="mt-2 text-sm font-medium text-amber-700">Osparad ändring – klicka "Spara instruktör" för att spara.</p>
+              )}
             </CardContent>
           </Card>
           <div className="sticky top-0 z-10 mb-5 space-y-3 bg-[#f7f7f5]/95 py-3 backdrop-blur">
@@ -302,9 +400,17 @@ export default function AttendanceKioskPage() {
             </section>
           )}
           <div className="sticky bottom-0 z-10 mt-6 border-t border-slate-200 bg-[#f7f7f5]/95 py-4 backdrop-blur">
-            <Button className="min-h-16 w-full rounded-2xl bg-red-700 text-lg font-bold shadow-lg hover:bg-red-800" onClick={finalizeAttendance} disabled={saving || instructorName.trim().length < 2}>
-              <Check className="size-5" />{saving ? "Sparar närvaro..." : `Spara ${selectedStudentIds.length} närvarande`}
-            </Button>
+            <div className="flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl bg-slate-100 text-lg font-bold text-slate-600">
+              {savingAttendance ? (
+                <>
+                  <RefreshCw className="size-5 animate-spin" />Sparar närvaro...
+                </>
+              ) : (
+                <>
+                  <Check className="size-5 text-emerald-600" />{selectedStudentIds.length} närvarande sparas automatiskt
+                </>
+              )}
+            </div>
             <p className="mt-2 text-center text-sm font-medium text-slate-500">Omarkerade aktiva medlemmar i passets grupper sparas som frånvarande.</p>
           </div>
         </main>
@@ -323,7 +429,7 @@ export default function AttendanceKioskPage() {
           </div>
           <div className="mt-4">
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-red-300">Okinawa Goju-Ryu Södertörn</p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">Dagens närvaro</h1>
+            <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">{dayOffset === 0 ? "Dagens närvaro" : "Närvaro"}</h1>
             <div className="mt-4 flex items-center gap-2 text-lg text-slate-300">
               <CalendarDays className="size-5 text-red-300" />
               <p>{new Date(`${date}T12:00:00`).toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long" })}</p>
@@ -344,11 +450,54 @@ export default function AttendanceKioskPage() {
             <RefreshCw className="size-4" /><span className="hidden sm:inline">Uppdatera</span>
           </Button>
         </div>
+        <div className="mb-6 flex items-center gap-1 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 rounded-xl"
+            onClick={() => changeDayOffset(dayOffset - 1)}
+            disabled={dayOffset <= -MAX_DAY_OFFSET}
+            aria-label="Föregående dag"
+          >
+            <ChevronLeft className="size-5" />
+          </Button>
+          <div className="flex flex-1 justify-between gap-1 overflow-x-auto sm:gap-2">
+            {Array.from({ length: MAX_DAY_OFFSET * 2 + 1 }, (_, index) => index - MAX_DAY_OFFSET).map((offset) => {
+              const optionDate = new Date(`${dateKeyForOffset(offset)}T12:00:00`);
+              const active = offset === dayOffset;
+              return (
+                <button
+                  key={offset}
+                  type="button"
+                  onClick={() => changeDayOffset(offset)}
+                  className={`flex min-w-14 flex-1 flex-col items-center rounded-xl px-2 py-2 text-center transition-colors ${
+                    active ? "bg-red-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wide">
+                    {offset === 0 ? "Idag" : optionDate.toLocaleDateString("sv-SE", { weekday: "short" })}
+                  </span>
+                  <span className="text-sm font-bold">{optionDate.toLocaleDateString("sv-SE", { day: "numeric", month: "short" })}</span>
+                </button>
+              );
+            })}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 rounded-xl"
+            onClick={() => changeDayOffset(dayOffset + 1)}
+            disabled={dayOffset >= MAX_DAY_OFFSET}
+            aria-label="Nästa dag"
+          >
+            <ChevronRight className="size-5" />
+          </Button>
+        </div>
         {error && <p role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 font-medium text-red-800">{error}</p>}
         {sessions.length === 0 ? (
           <Card className="border-0 bg-white py-0 shadow-sm">
             <CardContent className="p-8 text-center">
-              <p className="text-lg font-semibold">Det finns inga pass att registrera i dag.</p>
+              <p className="text-lg font-semibold">Det finns inga pass att registrera {dayOffset === 0 ? "i dag" : "denna dag"}.</p>
               <p className="mt-2 text-slate-500">När nya pass läggs in visas de här.</p>
             </CardContent>
           </Card>
@@ -366,7 +515,8 @@ export default function AttendanceKioskPage() {
                           <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600">{session.endTime}</span>
                         </div>
                         <h2 className="mt-5 text-2xl font-bold tracking-tight">{session.className}</h2>
-                        <p className="mt-2 text-sm font-medium text-slate-500">{session.categories.join(" · ")}</p>
+                        <p className="mt-2 text-sm font-medium text-slate-500">{session.instructorName}</p>
+                        <p className="mt-1 text-sm font-medium text-slate-500">{session.categories.join(" · ")}</p>
                       </div>
                       <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
                         <span className="text-sm font-semibold text-slate-500">{presentCount} registrerade</span>

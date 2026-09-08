@@ -4,9 +4,9 @@
 
 ## Project Reference
 
-- **Core Value**: Admin och instruktörer kan snabbt få fram korrekt närvarodata (rådata eller summeringar), återanvända sparade vyer och exportera resultatet.
-- **Current Focus**: Ny rapportsida i dashboarden (rådata + aggregerat) med presets och CSV-export.
-- **Constraints**: Behåll befintlig stack (Next.js/React + shadcn/ui/Tailwind, Express/Mongoose). Rapporter är endast för ADMIN + INSTRUCTOR. CSV-export ska skala för stora datamängder (server-side streaming).
+- **Core Value**: Admins and instructors can quickly access accurate attendance data (raw data or summaries), reuse saved views, and export the results.
+- **Current Focus**: New reporting page in the dashboard (raw data + aggregated) with presets and CSV export.
+- **Constraints**: Keep the existing stack (Next.js/React + shadcn/ui/Tailwind, Express/Mongoose). Reports are only for ADMIN + INSTRUCTOR. CSV export must scale for large data sets (server-side streaming).
 
 ## Current Position
 
@@ -16,19 +16,19 @@
 
 ## Performance Metrics (targets)
 
-- **Correctness**: Filter/datumintervall och totals ska vara konsekventa mellan vyer.
-- **Stability**: Server-side paginering och export får inte krascha vid stora dataset.
-- **Security**: Endast ADMIN/INSTRUCTOR har åtkomst till rapport-UI och report-API.
+- **Correctness**: Filters/date ranges and totals must be consistent between views.
+- **Stability**: Server-side pagination and export must not crash on large data sets.
+- **Security**: Only ADMIN/INSTRUCTOR have access to the report UI and report API.
 
 ## Accumulated Context
 
 - **Open decisions**:
-  - Canonical tidszonsregel för datumintervall (ska dokumenteras och användas konsekvent i API + UI).
-  - Definition av “antal närvarande” (vilka statusar räknas in) för aggregerat läge. (Nuvarande implementation räknar `present` + `late`.)
-  - Behörighetsmodell för delade presets (rekommenderat: endast admin kan ändra/radera delade).
+  - Canonical timezone rule for date ranges (must be documented and used consistently in API + UI).
+  - Definition of “number present” (which statuses count) for aggregated mode. (Current implementation counts `present` + `late`.)
+  - Permission model for shared presets (recommended: only admins can update/delete shared ones).
 - **Blockers**: None known
 
 ## Session Continuity
 
 - **Next command**: `/gsd-plan-phase 3`
-- **Goal of next session**: Implementera kolumn visa/dölj, klick-sortering och global fri-text-sök (multi-val för sessions/classes/students/instructors är på plats).
+- **Goal of next session**: Implement column show/hide, click-to-sort, and global free-text search (multi-select for sessions/classes/students/instructors is in place).

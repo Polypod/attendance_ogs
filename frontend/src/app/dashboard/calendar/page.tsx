@@ -433,7 +433,8 @@ export default function CalendarPage() {
         );
       } else {
         // For non-recurring schedules, update normally
-        const { class_id: _classId, recurrence_end_date, ...updateData } = editForm;
+        // notes/instructor are session-level only fields, not allowed at schedule root
+        const { class_id: _classId, recurrence_end_date, notes: _notes, instructor: _instructor, ...updateData } = editForm;
         const daysAsNumbers = dayValuesToNumbers(
           editForm.days_of_week,
           editForm.date,

@@ -5,87 +5,87 @@
 
 ## Phases
 
-- [x] **Phase 1: Secure Raw Reporting** - Rapportsida + report-API för rådata med RBAC, datumintervall, fältfilter och server-side paginering.
-- [x] **Phase 2: Aggregated Reporting** - Agg-läge med standard-grupperingar och nyckeltal, samt växling mellan rå/agg.
-- [ ] **Phase 3: Column, Sort & Selection Controls** - Kolumn visa/dölj, sortering (klick på rubrik), global fri-text-sök och förbättrade multi-val.
-- [ ] **Phase 4: Presets (Private + Shared)** - Spara/återanvänd presets server-side med delning, policy och versionering.
-- [ ] **Phase 5: CSV Export (Streaming + Safe)** - CSV-export som matchar vyn, streamar stora dataset och skyddar mot CSV-injektion.
+- [x] **Phase 1: Secure Raw Reporting** - Reporting page + report API for raw data with RBAC, date range, field filters, and server-side pagination.
+- [x] **Phase 2: Aggregated Reporting** - Aggregated mode with standard groupings and key metrics, as well as switching between raw/agg.
+- [ ] **Phase 3: Column, Sort & Selection Controls** - Column show/hide, sorting (click on header), global free-text search, and improved multi-select.
+- [ ] **Phase 4: Presets (Private + Shared)** - Save/reuse presets server-side with sharing, policy, and versioning.
+- [ ] **Phase 5: CSV Export (Streaming + Safe)** - CSV export that matches the view, streams large data sets, and protects against CSV injection.
 
 ## Phase Details
 
 ### Phase 1: Secure Raw Reporting
 
-**Goal**: Admin och instruktörer kan öppna rapportsidan och se rådata (en rad per närvaro-registrering) med stabil filtrering och paginering.
+**Goal**: Admins and instructors can open the reporting page and view raw data (one row per attendance record) with reliable filtering and pagination.
 **Depends on**: Nothing (first phase)
 **Requirements**: SEC-01, SEC-02, RPT-02, QRY-01, QRY-02, QRY-05
 **Success Criteria** (what must be TRUE):
 
-  1. ADMIN och INSTRUCTOR kan komma åt rapportsidan; andra roller nekas åtkomst.
-  2. Rådata-läget visar en tabell med en rad per närvaro-registrering.
-  3. Användaren kan filtrera på datumintervall (från–till) enligt en konsekvent och dokumenterad tidszonsregel.
-  4. Användaren kan filtrera minst på student, instruktör, klass/pass och status och resultatet uppdateras korrekt.
-  5. Resultat listas med server-side paginering (inkl. total/antal) så att stora datamängder hanteras stabilt.
+  1. ADMIN and INSTRUCTOR can access the reporting page; other roles are denied access.
+  2. Raw Data mode displays a table with one row per attendance record.
+  3. The user can filter by date range (from–to) according to a consistent and documented timezone rule.
+  4. The user can filter at minimum by student, instructor, class/session, and status, and the result updates correctly.
+  5. Results are listed with server-side pagination (including total/count) so that large data sets are handled reliably.
 
 **Plans**: 01-01, 01-02
 **UI hint**: yes
 
 ### Phase 2: Aggregated Reporting
 
-**Goal**: Användaren kan växla till aggregerat läge och se standard-summeringar med nyckeltal.
+**Goal**: The user can switch to aggregated mode and view standard summaries with key metrics.
 **Depends on**: Phase 1
 **Requirements**: RPT-01, RPT-03, RPT-04, RPT-06
 **Success Criteria** (what must be TRUE):
 
-  1. Användaren kan växla mellan Rådata och Aggregerat läge.
-  2. Aggregerat läge erbjuder standard-grupperingar: student, instruktör, pass/session och klass.
-  3. Aggregerat läge visar minst nyckeltalen antal närvarande och total antal registreringar.
-  4. Aggregerade resultat respekterar samma filter/datumintervall som rapportens query.
-  5. Filtret Sessions (Class schedule) stödjer multi-val av enskilda tillfällen (schedule + datum).
+  1. The user can switch between Raw Data and Aggregated mode.
+  2. Aggregated mode offers standard groupings: student, instructor, session/class, and class.
+  3. Aggregated mode displays at least the key metrics number present and total number of records.
+  4. Aggregated results respect the same filters/date range as the report query.
+  5. The Sessions (Class schedule) filter supports multi-select of individual sessions (schedule + date).
 
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 3: Column, Sort & Selection Controls
 
-**Goal**: Användaren kan anpassa tabellen (kolumner/sort/sök) och urval (multi-val) utan att tappa backend-konsistens.
+**Goal**: The user can customize the table (columns/sort/search) and selections (multi-select) without losing backend consistency.
 **Depends on**: Phase 2
 **Requirements**: RPT-05, QRY-03, QRY-04, QRY-06, QRY-07
 **Success Criteria** (what must be TRUE):
 
-  1. Användaren kan visa/dölja kolumner i tabellen.
-  2. Användaren kan sortera på valda kolumner (server-side när relevant) och sorteringen återspeglas korrekt i resultatet.
-  3. Användaren har global fri-text-sök som söker inom ett definierat fältset (minst namn/klass) och kan kombineras med övriga filter.
+  1. The user can show/hide columns in the table.
+  2. The user can sort by selected columns (server-side where relevant), and the sorting is correctly reflected in the result.
+  3. The user has global free-text search that searches within a defined field set (at minimum name/class) and can be combined with other filters.
 
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 4: Presets (Private + Shared)
 
-**Goal**: Användaren kan spara och återanvända rapportvyer/presets (privata och delade) på ett säkert och robust sätt.
+**Goal**: The user can save and reuse report views/presets (private and shared) in a secure and robust way.
 **Depends on**: Phase 3
 **Requirements**: PRS-01, PRS-02, PRS-03, PRS-04, PRS-05, PRS-06
 **Success Criteria** (what must be TRUE):
 
-  1. Användaren kan spara en preset som innehåller: vy-läge, valda kolumner, sortering, filter, gruppering och nyckeltal.
-  2. Presets lagras server-side per användare, kan återanvändas mellan enheter och användaren kan lista/uppdatera/radera sina egna presets.
-  3. Presets kan markeras som delade (globala) och andra användare kan se och använda delade presets.
-  4. Behörighetsmodell för delade presets är tydlig och förhindrar otillåten skapande/ändring/radering.
-  5. Presets är versionerade (t.ex. schemaVersion) och valideras vid inläsning.
+  1. The user can save a preset that includes: view mode, selected columns, sorting, filters, grouping, and key metrics.
+  2. Presets are stored server-side per user, can be reused across devices, and the user can list/update/delete their own presets.
+  3. Presets can be marked as shared (global), and other users can see and use shared presets.
+  4. The permission model for shared presets is clear and prevents unauthorized creation/update/deletion.
+  5. Presets are versioned (e.g. schemaVersion) and validated when loaded.
 
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 5: CSV Export (Streaming + Safe)
 
-**Goal**: Användaren kan exportera CSV som exakt matchar rapportvyn och fungerar även för stora datamängder.
+**Goal**: The user can export CSV that exactly matches the report view and also works for large data sets.
 **Depends on**: Phase 4
 **Requirements**: EXP-01, EXP-02, EXP-03, EXP-04
 **Success Criteria** (what must be TRUE):
 
-  1. Användaren kan exportera CSV för hela filtrerade resultatet med de kolumner som är aktiva i vyn.
-  2. CSV-export använder samma query-definition som tabellen (ingen mismatch mellan vy och export).
-  3. CSV-export är robust för större datamängder (server-side streaming/backpressure).
-  4. CSV-export skyddar mot formel-/CSV-injektion i vanliga kalkylprogram.
+  1. The user can export CSV for the full filtered result with the columns active in the view.
+  2. CSV export uses the same query definition as the table (no mismatch between view and export).
+  3. CSV export is robust for larger data sets (server-side streaming/backpressure).
+  4. CSV export protects against formula/CSV injection in common spreadsheet programs.
 
 **Plans**: TBD
 **UI hint**: yes
