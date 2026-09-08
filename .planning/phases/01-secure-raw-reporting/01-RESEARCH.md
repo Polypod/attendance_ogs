@@ -8,88 +8,88 @@
 
 ### Locked Decisions
 
-- Reports sida: `/dashboard/reports` och bara **admin + instructor** i nav
-- Datumintervall default: senaste 30 dagar
-- Tidszonregel: **Europe/Stockholm**, date-only `YYYY-MM-DD`, inklusiva hela dagar
-- Raw rows: 1 rad per `Attendance`
-- Kolumner i Phase 1: datum (lokalt), start/end (schema), student, klass, instruktör, status, kategori, notes, recorded_by, recorded_at
-- Filter-UX: student (dropdown + fri-text contains), schema dropdown (begränsad till datumintervall), instruktör dropdown, status multi-select
-- Paginering: server-side, pageSize=25, respons med total
-- API: ny endpoint `POST /api/reports/attendance/raw` med query-body
+- Reports page: `/dashboard/reports` and only **admin + instructor** in the nav
+- Default date range: the last 30 days
+- Timezone rule: **Europe/Stockholm**, date-only `YYYY-MM-DD`, inclusive full days
+- Raw rows: 1 row per `Attendance`
+- Columns in Phase 1: date (local), start/end (schedule), student, class, instructor, status, category, notes, recorded_by, recorded_at
+- Filter UX: student (dropdown + free-text contains), schedule dropdown (limited to the date range), instructor dropdown, status multi-select
+- Pagination: server-side, pageSize=25, response with total
+- API: new endpoint `POST /api/reports/attendance/raw` with query body
 
 ### the agent's Discretion
 
-- Exakt layout och komponentval (shadcn) för filterrad + tabell
-- Exakta DTO-namn och valideringsdetaljer
-- Hur dropdown-data laddas (återanvänd befintliga endpoints vs nya lätta list-endpoints)
+- Exact layout and component choices (shadcn) for the filter row + table
+- Exact DTO names and validation details
+- How dropdown data is loaded (reuse existing endpoints vs new lightweight list endpoints)
 
 ### Deferred Ideas (OUT OF SCOPE)
 
-- Aggregerat läge + nyckeltal (Phase 2)
-- Kolumn-toggle/sort/global search (Phase 3)
+- Aggregated mode + key metrics (Phase 2)
+- Column toggle/sort/global search (Phase 3)
 - Presets (Phase 4)
-- CSV-export (Phase 5)
+- CSV export (Phase 5)
 
 ## Summary
 
-Phase 1 behöver ett “rådata”-API som kan filtrera och paginera stabilt över `Attendance` samtidigt som UI kan visa berikade fält (studentnamn, klassnamn, start/end). I den här kodbasen finns redan mönster för RBAC (`authorize`) och för att populera relationer i services, men det saknas idag ett endpoint som matchar kraven (från–till, fältfilter, paginering, raw rows).
+Phase 1 needs a “raw data” API that can filter and paginate stably over `Attendance` while allowing the UI to show enriched fields (student name, class name, start/end). In this codebase there are already patterns for RBAC (`authorize`) and for populating relations in services, but there is currently no endpoint that matches the requirements (from–to, field filters, pagination, raw rows).
 
-Den mest robusta backend-approachen är en **Mongoose aggregate-pipeline** med `$match` (datum + filter), `$lookup`/`$unwind` till students/schedules/classes och en `$facet` för `{ items, total }` i ett anrop. Det ger både paginering och total utan dubbel query.
+The most robust backend approach is a **Mongoose aggregate pipeline** with `$match` (date + filters), `$lookup`/`$unwind` to students/schedules/classes, and a `$facet` for `{ items, total }` in a single call. That provides both pagination and total without a double query.
 
-**Primary recommendation:** Implementera `POST /api/reports/attendance/raw` som aggregate + `$facet`, och implementera Stockholm-daggränser explicit (helst med liten tz-helper eller `moment-timezone`).
+**Primary recommendation:** Implement `POST /api/reports/attendance/raw` as aggregate + `$facet`, and implement Stockholm day boundaries explicitly (preferably with a small tz-helper or `moment-timezone`).
 
 ## Architecture Patterns
 
-### Rekommenderad struktur (i linje med repo)
+### Recommended structure (aligned with the repo)
 
 - `src/routes/reportRoutes.ts` → HTTP routes
 - `src/controllers/ReportController.ts` → request/response
 - `src/services/ReportService.ts` → query + aggregation + Mongoose
-- `src/middleware/validation.ts` + Joi schema → requestvalidering
+- `src/middleware/validation.ts` + Joi schema → request validation
 
-### Data-join strategi (raw rows)
+### Data-join strategy (raw rows)
 
-- Bas: `AttendanceModel`
-- Join: `students` (för studentnamn)
-- Join: `classschedules` + `classes` (för klassnamn + instruktör + start/end)
+- Base: `AttendanceModel`
+- Join: `students` (for student name)
+- Join: `classschedules` + `classes` (for class name + instructor + start/end)
 
-### Paginering + total (Mongo)
+### Pagination + total (Mongo)
 
 - `$facet: { items: [..$skip,$limit..], total: [{$count:"count"}] }`
 
 ## Common Pitfalls
 
-### Pitfall: Timezone drift mellan UI/Backend
+### Pitfall: Timezone drift between UI/Backend
 
-- **Vad går fel:** date-only tolkas som UTC i Node (`new Date("YYYY-MM-DD")`), vilket kan förskjuta dag vid DST eller om servern kör annan TZ.
-- **Undvik:** Konvertera `YYYY-MM-DD` → UTC boundaries för **Europe/Stockholm** explicit. Alternativt: dokumentera och tvinga serverprocess `TZ=Europe/Stockholm` (mindre robust vid deploy).
+- **What goes wrong:** date-only is interpreted as UTC in Node (`new Date("YYYY-MM-DD")`), which can shift the day during DST or if the server runs in another TZ.
+- **Avoid:** Convert `YYYY-MM-DD` → UTC boundaries for **Europe/Stockholm** explicitly. Alternatively: document and force the server process to `TZ=Europe/Stockholm` (less robust in deployment).
 
-### Pitfall: O-stabil paginering
+### Pitfall: Unstable pagination
 
-- **Vad går fel:** Om sort inte är deterministisk kan pagination “hoppa”.
-- **Undvik:** Stabil default-sort, t.ex. `date desc, recorded_at desc, _id desc`.
+- **What goes wrong:** If the sort is not deterministic, pagination can “jump”.
+- **Avoid:** Stable default sort, e.g. `date desc, recorded_at desc, _id desc`.
 
-### Pitfall: Dropdown-data blir för tungt
+### Pitfall: Dropdown data gets too heavy
 
-- **Vad går fel:** `GET /api/students` returnerar idag alla fält för alla students utan paging.
-- **Undvik:** Antingen (a) skapa lightweight list-endpoints (id+name) med search/paging, eller (b) gör dropdown som server-side search.
+- **What goes wrong:** `GET /api/students` currently returns all fields for all students without paging.
+- **Avoid:** Either (a) create lightweight list endpoints (id+name) with search/paging, or (b) make the dropdown a server-side search.
 
 ## Repo-specific notes
 
-- Befintlig äldre report-endpoint: `GET /api/attendance/reports/:dateRange` + `AttendanceService.generateAttendanceReports(dateRange)` (agg per student för week/month/quarter). Den matchar inte Phase 1.
-- `GET /api/schedules?startDate&endDate` finns och populera `class_id` (name/instructor/categories). OBS: använder `new Date(startDate)` vilket tolkar date-only som UTC.
-- Frontend rollbaserad nav: `frontend/src/components/layouts/DashboardLayout.tsx`.
+- Existing older report endpoint: `GET /api/attendance/reports/:dateRange` + `AttendanceService.generateAttendanceReports(dateRange)` (aggregation per student for week/month/quarter). It does not match Phase 1.
+- `GET /api/schedules?startDate&endDate` exists and populates `class_id` (name/instructor/categories). NOTE: it uses `new Date(startDate)` which interprets date-only as UTC.
+- Frontend role-based nav: `frontend/src/components/layouts/DashboardLayout.tsx`.
 
 ## Open Questions
 
-1. **Tz-implementation utan ny dependency?**
-   - Rek: använd liten tz-lib (`moment-timezone`) eller en intern helper baserad på `Intl`.
-   - Under execution: välj den enklaste som ger korrekt DST i Stockholm.
+1. **Tz implementation without a new dependency?**
+   - Rec: use a small tz-lib (`moment-timezone`) or an internal helper based on `Intl`.
+   - During execution: choose the simplest option that gives correct DST behavior in Stockholm.
 
-2. **Instruktör-källa för råtabell:**
-   - `Class.instructor` är stabil och enkel.
-   - `ClassSchedule.sessions` verkar ha inkonsekvens (`S-instructor` vs `instructor`) → bör inte vara “source of truth” i Phase 1.
+2. **Instructor source for the raw table:**
+   - `Class.instructor` is stable and simple.
+   - `ClassSchedule.sessions` appears to have inconsistency (`S-instructor` vs `instructor`) → should not be the “source of truth” in Phase 1.
 
 ## Sources
 
-- Codebase inspection (routes/controllers/services/models) i detta repo.
+- Codebase inspection (routes/controllers/services/models) in this repo.

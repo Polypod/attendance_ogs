@@ -4,10 +4,10 @@
 
 ## What shipped
 
-- Nytt rapport-API för rådata: `POST /api/reports/attendance/raw`
-- RBAC: endast **ADMIN** och **INSTRUCTOR** (autentiserad men fel roll ⇒ 403)
-- Datumintervall `from/to` som date-only (`YYYY-MM-DD`) tolkas som **inklusive Stockholm-dagar** (Europe/Stockholm)
-- Server-side paginering med stabil sort
+- New report API for raw data: `POST /api/reports/attendance/raw`
+- RBAC: only **ADMIN** and **INSTRUCTOR** (authenticated but wrong role ⇒ 403)
+- Date range `from/to` as date-only (`YYYY-MM-DD`) is interpreted as **inclusive Stockholm days** (Europe/Stockholm)
+- Server-side pagination with stable sorting
 
 ## Files
 
@@ -26,10 +26,10 @@
 ## Verification
 
 - Automated:
-  - Jest tests för service + controller (RBAC, datumintervall, paginering)
+  - Jest tests for service + controller (RBAC, date range, pagination)
 - Smoke:
-  - API nås via frontend-proxy i prod-läge och returnerar JSON (t.ex. 401 när oautentiserad)
+  - API is reachable via the frontend proxy in prod mode and returns JSON (e.g. 401 when unauthenticated)
 
 ## Notes
 
-- Fokus i denna plan är rådata (en rad per `Attendance`). Aggregering och UI-tabell tillhör andra planer/faser.
+- The focus of this plan is raw data (one row per `Attendance`). Aggregation and the UI table belong to other plans/phases.

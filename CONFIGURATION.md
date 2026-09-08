@@ -1,304 +1,110 @@
-# Configuration Guide - Attendance Management System
+# Configuration guide
 
-## Overview
+The application has two configuration files that must not be versioned:
+`.env` for the Express backend and `frontend/.env.local` for Next.js.
 
-This project is a full-stack application with a Node.js/Express backend and Next.js frontend. Both services require proper environment configuration to communicate correctly and function as intended.
+## Backend: `.env`
 
-## Critical Configuration Requirements
+Start with `cp .env.example .env` and replace all placeholders.
 
-### 1. Port Synchronization (🔴 MUST MATCH)
+| Variable | Required | Description |
+| --- | --- | --- |
+| `MONGODB_URI` | Yes | MongoDB connection string for the application. |
+| `MONGO_INITDB_ROOT_USERNAME` | With Docker | Administrator username created by Docker MongoDB. |
+| `MONGO_INITDB_ROOT_PASSWORD` | With Docker | Administrator password used by Docker MongoDB. |
+| `MONGO_INITDB_DATABASE` | No | Database initialized by Docker; defaults to `attendance`. |
+| `PORT` | Yes | Backend listening port; the local template default is `4000`. |
+| `FRONTEND_URL` | Yes | Frontend origin for CORS, normally `http://localhost:4001`. |
+| `JWT_SECRET` | Yes | Access-token secret. |
+| `JWT_REFRESH_SECRET` | Yes | Refresh-token secret. |
+| `JWT_EXPIRES_IN` | No | Access-token lifetime; defaults to `24h`. |
+| `JWT_REFRESH_EXPIRES_IN` | No | Refresh-token lifetime; defaults to `7d`. |
+| `METRICS_TOKEN` | For `/api/metrics` | Token protecting the metrics endpoint. |
+| `LOG_LEVEL` | No | Log level. |
+| `SLOW_REQUEST_THRESHOLD_MS` | No | Threshold for logging slow requests. |
+| `SEED_ADMIN_EMAIL` | No | Email for `seed:admin`; defaults to `admin@karateattendance.com`. |
+| `SEED_ADMIN_PASSWORD` | No | Password for `seed:admin`; defaults to `ChangeMe123!`. |
 
-The backend and frontend must be configured to run on specific, non-conflicting ports:
+`BCRYPT_ROUNDS` is not an active setting; passwords are hashed with 10 rounds
+in the model. Do not add it to deployment configuration expecting it to alter
+application behavior.
 
-- **Backend**: `PORT=4000` (defined in root `.env`)
-- **Frontend**: `PORT=4001` (defined in `frontend/.env.local`)
+## Frontend: `frontend/.env.local`
 
-These ports enable CORS communication between services and must be reflected in all API URLs.
+Create this file manually; the project has no `frontend/.env.example`.
 
-### 2. API Endpoint Configuration (🔴 MUST MATCH)
-
-⚠️ **CRITICAL: Remote SSH Development Configuration**
-
-The `NEXT_PUBLIC_API_URL` setting depends on your development environment:
-
-#### For Remote SSH Development (VS Code Remote, SSH tunneling):
-**In `frontend/.env.local`:**
-```
-NEXT_PUBLIC_API_URL=
-BACKEND_URL=http://localhost:4000
-```
-
-When `NEXT_PUBLIC_API_URL` is **empty**, the frontend uses relative URLs that are proxied through Next.js API routes (`/frontend/src/app/api/[...path]/route.ts`). This is **REQUIRED** when:
-- Your browser runs on a different machine than the backend (e.g., Windows browser, Linux server)
-- You're using VS Code Remote SSH
-- `localhost` in the browser points to a different machine than where the backend runs
-
-#### For Local Development (everything on same machine):
-**In `frontend/.env.local`:**
-```
-NEXT_PUBLIC_API_URL=http://localhost:4000
-BACKEND_URL=http://localhost:4000
-```
-
-When `NEXT_PUBLIC_API_URL` has a value, the browser connects directly to the backend URL.
-
-**🔴 IMPORTANT:** If you see "Loading..." forever on dashboard pages:
-1. Check which environment you're in (remote SSH vs local)
-2. Set `NEXT_PUBLIC_API_URL` correctly (empty for remote, URL for local)
-3. Restart frontend: `pnpm run dev:frontend`
-
-This variable is used by:
-- Client-side API calls in dashboard pages
-- NextAuth authentication callbacks
-- API wrapper functions in `frontend/src/lib/api.ts`
-
-If the backend port changes, this must be updated and both servers restarted.
-
-### 3. NextAuth Configuration (🔴 CRITICAL)
-
-NextAuth requires both `NEXTAUTH_SECRET` and `NEXTAUTH_URL` to function:
-
-**In `frontend/.env.local`:**
-```
-NEXTAUTH_SECRET=change-me-generate-a-secure-random-string
+```dotenv
+PORT=4001
 NEXTAUTH_URL=http://localhost:4001
+NEXTAUTH_SECRET=<random-secret>
+BACKEND_URL=http://localhost:4000
+NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
 
-**In root `.env`:**
-```
-FRONTEND_URL=http://localhost:4001
-```
+| Variable | Required | Description |
+| --- | --- | --- |
+| `PORT` | Yes | Next.js port, normally `4001`. |
+| `NEXTAUTH_URL` | Yes | URL that the user opens in the browser. |
+| `NEXTAUTH_SECRET` | Yes | Secret for NextAuth sessions. |
+| `BACKEND_URL` | Recommended | Internal backend URL for NextAuth and the Next.js API proxy. |
+| `NEXT_PUBLIC_API_URL` | No | Backend URL for client-side code. An empty string uses the Next.js proxy. |
+| `NEXT_PUBLIC_LOG_LEVEL` | No | Client-side log level. |
 
-- `NEXTAUTH_URL` must match the frontend URL where users access the application
-- `NEXTAUTH_SECRET` must be a secure random string (change for production)
-- The backend uses `FRONTEND_URL` to configure CORS to allow requests from the frontend
+The backend URL is selected in this order: `BACKEND_URL`,
+`NEXT_PUBLIC_API_URL`, then `http://localhost:4000` in development. Production
+has no local fallback, so at least one backend URL must be set.
 
-### 4. MongoDB Connection (🔴 MUST BE CONFIGURED)
+## Local ports and Docker
 
-**In root `.env`:**
-```
-MONGODB_URI=mongodb://<user>:<password>@localhost:27019/attendance?authSource=admin
-```
+| Service | Host port | Internal port |
+| --- | --- | --- |
+| Express backend | 4000 | 4000 |
+| Next.js frontend | 4001 | 4001 |
+| MongoDB through Docker | 27019 | 27017 |
 
-The connection string includes:
-- **Host & Port**: `localhost:27019` (Docker port mapping) or `localhost:27017` (local MongoDB)
-- **Credentials**: `<user>:<password>` (must match docker-compose.yml)
-- **Database**: `attendance`
-- **Auth Source**: `admin` (required for authentication)
+Use `docker compose up -d` for MongoDB. Your `MONGODB_URI` must use port 27019
+and the same credentials as `MONGO_INITDB_ROOT_USERNAME` and
+`MONGO_INITDB_ROOT_PASSWORD`.
 
-### 5. JWT & Security (🟡 IMPORTANT FOR PRODUCTION)
+If ports change, update `FRONTEND_URL`, `NEXTAUTH_URL`, `BACKEND_URL`, and
+`NEXT_PUBLIC_API_URL` so they continue to point to the correct service.
 
-**In root `.env`:**
-```
-JWT_SECRET=your-super-secret-jwt-key-min-32-characters-long-change-this-in-production
-JWT_REFRESH_SECRET=your-super-secret-refresh-key-min-32-characters-long-change-this-in-production
-JWT_EXPIRES_IN=24h
-JWT_REFRESH_EXPIRES_IN=7d
-BCRYPT_ROUNDS=10
-```
+## Secure deployment
 
-**Production Requirements:**
-- Generate unique, strong JWT_SECRET (minimum 32 characters)
-- Use a different JWT_REFRESH_SECRET
-- Consider reducing BCRYPT_ROUNDS for performance, or increasing for security
-- Store secrets securely (never commit to repository)
+- Generate unique, strong secrets for JWT and NextAuth.
+- Never use the default administrator password in production.
+- Set `NODE_ENV=production` and use HTTPS in front of the application.
+- Store secrets in the deployment platform's secret manager, not in Git.
+- Set `METRICS_TOKEN` before exposing `/api/metrics`.
 
-## File Structure & Configuration Files
+## Rate limiting
 
-```
-attendance_ogs/
-├── .env                          # Backend environment (DO NOT COMMIT)
-├── .env.example                  # Backend template (COMMIT THIS)
-├── docker-compose.yml            # MongoDB configuration
-├── package.json                  # Backend scripts
-│
-└── frontend/
-    ├── .env.local                # Frontend environment (DO NOT COMMIT)
-    ├── .env.example              # Frontend template (COMMIT THIS)
-    ├── package.json              # Frontend scripts
-    └── src/
-        └── app/
-            └── dashboard/        # Protected routes requiring authentication
-```
+The limits are code constants, not environment variables:
 
-## Setup Step-by-Step
+| Endpoint type | Limit |
+| --- | --- |
+| Login | 5 attempts per 15 minutes |
+| Token refresh | 30 attempts per 15 minutes |
+| Other API requests | 100 per 15 minutes, or 1,000 for authenticated requests |
 
-### Phase 1: Repository & Dependencies
+## Troubleshooting
 
-```bash
-# 1. Clone and navigate
-git clone <repository-url>
-cd attendance_ogs
+**MongoDB cannot connect**
 
-# 2. Install all dependencies
-pnpm install
-cd frontend && pnpm install && cd ..
-```
+Check `docker compose ps`, port 27019, and that credentials in `.env` match
+the Docker configuration.
 
-### Phase 2: Environment Configuration
+**CORS or “Failed to fetch”**
 
-```bash
-# 3a. Create backend configuration
-cp .env.example .env
-# Edit .env with your values (see .env.example for all required variables)
+Check that `FRONTEND_URL` exactly matches the frontend origin and restart the
+backend.
 
-# 3b. Create frontend configuration
-cd frontend
-cp .env.example .env.local
-# Edit .env.local if needed (defaults should work for local development)
-cd ..
-```
+**Login fails**
 
-### Phase 3: Database Setup
+Check that the backend is reachable on port 4000, that `BACKEND_URL` can reach
+it from the Next.js server, and that the administrator has been seeded.
 
-```bash
-# 4. Start MongoDB using Docker
-docker-compose up -d
+**The dashboard does not load during remote development**
 
-# Verify MongoDB is running:
-# - Check port 27019 is open: lsof -i :27019
-# - Should see: mongod (or mongo) listening on 27019
-```
-
-### Phase 4: Initial Data
-
-```bash
-# 5. Create default admin account
-pnpm run seed:admin
-
-# Output: "Admin user created/updated successfully"
-# Credentials: admin@karateattendance.com / ChangeMe123!
-```
-
-### Phase 5: Run Application
-
-```bash
-# 6. Start both servers (from root directory)
-pnpm run dev:all
-
-# You should see:
-# - Backend: "✅ Connected to MongoDB" & "🚀 Server running on port 4000"
-# - Frontend: "✓ Ready in X.Xs" at "Local: http://localhost:4001"
-```
-
-### Phase 6: Verify Setup
-
-```bash
-# Test API is accessible
-curl http://localhost:4000/api/health
-
-# Expected response:
-# {"status":"OK","timestamp":"2026-01-06T...","uptime":...}
-
-# Open browser
-open http://localhost:4001/login
-
-# Login with: admin@karateattendance.com / ChangeMe123!
-```
-
-## Troubleshooting Configuration Issues
-
-### "401 Unauthorized" on Dashboard Pages
-
-**Cause**: Frontend not sending JWT token from NextAuth session
-**Solution**: 
-1. Ensure `NEXT_PUBLIC_API_URL` in `frontend/.env.local` matches backend PORT
-2. Ensure `NEXTAUTH_SECRET` is set in `frontend/.env.local`
-3. Restart frontend: `cd frontend && pnpm run dev`
-
-### "CORS Error" or "Failed to fetch"
-
-**Cause**: Backend CORS origin doesn't match frontend URL
-**Solution**:
-1. Verify `FRONTEND_URL` in root `.env` matches where frontend is running
-2. For development: should be `http://localhost:4001`
-3. Restart backend to apply CORS changes
-
-### "Connection refused" to MongoDB
-
-**Cause**: MongoDB not running or wrong port/credentials
-**Solution**:
-1. Verify Docker container is running: `docker-compose ps`
-2. Check credentials match between `.env` and `docker-compose.yml`
-3. Verify host port mapping: `docker-compose.yml` shows `27019:27017`
-
-### API returns "Invalid email or password"
-
-**Cause**: Admin account not created or database empty
-**Solution**:
-1. Run seed script: `pnpm run seed:admin`
-2. Use credentials from output: admin@karateattendance.com / ChangeMe123!
-
-### Frontend won't start or stuck on "Ready in 2.7s"
-
-**Cause**: PORT 4001 already in use or `.env.local` not loaded
-**Solution**:
-1. Kill process on 4001: `lsof -ti:4001 | xargs kill -9`
-2. Ensure `frontend/.env.local` exists with `PORT=4001`
-3. Restart: `cd frontend && pnpm run dev`
-
-## Development Commands
-
-```bash
-# Start both servers together (from root)
-pnpm run dev:all
-
-# Start only backend (from root)
-pnpm run dev
-
-# Start only frontend (from root directory)
-pnpm run dev:frontend
-
-# Create admin account
-pnpm run seed:admin
-
-# Build for production
-pnpm run build
-cd frontend && pnpm run build && cd ..
-
-# Run tests
-pnpm test
-```
-
-## Environment Variable Reference
-
-| Variable | File | Required | Example | Purpose |
-|----------|------|----------|---------|---------|
-| `MONGODB_URI` | `.env` | ✅ | `mongodb://<user>:<password>@localhost:27019/attendance?authSource=admin` | Database connection |
-| `PORT` | `.env` | ✅ | `4000` | Backend server port |
-| `FRONTEND_URL` | `.env` | ✅ | `http://localhost:4001` | Frontend origin for CORS |
-| `JWT_SECRET` | `.env` | ✅ | `[32+ character string]` | JWT signing key |
-| `JWT_REFRESH_SECRET` | `.env` | ✅ | `[32+ character string]` | Refresh token signing key |
-| `PORT` | `frontend/.env.local` | ✅ | `4001` | Frontend Next.js port |
-| `NEXTAUTH_URL` | `frontend/.env.local` | ✅ | `http://localhost:4001` | NextAuth callback URL |
-| `NEXTAUTH_SECRET` | `frontend/.env.local` | ✅ | `[secure string]` | NextAuth session signing key |
-| `NEXT_PUBLIC_API_URL` | `frontend/.env.local` | ✅ | `http://localhost:4000` | Backend API endpoint |
-
-## Production Deployment Checklist
-
-- [ ] Change `NEXTAUTH_SECRET` to a new secure value
-- [ ] Change `JWT_SECRET` to a new secure value (min 32 chars)
-- [ ] Change `JWT_REFRESH_SECRET` to a new secure value (min 32 chars)
-- [ ] Change admin password from `ChangeMe123!`
-- [ ] Update `MONGODB_URI` to production database
-- [ ] Set `NODE_ENV=production` in `.env`
-- [ ] Use secure MongoDB credentials (avoid weak/default local credentials in production)
-- [ ] Configure proper FRONTEND_URL for production domain
-- [ ] Enable HTTPS for all endpoints
-- [ ] Implement rate limiting for API endpoints
-- [ ] Set up proper logging and monitoring
-- [ ] Review CORS settings for production domain
-
-## Summary
-
-For the application to work:
-1. ✅ Backend and frontend must run on configured ports (4000, 4001)
-2. ✅ Environment variables in both `.env` files must be synchronized
-3. ✅ MongoDB must be accessible with correct credentials
-4. ✅ NextAuth requires both SECRET and URL to be set correctly
-5. ✅ API URLs in frontend must point to correct backend port
-6. ✅ CORS must be configured to allow frontend origin
-7. ✅ JWT tokens must be generated and validated correctly
-8. ✅ Admin account must be seeded before first login
-
-If any of these are misconfigured, the application will not function properly.
+Leave `NEXT_PUBLIC_API_URL` empty to use the proxy, and configure `BACKEND_URL`
+to an address reachable by the Next.js server.
