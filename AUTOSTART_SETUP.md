@@ -10,7 +10,7 @@ cannot serve as instructions for other installations.
 
    ```bash
    pnpm install
-   pnpm --dir frontend install
+   pnpm -C frontend install
    pnpm run build
    BACKEND_URL=http://127.0.0.1:4010 pnpm -C frontend run build
    ```
