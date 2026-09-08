@@ -21,6 +21,13 @@ interface KioskStudent {
   status: StudentStatusEnum;
 }
 
+interface KioskScheduleSession {
+  date: Date;
+  status?: ClassStatusEnum;
+  notes?: string;
+  'S-instructor'?: string;
+}
+
 interface PopulatedSchedule {
   _id: Types.ObjectId;
   class_id: KioskClassInfo;
@@ -28,6 +35,7 @@ interface PopulatedSchedule {
   start_time: string;
   end_time: string;
   status: ClassStatusEnum;
+  sessions?: KioskScheduleSession[];
 }
 
 interface KioskSessionSource {
@@ -74,16 +82,14 @@ export class KioskAttendanceService {
     const { dateKey, start, end } = this.resolveDateRange(requestedDate);
     const sources = await this.getSessionSources(start, end);
     const attendanceBySessionAndStudent = await this.getAttendanceStatuses(sources, start, end);
-    const instructorsBySchedule = await this.getInstructorsBySchedule(sources, start, end);
     const allStudents = await this.getStudents();
 
     const sessions = sources.map(({ schedule }) => {
       const scheduleId = schedule._id.toString();
       const students = allStudents.filter((student) => this.isInClassCategories(student, schedule.class_id.categories));
       const otherStudents = allStudents.filter((student) => !this.isInClassCategories(student, schedule.class_id.categories));
-      // Use saved instructor name from attendance if available, otherwise use class default
-      const savedInstructor = instructorsBySchedule.get(scheduleId);
-      const instructorName = savedInstructor || schedule.class_id.instructor;
+      // Session-specific override (schedule.sessions[].S-instructor) takes precedence over the class default
+      const instructorName = this.resolveSessionInstructor(schedule, dateKey);
       return {
         id: scheduleId,
         className: schedule.class_id.name,
@@ -125,7 +131,7 @@ export class KioskAttendanceService {
       throw new KioskAttendanceError(400, 'Invalid student ID');
     }
 
-    const { start, end } = this.resolveDateRange(requestedDate);
+    const { dateKey, start, end } = this.resolveDateRange(requestedDate);
     const sources = await this.getSessionSources(start, end);
     const source = sources.find(({ schedule }) => schedule._id.toString() === scheduleId);
     if (!source) {
@@ -145,6 +151,8 @@ export class KioskAttendanceService {
       requestedPresentIds.has(student._id.toString()) && !activeStudents.some((activeStudent) => activeStudent._id.equals(student._id))
     );
     const studentsToRecord = [...activeStudents, ...additionalPresentStudents];
+    // Store the same UTC-midnight calendar date used by the dashboard so records line up across both entry points
+    const attendanceDate = this.dateOnlyUtc(dateKey);
     const operations = studentsToRecord.map((student) => {
       const category = this.categoryForStudent(student, source.schedule.class_id.categories);
       const status = requestedPresentIds.has(student._id.toString())
@@ -155,18 +163,18 @@ export class KioskAttendanceService {
           filter: {
             student_id: student._id,
             class_schedule_id: source.schedule._id,
+            date: attendanceDate,
           },
           update: {
             $set: {
               student_id: student._id,
               class_schedule_id: source.schedule._id,
-              date: start,
+              date: attendanceDate,
               category,
               status,
               notes: '',
               recorded_by: `kiosk:${kiosk.name}`,
               recorded_at: new Date(),
-              ...(instructorName && { instructor: instructorName }),
             },
           },
           upsert: true,
@@ -186,7 +194,7 @@ export class KioskAttendanceService {
     // 2. The schedule can be manually completed via the calendar interface
     // 3. A missed status update doesn't prevent future attendance recording
     try {
-      await this.completeSession(source);
+      await this.completeSession(source.schedule._id, dateKey, instructorName);
     } catch (error) {
       console.warn('Failed to mark schedule as completed, but attendance was recorded:', error);
       // Re-throw to inform the caller, but attendance data is safe
@@ -243,6 +251,24 @@ export class KioskAttendanceService {
     return { dateKey, start, end };
   }
 
+  // Calendar-date-only UTC timestamp, matching how the dashboard stores schedule/session dates
+  private dateOnlyUtc(dateKey: string): Date {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1, day));
+  }
+
+  private toUtcDateKey(date: Date): string {
+    return date.toISOString().slice(0, 10);
+  }
+
+  // A session's instructor may be overridden per-date via schedule.sessions[].S-instructor;
+  // falls back to the class's default instructor, matching the dashboard's getSessionInstructor logic.
+  private resolveSessionInstructor(schedule: PopulatedSchedule, dateKey: string): string {
+    const session = schedule.sessions?.find((candidate) => this.toUtcDateKey(new Date(candidate.date)) === dateKey);
+    const override = session?.['S-instructor']?.trim();
+    return override || schedule.class_id.instructor;
+  }
+
   private async getSessionSources(start: Date, end: Date): Promise<KioskSessionSource[]> {
     const schedules = await ClassScheduleModel.find({
       date: { $gte: start, $lt: end },
@@ -257,36 +283,6 @@ export class KioskAttendanceService {
       .select('name belt_level categories active status')
       .sort({ name: 1 })
       .lean<KioskStudent[]>();
-  }
-
-  private async getInstructorsBySchedule(
-    sources: KioskSessionSource[],
-    start: Date,
-    end: Date
-  ): Promise<Map<string, string>> {
-    const scheduleIds = sources.map(({ schedule }) => schedule._id);
-    if (scheduleIds.length === 0) {
-      return new Map();
-    }
-
-    // Get the most recent instructor name for each schedule
-    const attendance = await Attendance.find({
-      class_schedule_id: { $in: scheduleIds },
-      date: { $gte: start, $lte: end },
-      instructor: { $exists: true, $ne: null },
-    }).select('class_schedule_id instructor recorded_at').sort({ recorded_at: -1 }).lean();
-
-    const instructorMap = new Map<string, string>();
-    // Build map with most recent instructor per schedule (results are sorted by recorded_at desc)
-    attendance.forEach((entry) => {
-      const scheduleId = entry.class_schedule_id.toString();
-      // Only set if not already set (we iterate in descending order by recorded_at)
-      if (!instructorMap.has(scheduleId) && entry.instructor) {
-        instructorMap.set(scheduleId, entry.instructor);
-      }
-    });
-
-    return instructorMap;
   }
 
   private async getAttendanceStatuses(
@@ -310,12 +306,32 @@ export class KioskAttendanceService {
     ]));
   }
 
-  private async completeSession(source: KioskSessionSource): Promise<void> {
-    const schedule = await ClassScheduleModel.findById(source.schedule._id);
+  private async completeSession(scheduleId: Types.ObjectId, dateKey: string, instructorName?: string): Promise<void> {
+    const schedule = await ClassScheduleModel.findById(scheduleId);
     if (!schedule) {
       throw new KioskAttendanceError(404, 'Class schedule no longer exists');
     }
     schedule.status = ClassStatusEnum.COMPLETED;
+
+    const trimmedInstructor = instructorName?.trim();
+    if (trimmedInstructor) {
+      const sessions = (schedule.sessions ?? []) as unknown as KioskScheduleSession[];
+      const sessionIndex = sessions.findIndex((candidate) => this.toUtcDateKey(new Date(candidate.date)) === dateKey);
+      if (sessionIndex >= 0) {
+        sessions[sessionIndex].status = ClassStatusEnum.COMPLETED;
+        sessions[sessionIndex]['S-instructor'] = trimmedInstructor;
+      } else {
+        sessions.push({
+          date: this.dateOnlyUtc(dateKey),
+          status: ClassStatusEnum.COMPLETED,
+          notes: '',
+          'S-instructor': trimmedInstructor,
+        });
+      }
+      schedule.sessions = sessions as unknown as typeof schedule.sessions;
+      schedule.markModified('sessions');
+    }
+
     await schedule.save();
   }
 

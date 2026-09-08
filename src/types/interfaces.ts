@@ -138,7 +138,6 @@ export interface Attendance {
   notes?: string;
   recorded_by: string;
   recorded_at: Date;
-  instructor?: string;
   created_at?: Date;
   updated_at?: Date;
 }
