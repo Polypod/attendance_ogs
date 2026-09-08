@@ -17,8 +17,8 @@ This is a TypeScript Express.js backend for a karate school attendance managemen
 
 ### Database
 
-- `docker-compose up -d` - Start MongoDB container on port 27018
-- MongoDB connection: localhost:27018 with credentials in docker-compose.yml
+- `docker compose up -d` - Start MongoDB container on port 27019
+- MongoDB connection: localhost:27019 with credentials in docker-compose.yml
 
 ## Architecture
 
