@@ -24,8 +24,8 @@ MongoDB, and the frontend is a Next.js application.
 1. Install dependencies:
 
    ```bash
-   pnpm install
-   pnpm --dir frontend install
+  pnpm install
+  pnpm -C frontend install
    ```
 
 2. Create backend configuration:
