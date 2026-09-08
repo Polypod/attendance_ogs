@@ -2,65 +2,65 @@
 
 ## What This Is
 
-Attendance OGS är ett närvarosystem för en karateklubb/skola: hantera elever, klasser och pass, samt registrera och redigera närvaro. Nästa fokus är en ny rapportsida i dashboarden som gör det enkelt att ta ut sammanställningar och exportera data.
+Attendance OGS is an attendance system for a karate club/school: manage students, classes, and sessions, and record and edit attendance. The next focus is a new reporting page in the dashboard that makes it easy to generate summaries and export data.
 
 ## Core Value
 
-Admin och instruktörer kan snabbt få fram korrekt närvarodata (rådata eller summeringar), återanvända sparade vyer och exportera resultatet.
+Admins and instructors can quickly access accurate attendance data (raw data or summaries), reuse saved views, and export the results.
 
 ## Requirements
 
 ### Validated
 
-- ✓ Autentisering + rollbaserad åtkomst (RBAC) — befintligt
-- ✓ Elevhantering med kategorier och bältesnivåer — befintligt
-- ✓ Klass-/passhantering och kalender — befintligt
-- ✓ Närvaroregistrering per pass och elev, inkl. historikredigering — befintligt
-- ✓ Dashboard för dagens pass — befintligt
+- ✓ Authentication + role-based access (RBAC) — existing
+- ✓ Student management with categories and belt levels — existing
+- ✓ Class/session management and calendar — existing
+- ✓ Attendance registration per session and student, including historical edits — existing
+- ✓ Dashboard for today's sessions — existing
 
-- ✓ **Rapportsida (rådata)** för admin + instruktör — tabell (en rad per närvaro-registrering) med filter och paginering (Phase 1)
-- ✓ **Rapportsida (aggregerat läge)** — standard-grupperingar (student/instruktör/pass/klass) och nyckeltal (Phase 2)
+- ✓ **Reporting page (raw data)** for admin + instructor — table (one row per attendance record) with filters and pagination (Phase 1)
+- ✓ **Reporting page (aggregated mode)** — standard groupings (student/instructor/session/class) and key metrics (Phase 2)
 
 ### Active
 
-- [ ] **Kolumnhantering**: kunna visa/dölja valfria fält i tabellen
-- [ ] **Sortering + filtrering per fält** (inkl. datumintervall där relevant) samt **global fri-text-sök**
-- [ ] **Presets**: spara och återanvänd tabellinställningar server-side per användare, samt stöd för **delade presets**
-  - Preset ska omfatta: vy-läge (rå/agg), valda kolumner, sortering, filter, gruppering och nyckeltal
-- [ ] **CSV-export** av “synliga värden”: exportera hela filtrerade resultatet med de kolumner som är aktiva i vyn
+- [ ] **Column management**: ability to show/hide optional fields in the table
+- [ ] **Sorting + filtering per field** (including date ranges where relevant) as well as **global free-text search**
+- [ ] **Presets**: save and reuse table settings server-side per user, with support for **shared presets**
+  - A preset should include: view mode (raw/agg), selected columns, sorting, filters, grouping, and key metrics
+- [ ] **CSV export** of “visible values”: export the full filtered result with the columns active in the view
 
 ### Out of Scope
 
-- Diagram/BI-dashboard (t.ex. grafer, pivot-byggare) — inte kärnkrav för första leveransen
-- PDF/Excel-export — CSV räcker initialt
-- Avancerad behörighetsmodell per instruktör (”bara egna pass”) — initialt ser instruktörer all data
+- Charts/BI dashboard (e.g. graphs, pivot builder) — not a core requirement for the first release
+- PDF/Excel export — CSV is sufficient initially
+- Advanced permission model per instructor (”only their own sessions”) — initially, instructors can see all data
 
 ## Context
 
-- Monorepo: Express + Mongoose backend (`src/`) och Next.js App Router frontend (`frontend/src/`).
-- Domänkonfig (kategorier, bältesnivåer) är YAML-driven via `config/system.yaml` och `ConfigService`.
-- Närvarodata är kopplad till elev + pass (class schedule) + datum + status, och ska kunna sammanställas i flera dimensioner.
-- Rapportsidan ska vara “teacher-friendly” och fungera bra även på surfplatta.
+- Monorepo: Express + Mongoose backend (`src/`) and Next.js App Router frontend (`frontend/src/`).
+- Domain config (categories, belt levels) is YAML-driven via `config/system.yaml` and `ConfigService`.
+- Attendance data is linked to student + session (class schedule) + date + status, and must be able to be summarized across multiple dimensions.
+- The reporting page should be teacher-friendly and work well on tablets.
 
 ## Constraints
 
-- **Tech stack**: Behåll befintlig stack (Next.js/React + shadcn/ui/Tailwind i frontend; Express/Mongoose i backend) — minimera nya beroenden.
-- **Security/Access**: Rapporter är endast för admin + instruktör — varför: innehåller persondata och intern verksamhetsdata.
-- **Scalability**: CSV-export av hela filtrerade resultatet ska fungera även vid större datamängder — kan kräva server-side export/streaming.
-- **Presets**: Presets måste kunna sparas per användare och kunna markeras som delade/globalt återanvändbara.
+- **Tech stack**: Keep the existing stack (Next.js/React + shadcn/ui/Tailwind in the frontend; Express/Mongoose in the backend) — minimize new dependencies.
+- **Security/Access**: Reports are only for admin + instructor — why: they contain personal data and internal operational data.
+- **Scalability**: CSV export of the full filtered result must work even with larger data sets — this may require server-side export/streaming.
+- **Presets**: Presets must be savable per user and be able to be marked as shared/globally reusable.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 | -------- | --------- | ------- |
-| Två rapportlägen (rådata + aggregerat) | Behöver både detaljgranskning och snabba sammanställningar | Implemented (Phase 1–2) |
-| Admin + instruktör får åtkomst | Primära användare för uppföljning | — Pending |
-| Instruktörer ser all data initialt | Enklare regelverk, snabbare leverans | — Pending |
-| Presets sparas i DB per användare + delade presets | Återanvändning mellan enheter + teamstandard | — Pending |
-| CSV exporterar hela filtrerade resultatet med aktiva kolumner | Matchar ”synliga värden” och reell exportnytta | — Pending |
-| Global fri-text-sök utöver fältfilter | Snabb navigering för namn/klass | — Pending |
-| Standard-grupperingar: student, instruktör, pass, klass | Täcker vanligaste rapportdimensioner | — Pending |
-| Nyckeltal i v1: antal närvarande + total antal registreringar | Minsta men nyttiga summeringar | — Pending |
+| Two reporting modes (raw data + aggregated) | Need both detailed inspection and quick summaries | Implemented (Phase 1–2) |
+| Admin + instructor get access | Primary users for follow-up | — Pending |
+| Instructors can see all data initially | Simpler rules, faster delivery | — Pending |
+| Presets are saved in the DB per user + shared presets | Reuse across devices + team standardization | — Pending |
+| CSV exports the full filtered result with active columns | Matches “visible values” and real export value | — Pending |
+| Global free-text search in addition to field filters | Quick navigation for names/class | — Pending |
+| Standard groupings: student, instructor, session, class | Covers the most common reporting dimensions | — Pending |
+| Key metrics in v1: number present + total number of records | Minimal but useful summaries | — Pending |
 
 ## Evolution
 

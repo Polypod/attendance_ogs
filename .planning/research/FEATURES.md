@@ -1,6 +1,6 @@
 # Feature Research
 
-**Domain:** Rapporterings-UI för närvarosystem (karateklubb)
+**Domain:** Reporting UI for attendance system (karate club)
 **Researched:** 2026-04-13
 **Confidence:** MEDIUM
 
@@ -12,21 +12,21 @@ Features users assume exist. Missing these = product feels incomplete.
 
 | Feature | Why Expected | Complexity | Notes |
 | ------- | ------------ | ---------- | ----- |
-| Två lägen: **Rådata** + **Aggregerat** | Användare behöver både detaljgranskning och överblick | MEDIUM | Rådata = en rad per registrering. Aggregerat = fördefinierade grupperingar/nyckeltal. |
-| Datumintervall-filter (”från–till”) | Rapporter handlar nästan alltid om perioder | MEDIUM | Tidszon + ”daggräns” måste vara konsekvent (server- vs klienttolkning). |
-| Fältfilter per kolumn | Standard i alla moderna rapporttabeller | MEDIUM | Stöd för enum-filter (status), relationsfilter (klass/elev/instruktör), multi-select där relevant. |
-| Sortering per kolumn (inkl. sekundär sort) | Förväntat för att hitta topp/botten | LOW | Server-side sort vid stora dataset; lås sort på beräknade kolumner om de inte kan sorteras korrekt. |
-| Global fri-text-sök | Snabbt att hitta elev/klass utan att bygga filter | MEDIUM | Definiera vilka fält som ingår (t.ex. elevnamn, klassnamn). Undvik ”sök allt” om det blir dyrt. |
-| Kolumnhantering: visa/dölj + ordning | Alla vill kunna fokusera på ”sin” vy | MEDIUM | Spara per vy/preset. Undvik att exportera dolda kolumner. |
-| Paginering / ”load more” | Dataset blir snabbt stora | MEDIUM | Server-side paginering. Visa total träffar om billigt; annars ”ungefär” eller ”>N”. |
-| Snabba standard-grupperingar (agg) | Användare vill inte bygga egna pivots | MEDIUM | Minst: per student, per instruktör, per pass/session, per klass. |
-| Grundnyckeltal i agg-läge | Summeringar utan nyckeltal känns meningslöst | LOW | V1 enligt PROJECT.md: antal närvarande + total antal registreringar. |
-| CSV-export av filtrerat resultat (”synliga värden”) | Vanligt arbetsflöde: vidare i Excel/Sheets | HIGH | Kräver ofta server-side export/streaming för stora mängder. Exporten måste matcha aktiv kolumnuppsättning. |
-| Sparade vyer/presets (privata) | Återanvändning mellan dagar/enheter | MEDIUM | Preset inkluderar: läge, kolumner, sort, filter, gruppering, nyckeltal. |
-| Delade presets (teamstandard) | Konsistens inom klubben och onboarding | MEDIUM | Behörighet: vem får skapa/ändra delade? Versionera eller ”kopiera till egen” för att undvika att bryta andra. |
-| Rollbaserad åtkomst (admin + instruktör) | Rapporter innehåller persondata | LOW | Reuse befintlig RBAC. Logga exporthändelser vid behov. |
-| Stabil, ”teacher-friendly” UX (surfplatta) | Primärt användarscenario enligt PROJECT.md | MEDIUM | Stora tryckytor, tydliga tomlägen, undvik små filter-popovers som är svåra på touch. |
-| Tydliga fel-/tomlägen + laddningstillstånd | Användaren måste förstå ”varför ser jag inget?” | LOW | Ex: ”Inga resultat för valt datumintervall”, ”Du saknar behörighet”, ”Export pågår”. |
+| Two modes: **Raw Data** + **Aggregated** | Users need both detailed inspection and high-level overview | MEDIUM | Raw data = one row per registration. Aggregated = predefined groupings/metrics. |
+| Date range filter (“from–to”) | Reports are almost always about periods | MEDIUM | Time zone + “day boundary” must be consistent (server vs client interpretation). |
+| Field filters per column | Standard in all modern reporting tables | MEDIUM | Support enum filters (status), relationship filters (class/student/instructor), multi-select where relevant. |
+| Sorting per column (including secondary sort) | Expected for finding top/bottom items | LOW | Server-side sort for large datasets; lock sorting on computed columns if they cannot be sorted correctly. |
+| Global free-text search | Quick way to find a student/class without building filters | MEDIUM | Define which fields are included (e.g. student name, class name). Avoid “search everything” if it becomes expensive. |
+| Column management: show/hide + order | Everyone wants to focus on “their” view | MEDIUM | Save per view/preset. Avoid exporting hidden columns. |
+| Pagination / “load more” | Datasets become large quickly | MEDIUM | Server-side pagination. Show total hits if cheap; otherwise “approximate” or “>N”. |
+| Quick standard groupings (agg) | Users do not want to build their own pivots | MEDIUM | At minimum: by student, by instructor, by class/session, by class. |
+| Core metrics in agg mode | Summaries without metrics feel pointless | LOW | V1 according to PROJECT.md: present count + total registration count. |
+| CSV export of filtered result (“visible values”) | Common workflow: continue in Excel/Sheets | HIGH | Often requires server-side export/streaming for large volumes. The export must match the active column set. |
+| Saved views/presets (private) | Reuse across days/devices | MEDIUM | Preset includes: mode, columns, sort, filter, grouping, metrics. |
+| Shared presets (team standard) | Consistency within the club and easier onboarding | MEDIUM | Permission: who can create/edit shared? Version them or “copy to own” to avoid breaking others. |
+| Role-based access (admin + instructor) | Reports contain personal data | LOW | Reuse existing RBAC. Log export events if needed. |
+| Stable, “teacher-friendly” UX (tablet) | Primary user scenario according to PROJECT.md | MEDIUM | Large tap targets, clear empty states, avoid tiny filter popovers that are hard on touch. |
+| Clear error/empty states + loading states | The user must understand “why am I seeing nothing?” | LOW | E.g. “No results for selected date range”, “You do not have permission”, “Export in progress”. |
 
 ### Differentiators (Competitive Advantage)
 
@@ -34,16 +34,16 @@ Features that set the product apart. Not required, but valuable.
 
 | Feature | Value Proposition | Complexity | Notes |
 | ------- | ----------------- | ---------- | ----- |
-| Drill-down från agg → rådata (”klicka på en grupp och se raderna”) | Gör agg-läge granskningsbart och ökar förtroende | MEDIUM | Implementera som att agg-raden genererar ett filter som öppnar rådata med samma period/urval. |
-| Period-jämförelse (t.ex. ”denna månad vs förra”) | Snabb trendanalys utan export | MEDIUM | Kräver tydliga definitioner (kalendermånad/vecka) och normalisering. |
-| Metriker som ”närvarograd”, ”streak”, ”unika deltagare” | Mer värde än rena counts | MEDIUM/HIGH | Behöver definierade nämnare (planerade pass? registrerade elever? valbara). |
-| ”Data quality”-indikatorer i rapporter | Fångar fel i underlaget tidigt | MEDIUM | Ex: elever utan kategori/bälte, pass utan instruktör, dubbla registreringar. |
-| Snabbfilterchips (t.ex. ”senaste 7 dagar”, ”endast frånvaro”) | Mindre friktion för vanliga frågor | LOW | Kompletterar fältfilter; bör vara förutsägbara och enkla att nollställa. |
-| Preset-delning via länk + kopiera/klona | Enkelt att sprida standardvyer | MEDIUM | Undvik att länken blir en ”hemlig nyckel” som kringgår RBAC; kräver inloggning. |
-| Export som bakgrundsjobb med notifiering | Export funkar även för stora mängder | HIGH | UI: ”Export startad” → senare hämtning. Backend: kö, status, TTL. |
-| ”Explain this number” (förklaring av agg-definition) | Minskar tolkningstvister i klubben | LOW/MEDIUM | Ex: tooltip: vilka statuser räknas som närvarande, vilken tidszon, vilka filter aktiva. |
-| Favoriter/”pin” för de 3 vanligaste presets | Snabb åtkomst på mobilen | LOW | Små UX-vinster, hög användbarhet för instruktörer. |
-| Lokaliserade datum/termer (sv/en) | Färre missförstånd, bättre adoptionsgrad | LOW | Rapporter är extra känsliga för datumformat och begrepp. |
+| Drill-down from agg → raw data (“click a group and see the rows”) | Makes agg mode auditable and increases trust | MEDIUM | Implement by having the agg row generate a filter that opens raw data with the same period/selection. |
+| Period comparison (e.g. “this month vs last”) | Quick trend analysis without export | MEDIUM | Requires clear definitions (calendar month/week) and normalization. |
+| Metrics like “attendance rate”, “streak”, “unique participants” | More value than pure counts | MEDIUM/HIGH | Needs defined denominators (scheduled sessions? registered students? selectable). |
+| “Data quality” indicators in reports | Catches source-data problems early | MEDIUM | E.g. students without category/belt, sessions without instructor, duplicate registrations. |
+| Quick filter chips (e.g. “last 7 days”, “absence only”) | Less friction for common questions | LOW | Complements field filters; should be predictable and easy to reset. |
+| Preset sharing via link + copy/clone | Easy way to spread standard views | MEDIUM | Avoid the link becoming a “secret key” that bypasses RBAC; login should still be required. |
+| Export as background job with notification | Export works even for large volumes | HIGH | UI: “Export started” → later download. Backend: queue, status, TTL. |
+| “Explain this number” (explanation of aggregate definition) | Reduces interpretation disputes in the club | LOW/MEDIUM | E.g. tooltip: which statuses count as present, which time zone, which filters are active. |
+| Favorites/“pin” for the 3 most common presets | Quick access on mobile | LOW | Small UX gains, high usefulness for instructors. |
+| Localized dates/terms (sv/en) | Fewer misunderstandings, better adoption | LOW | Reports are especially sensitive to date formats and terminology. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
@@ -51,45 +51,45 @@ Features that seem good but create problems.
 
 | Feature | Why Requested | Why Problematic | Alternative |
 | ------- | ------------- | --------------- | ----------- |
-| ”Bygg din egen pivot/BI” (fri pivot builder) | Känns flexibelt och ”proffsigt” | Exploderar scope, kräver semantiskt lager, svår support | Fördefinierade grupperingar + ev. ett fåtal valbara group-by i v2. |
-| Diagram/BI-dashboard i v1 | ”Det ser snyggt ut” | Tar fokus från korrekt data, kräver fler beslut (axlar, normalisering) | Lägg som v2+ när tabell/agg är stabilt. |
-| Klient-side filtrering av hela datasetet | Snabbt att bygga initialt | Skalar dåligt, tungt på surfplatta, risk för att PII laddas i onödan | Server-side filtrering/paginering + index i DB. |
-| Godtyckliga ad-hoc SQL/JSON queries i UI | Power users vill ha full kontroll | Hög säkerhetsrisk, svårt att säkra/limita, skapar supportbörda | Avgränsad query-modell via filter/sort + admin-only ”debug export” i backend vid behov. |
-| Excel/PDF-export som ”måste” i v1 | Upplevs som mer officiellt än CSV | Mycket mer underhåll (format, layout, teckenkodning) | CSV i v1; utvärdera Excel (XLSX) först när verkligt behov finns. |
-| Realtidsuppdatering (live refresh) | ”Alltid uppdaterat” | Komplexitet utan tydlig nytta i historiska rapporter | Manuellt refresh + tydlig ”senast uppdaterad” om relevant. |
-| Delade presets utan styrning (alla kan ändra allt) | ”Enklast” | Leder till att standardvyer plötsligt ändras för alla | Ägarskap + behörighet (t.ex. admin äger delade) och/eller ”publicera ny version”. |
+| “Build your own pivot/BI” (free-form pivot builder) | Feels flexible and “professional” | Scope explodes, requires a semantic layer, hard to support | Predefined groupings + possibly a small number of selectable group-by options in v2. |
+| Charts/BI dashboard in v1 | “It looks nice” | Distracts from correct data, requires more decisions (axes, normalization) | Add as v2+ once table/agg is stable. |
+| Client-side filtering of the entire dataset | Quick to build initially | Scales poorly, heavy on tablets, risks loading PII unnecessarily | Server-side filtering/pagination + DB indexes. |
+| Arbitrary ad hoc SQL/JSON queries in the UI | Power users want full control | High security risk, hard to secure/limit, creates support burden | Bounded query model via filter/sort + admin-only “debug export” in the backend if needed. |
+| Excel/PDF export as a “must” in v1 | Feels more official than CSV | Much more maintenance (format, layout, encoding) | CSV in v1; evaluate Excel (XLSX) only when there is real demand. |
+| Real-time updates (live refresh) | “Always up to date” | Complexity without clear value in historical reports | Manual refresh + clear “last updated” if relevant. |
+| Shared presets without guardrails (everyone can edit everything) | “Simplest” | Leads to standard views suddenly changing for everyone | Ownership + permissions (e.g. admin owns shared) and/or “publish new version”. |
 
 ## Feature Dependencies
 
 ```text
-Server-side filtrering/sort/paginering
-    └──requires──> Rapporterings-API med stabil query-modell
-                       └──requires──> Indexering/optimering i DB för vanliga filter
+Server-side filtering/sort/pagination
+    └──requires──> Reporting API with stable query model
+                       └──requires──> Indexing/optimization in DB for common filters
 
-Aggregerat läge
-    └──requires──> Server-side aggregation pipelines (eller pre-aggregation)
+Aggregated mode
+    └──requires──> Server-side aggregation pipelines (or pre-aggregation)
 
-CSV-export (hela filtrerade resultatet)
+CSV export (entire filtered result set)
     └──requires──> Server-side export/streaming
-                       └──enhances──> Export som bakgrundsjobb (för stora mängder)
+                       └──enhances──> Export as background job (for large volumes)
 
-Delade presets
-    └──requires──> RBAC + preset-ägarskap/behörigheter
+Shared presets
+    └──requires──> RBAC + preset ownership/permissions
 
-Drill-down agg → rådata
-    └──requires──> Att agg-rader kan översättas till rådatafilter (entydiga dimensioner)
+Drill-down agg → raw data
+    └──requires──> Agg rows can be translated into raw-data filters (unambiguous dimensions)
 
-Global sök
-    └──conflicts──> Obegränsad "sök i alla fält" (dyrt/oklart)
+Global search
+    └──conflicts──> Unbounded "search all fields" (expensive/unclear)
 ```
 
 ### Dependency Notes
 
-- **Server-side filtrering/sort/paginering kräver Rapporterings-API:** UI:t blir snabbt långsamt och inkonsekvent om logik dupliceras på klienten.
-- **Aggregerat läge kräver server-side aggregation:** Att aggregera på klienten kräver att du först hämtar alla rader, vilket inte skalar.
-- **CSV-export kräver ofta server-side streaming:** För att undvika timeouts och minnesproblem när exporten kan bli stor.
-- **Delade presets kräver RBAC + ägarskap:** Annars uppstår ”vem ändrade min vy?”-problem och oavsiktliga förändringar.
-- **Global sök konflikterar med otydlig sökscope:** Definiera fält (namn/klass) och gör det förutsägbart.
+- **Server-side filtering/sort/pagination requires a Reporting API:** The UI quickly becomes slow and inconsistent if logic is duplicated on the client.
+- **Aggregated mode requires server-side aggregation:** Aggregating on the client means first fetching all rows, which does not scale.
+- **CSV export often requires server-side streaming:** To avoid timeouts and memory issues when exports can become large.
+- **Shared presets require RBAC + ownership:** Otherwise you get “who changed my view?” problems and accidental changes.
+- **Global search conflicts with unclear search scope:** Define the fields (name/class) and make it predictable.
 
 ## MVP Definition
 
@@ -97,43 +97,43 @@ Global sök
 
 Minimum viable product — what's needed to validate the concept.
 
-- [ ] Rådata-tabell med server-side paginering, fältfilter, sort, global sök — kärnnytta för att hitta och exportera data
-- [ ] Aggregerat läge med standard-grupperingar + grundnyckeltal — kärnnytta för snabb överblick
-- [ ] Kolumnhantering (visa/dölj) som påverkar både vy och export — matchar ”synliga värden”
-- [ ] Presets: privata + delade (med enkel behörighetsmodell) — återanvändning och standardisering
-- [ ] CSV-export av hela filtrerade resultatet (synliga kolumner) — praktiskt arbetsflöde
+- [ ] Raw data table with server-side pagination, field filters, sort, global search — core value for finding and exporting data
+- [ ] Aggregated mode with standard groupings + core metrics — core value for quick overview
+- [ ] Column management (show/hide) that affects both view and export — matches “visible values”
+- [ ] Presets: private + shared (with a simple permission model) — reuse and standardization
+- [ ] CSV export of the entire filtered result set (visible columns) — practical workflow
 
 ### Add After Validation (v1.x)
 
 Features to add once core is working.
 
-- [ ] Drill-down agg → rådata — när användare vill verifiera summeringar utan export
-- [ ] Export som bakgrundsjobb med notifiering — när exports börjar time:a ut eller bli stora
-- [ ] Period-jämförelse — när rapporter används för uppföljning över tid
-- [ ] Data-quality indikatorer — när man vill öka datatillit och fånga felregistreringar
+- [ ] Drill-down agg → raw data — when users want to verify summaries without exporting
+- [ ] Export as background job with notification — when exports start timing out or becoming large
+- [ ] Period comparison — when reports are used for follow-up over time
+- [ ] Data quality indicators — when you want to increase trust in the data and catch bad registrations
 
 ### Future Consideration (v2+)
 
 Features to defer until product-market fit is established.
 
-- [ ] Valbar group-by/”semi-pivot” (begränsad) — först när standardgrupperingar inte räcker
-- [ ] Excel (XLSX) export — först när CSV inte räcker för målgruppen
-- [ ] Diagram/BI-visualisering — efter att definitioner/nyckeltal är stabila
+- [ ] Selectable group-by/“semi-pivot” (limited) — only once standard groupings are no longer enough
+- [ ] Excel (XLSX) export — only when CSV is no longer enough for the target audience
+- [ ] Charts/BI visualization — after definitions/metrics are stable
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 | ------- | ---------- | ------------------- | -------- |
-| Rådata-tabell: filter/sort/paginering | HIGH | MEDIUM | P1 |
-| Aggregerat läge: standardgrupperingar + nyckeltal | HIGH | MEDIUM | P1 |
-| Kolumn visa/dölj (inkl. export) | HIGH | MEDIUM | P1 |
-| Presets privata + delade | HIGH | MEDIUM | P1 |
-| CSV-export (hela filtrerade resultatet) | HIGH | HIGH | P1 |
-| Global fri-text-sök | MEDIUM | MEDIUM | P2 |
-| Drill-down agg → rådata | MEDIUM/HIGH | MEDIUM | P2 |
-| Export som bakgrundsjobb | MEDIUM | HIGH | P2 |
-| Period-jämförelse | MEDIUM | MEDIUM | P3 |
-| Data quality-indikatorer | MEDIUM | MEDIUM | P3 |
+| Raw data table: filter/sort/pagination | HIGH | MEDIUM | P1 |
+| Aggregated mode: standard groupings + metrics | HIGH | MEDIUM | P1 |
+| Column show/hide (incl. export) | HIGH | MEDIUM | P1 |
+| Private + shared presets | HIGH | MEDIUM | P1 |
+| CSV export (entire filtered result set) | HIGH | HIGH | P1 |
+| Global free-text search | MEDIUM | MEDIUM | P2 |
+| Drill-down agg → raw data | MEDIUM/HIGH | MEDIUM | P2 |
+| Export as background job | MEDIUM | HIGH | P2 |
+| Period comparison | MEDIUM | MEDIUM | P3 |
+| Data quality indicators | MEDIUM | MEDIUM | P3 |
 
 **Priority key:**
 
@@ -143,19 +143,19 @@ Features to defer until product-market fit is established.
 
 ## Competitor Feature Analysis
 
-| Feature | Competitor A (Spreadsheets: Excel/Sheets) | Competitor B (”typiskt medlems-/klubbadmin-system”) | Our Approach |
+| Feature | Competitor A (Spreadsheets: Excel/Sheets) | Competitor B (“typical membership/club admin system”) | Our Approach |
 | ------- | ----------------------------------------- | --------------------------------------------------- | ----------- |
-| Rådata + egna filter/sort | Mycket starkt när datan väl är exporterad | Ofta begränsat eller ”fast” | Bygg bra tabell i appen så export inte är enda vägen. |
-| Aggregeringar/nyckeltal | Kräver manuellt arbete (pivot/formler) | Ofta enkla sammanställningar | Fördefinierade summeringar som matchar karate-skolans behov. |
-| Sparade vyer/presets | Möjligt via delade ark/flikar | Varierar | Presets i DB: privata + delade standardvyer. |
-| CSV-export | Standard | Vanligt | Export ”synliga värden” och hela filtrerade datasetet. |
-| Drill-down och spårbarhet | Kräver manuellt arbete | Ofta saknas | Drill-down från agg till rådata med samma filter. |
+| Raw data + custom filter/sort | Very strong once the data has been exported | Often limited or “fixed” | Build a strong table in the app so export is not the only path. |
+| Aggregations/metrics | Requires manual work (pivot/formulas) | Often simple summaries | Predefined summaries that match the karate school’s needs. |
+| Saved views/presets | Possible via shared sheets/tabs | Varies | Presets in DB: private + shared standard views. |
+| CSV export | Standard | Common | Export “visible values” and the entire filtered dataset. |
+| Drill-down and traceability | Requires manual work | Often missing | Drill-down from agg to raw data with the same filters. |
 
 ## Sources
 
-- `.planning/PROJECT.md` (krav och scope för rapportsidan)
-- Praktiska UX-mönster från datagrids/rapporttabeller (generellt branschmönster; ej projektspecifika externa källor)
+- `.planning/PROJECT.md` (requirements and scope for the reports page)
+- Practical UX patterns from datagrids/report tables (general industry pattern; not project-specific external sources)
 
 ---
-*Feature research for: Rapporterings-UI för närvarosystem*
+*Feature research for: Reporting UI for attendance system*
 *Researched: 2026-04-13*
