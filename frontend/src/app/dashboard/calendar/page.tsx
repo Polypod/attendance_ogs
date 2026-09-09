@@ -272,13 +272,16 @@ export default function CalendarPage() {
 
   async function handleBulkDelete() {
     if (!session?.accessToken || selectedSchedules.size === 0) {
+      console.warn('handleBulkDelete: Missing accessToken or no schedules selected');
       return;
     }
 
     setError(null);
+    console.log('handleBulkDelete: Starting bulk delete with', selectedSchedules.size, 'schedules');
     try {
       const api = createApiClient((session as any).accessToken);
       const selectedEntries = schedules.filter((schedule) => selectedSchedules.has(getSelectionKey(schedule)));
+      console.log('handleBulkDelete: Selected entries:', selectedEntries.length);
       const recurringDatesBySchedule = new Map<string, Set<string>>();
       const standaloneScheduleIds = new Set<string>();
 
@@ -301,15 +304,26 @@ export default function CalendarPage() {
         await api.put(`/api/schedules/${scheduleId}`, { sessions: updatedSessions });
       }
 
+      console.log('handleBulkDelete: About to delete', standaloneScheduleIds.size, 'standalone schedules');
       for (const scheduleId of standaloneScheduleIds) {
-        await api.delete(`/api/schedules/${scheduleId}`);
+        console.log('handleBulkDelete: Deleting standalone schedule:', scheduleId);
+        try {
+          const response = await api.delete(`/api/schedules/${scheduleId}`);
+          console.log('handleBulkDelete: Successfully deleted schedule:', scheduleId, response);
+        } catch (err) {
+          console.error('handleBulkDelete: Failed to delete schedule', scheduleId, err);
+          throw err;
+        }
       }
 
+      console.log('handleBulkDelete: All deletions completed successfully');
       setSelectedSchedules(new Set());
       setBulkDeleteDialogOpen(false);
       await fetchSchedules();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to delete selected schedules");
+      const errorMsg = e instanceof Error ? e.message : "Failed to delete selected schedules";
+      console.error('handleBulkDelete: Error', errorMsg, e);
+      setError(errorMsg);
     }
   }
 
@@ -461,13 +475,18 @@ export default function CalendarPage() {
   }
 
   async function handleDeleteSchedule() {
-    if (!selectedSchedule || !session?.accessToken) return;
+    if (!selectedSchedule || !session?.accessToken) {
+      console.warn('handleDeleteSchedule: Missing selectedSchedule or accessToken');
+      return;
+    }
     setError(null);
+    console.log('handleDeleteSchedule: Starting delete for schedule:', selectedSchedule._id, selectedSchedule);
     try {
       const api = createApiClient((session as any)?.accessToken);
       
       // Check if this is a recurring instance - if so, delete only the session
       if ((selectedSchedule as any)._isRecurringInstance && (selectedSchedule as any)._originalScheduleId) {
+        console.log('handleDeleteSchedule: This is a recurring instance, will delete session only');
         const instanceDate = selectedSchedule.date.split('T')[0];
         
         // Fetch current schedule to get all sessions
@@ -489,13 +508,23 @@ export default function CalendarPage() {
         ));
       } else {
         // For non-recurring schedules, delete normally
-        await api.delete(`/api/schedules/${selectedSchedule._id}`);
+        console.log('handleDeleteSchedule: This is a standalone schedule, deleting:', selectedSchedule._id);
+        try {
+          const response = await api.delete(`/api/schedules/${selectedSchedule._id}`);
+          console.log('handleDeleteSchedule: Successfully deleted:', selectedSchedule._id, response);
+        } catch (err) {
+          console.error('handleDeleteSchedule: Failed to delete:', selectedSchedule._id, err);
+          throw err;
+        }
         setSchedules((prev) => prev.filter((s) => s._id !== selectedSchedule._id));
       }
       
+      console.log('handleDeleteSchedule: Deletion completed successfully');
       setDeleteDialogOpen(false);
       setSelectedSchedule(null);
     } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : "Failed to delete schedule";
+      console.error('handleDeleteSchedule: Error:', errorMsg, e);
       if (e instanceof Error) setError(e.message);
       else setError("Failed to delete schedule");
     }
