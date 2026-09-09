@@ -223,10 +223,22 @@ export class ScheduleController {
   async deleteSchedule(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
+      const userId = req.user?._id;
+      const userRole = req.user?.role;
+      
+      logger.info('ScheduleController.deleteSchedule_called', {
+        scheduleId: id,
+        userId,
+        userRole
+      });
+      
       const result = await deletionService.deleteScheduleCascade(id);
       const deletedSchedule = result?.deletedSchedule;
 
       if (!deletedSchedule) {
+        logger.warn('ScheduleController.deleteSchedule_not_found', {
+          scheduleId: id
+        });
         res.status(404).json({ 
           success: false, 
           message: 'Schedule not found' 
@@ -234,16 +246,25 @@ export class ScheduleController {
         return;
       }
       
+      logger.info('ScheduleController.deleteSchedule_success', {
+        scheduleId: id,
+        userId
+      });
+      
       res.status(200).json({ 
         success: true, 
         message: 'Schedule deleted successfully',
         data: deletedSchedule 
       });
     } catch (error) {
+      logger.error('ScheduleController.deleteSchedule_error', {
+        scheduleId: req.params.id,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       res.status(500).json({ 
         success: false, 
         message: 'Error deleting schedule',
-        error: error.message 
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
