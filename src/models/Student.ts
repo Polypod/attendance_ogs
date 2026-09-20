@@ -105,6 +105,24 @@ const studentSchema = new Schema<IStudentDocument>({
     type: Boolean,
     default: true,
     required: false
+  },
+  // Link back to the member register (OGS/PayloadCMS). Students without an
+  // external_id were created locally and are never touched by the sync.
+  external_source: {
+    type: String,
+    required: false,
+    enum: {
+      values: ['payload'],
+      message: 'Unsupported external source: {VALUE}'
+    }
+  },
+  external_id: {
+    type: String,
+    required: false
+  },
+  last_synced_at: {
+    type: Date,
+    required: false
   }
 }, {
   timestamps: { 
@@ -117,6 +135,14 @@ const studentSchema = new Schema<IStudentDocument>({
 // Reporting pipelines often filter out inactive students after lookup.
 // This compound index supports those filters when pushed down.
 studentSchema.index({ active: 1, status: 1 });
+
+// One student per member in the register. A partial index rather than a sparse
+// one: sparse still indexes explicit nulls, so a second locally created student
+// would collide with the first as soon as the field is written as null.
+studentSchema.index(
+  { external_id: 1 },
+  { unique: true, partialFilterExpression: { external_id: { $type: 'string' } } }
+);
 
 
 

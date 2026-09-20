@@ -24,10 +24,39 @@ Start with `cp .env.example .env` and replace all placeholders.
 | `SLOW_REQUEST_THRESHOLD_MS` | No | Threshold for logging slow requests. |
 | `SEED_ADMIN_EMAIL` | No | Email for `seed:admin`; defaults to `admin@karateattendance.com`. |
 | `SEED_ADMIN_PASSWORD` | No | Password for `seed:admin`; defaults to `ChangeMe123!`. |
+| `OGS_SYNC_URL` | For member sync | Member export endpoint in the OGS project. |
+| `OGS_SYNC_API_KEY` | For member sync | Payload API key of the OGS sync service user. |
+| `OGS_SYNC_TIMEOUT_MS` | No | Export request timeout; defaults to `30000`. |
+| `MEMBER_SYNC_ENABLED` | No | Set to `true` to arm the nightly sync; off otherwise. |
+| `MEMBER_SYNC_HOUR` | No | Hour of the nightly sync (0-23); defaults to `3`. |
+| `MEMBER_SYNC_MINUTE` | No | Minute of the nightly sync (0-59); defaults to `0`. |
+| `MEMBER_SYNC_TIMEZONE` | No | Timezone for the schedule; defaults to `Europe/Stockholm`. |
 
 `BCRYPT_ROUNDS` is not an active setting; passwords are hashed with 10 rounds
 in the model. Do not add it to deployment configuration expecting it to alter
 application behavior.
+
+### Member register sync
+
+The OGS member register is the source of truth for member identity. Mapping
+between the two systems lives in `config/system.yaml` under `member_sync`, not
+in code, so categories and belt levels can be adjusted without a release.
+
+- `category_map` maps a member category name in OGS to local categories.
+- `unmapped_category_action` decides what happens to members whose category is
+  missing or unmapped: `report` (skip and flag for review), `skip`, or
+  `default` (use `default_categories`). A student requires at least one
+  category, so these members cannot simply be created anyway.
+- `belt_map` maps the OGS grade to a local belt level; `null` clears the field.
+  An unknown grade leaves the belt untouched and raises a warning.
+- `deactivate_missing` deactivates students whose member disappeared from the
+  export entirely.
+
+Admins can preview and trigger a sync from Settings in the dashboard, or call
+`POST /api/sync/members/preview`, `POST /api/sync/members/run`, and
+`GET /api/sync/members/status` directly. Every run is recorded in the
+`membersyncruns` collection. The sync never deletes students, and never
+modifies students that were created locally.
 
 ## Frontend: `frontend/.env.local`
 

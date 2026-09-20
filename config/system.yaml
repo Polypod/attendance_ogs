@@ -27,6 +27,11 @@ categories:
     description: "Avancerad träning för alla åldrar"
     order: 4
 
+  - value: "instruktor"
+    label: "Instruktör"
+    description: "Instruktörer (motsvarar kategorin Instructor i medlemsregistret)"
+    order: 5
+
 # Belt level progression
 # Defines the ranking system for students (Goju-ryu karate system)
 belt_levels:
@@ -104,3 +109,37 @@ belt_levels:
     label: "Black Belt (5th Dan)"
     rank: 15
     color: "#000000"
+
+# Synkronisering av medlemmar från medlemsregistret (OGS/PayloadCMS)
+# Medlemsregistret är sanningskälla: vid skillnad skrivs värdet här över.
+# Adress och API-nyckel konfigureras via miljövariabler, inte här.
+member_sync:
+  # Medlemskategori i OGS -> kategorier här. Nycklarna är kategorinamnen i OGS.
+  category_map:
+    Kids: ["barn"]
+    Youth: ["ungdom"]
+    Adults: ["vuxen"]
+    Advanced: ["avancerad"]
+    Instructor: ["instruktor"]
+
+  # En medlem utan kategori kan inte skapas här eftersom minst en kategori krävs.
+  #   report  = hoppa över och rapportera som "kräver åtgärd"
+  #   skip    = hoppa över tyst
+  #   default = använd default_categories nedan
+  unmapped_category_action: "report"
+  default_categories: []
+
+  # grade i OGS -> belt_level här. null tömmer bältesfältet.
+  # OGS saknar upplösning under brown och black, så de mappas till en fast nivå.
+  belt_map:
+    white: "10kyu"
+    yellow: "8kyu"
+    orange: "7kyu"
+    green: "6kyu"
+    blue: "5kyu"
+    brown: "1kyu"
+    black: "black_1st"
+    instructor: null
+
+  # Medlem som försvinner helt ur exporten avaktiveras i stället för att raderas.
+  deactivate_missing: true
