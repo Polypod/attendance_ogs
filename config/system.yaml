@@ -110,6 +110,16 @@ belt_levels:
     rank: 15
     color: "#000000"
 
+  - value: "black_6th"
+    label: "Black Belt (6th Dan)"
+    rank: 16
+    color: "#000000"
+
+  - value: "black_7th"
+    label: "Black Belt (7th Dan)"
+    rank: 17
+    color: "#000000"
+
 # Synkronisering av medlemmar från medlemsregistret (OGS/PayloadCMS)
 # Medlemsregistret är sanningskälla: vid skillnad skrivs värdet här över.
 # Adress och API-nyckel konfigureras via miljövariabler, inte här.
@@ -130,7 +140,7 @@ member_sync:
   default_categories: []
 
   # grade i OGS -> belt_level här. null tömmer bältesfältet.
-  # OGS saknar upplösning under brown och black, så de mappas till en fast nivå.
+  # OGS saknar upplösning under brown, så den mappas till en fast nivå.
   belt_map:
     white: "10kyu"
     yellow: "8kyu"
@@ -140,6 +150,19 @@ member_sync:
     brown: "1kyu"
     black: "black_1st"
     instructor: null
+
+  # Grader där dan-nivån framgår av fältet kyuDanGrade i OGS i stället för av
+  # grade. För dessa används dan_map nedan, inte belt_map.
+  dan_grades: ["black"]
+
+  # kyuDanGrade -> belt_level. Saknas dan-numret lämnas bältet orört och raden
+  # flaggas för granskning, i stället för att gissa på 1 dan.
+  dan_map:
+    1: "black_1st"
+    2: "black_2nd"
+    3: "black_3rd"
+    4: "black_4th"
+    5: "black_5th"
 
   # Medlem som försvinner helt ur exporten avaktiveras i stället för att raderas.
   deactivate_missing: true

@@ -27,6 +27,7 @@ export interface OgsMember {
   category: string | null;
   categoryId: string | null;
   grade: string | null;
+  kyuDanGrade: number | null;
   status: string | null;
   isActive: boolean;
   active: boolean;
@@ -515,12 +516,50 @@ export class MemberSyncService {
       return { apply: true, value: '' };
     }
 
+    // For black belts the level lives in kyuDanGrade, not in grade: OGS has a
+    // single `black` option for every dan. Reading belt_map here would collapse
+    // every dan holder onto the same belt.
+    if (syncConfig.dan_grades.includes(grade)) {
+      return this.resolveDanBeltLevel(member, syncConfig, grade, warnings);
+    }
+
     if (!(grade in syncConfig.belt_map)) {
       warnings.push(`Grade "${grade}" has no mapping in member_sync.belt_map`);
       return { apply: false, value: '' };
     }
 
     return { apply: true, value: syncConfig.belt_map[grade] ?? '' };
+  }
+
+  /**
+   * Resolve a dan-graded belt from kyuDanGrade.
+   *
+   * A missing or unmapped dan number leaves the belt untouched rather than
+   * falling back to the lowest dan. Guessing is what made every black belt look
+   * like a 1st dan; a flagged row gets the number filled in at the source.
+   */
+  private resolveDanBeltLevel(
+    member: OgsMember,
+    syncConfig: MemberSyncConfig,
+    grade: string,
+    warnings: string[]
+  ): { apply: boolean; value: string } {
+    const dan = member.kyuDanGrade;
+
+    if (typeof dan !== 'number' || !Number.isInteger(dan) || dan <= 0) {
+      warnings.push(
+        `Grade "${grade}" requires a dan number in Kyu/Dan Grade in the member register`
+      );
+      return { apply: false, value: '' };
+    }
+
+    const mapped = syncConfig.dan_map[String(dan)];
+    if (mapped === undefined) {
+      warnings.push(`Dan ${dan} has no mapping in member_sync.dan_map`);
+      return { apply: false, value: '' };
+    }
+
+    return { apply: true, value: mapped ?? '' };
   }
 
   private diff(existing: any, desired: StudentFields): MemberSyncRow['changes'] {

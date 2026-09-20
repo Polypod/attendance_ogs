@@ -25,6 +25,10 @@ export interface MemberSyncConfig {
   default_categories: string[];
   /** OGS grade -> belt_level here. null clears the belt field. */
   belt_map: Record<string, string | null>;
+  /** Grades whose level comes from kyuDanGrade rather than from grade itself. */
+  dan_grades: string[];
+  /** kyuDanGrade -> belt_level, used for the grades listed in dan_grades. */
+  dan_map: Record<string, string | null>;
   /** Deactivate students whose member disappeared from the export entirely. */
   deactivate_missing: boolean;
 }

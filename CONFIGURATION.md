@@ -49,6 +49,12 @@ in code, so categories and belt levels can be adjusted without a release.
   category, so these members cannot simply be created anyway.
 - `belt_map` maps the OGS grade to a local belt level; `null` clears the field.
   An unknown grade leaves the belt untouched and raises a warning.
+- `dan_grades` lists the grades whose level comes from the `kyuDanGrade` field
+  in OGS instead of from `grade`. OGS has a single `black` option for every
+  dan, so black belts resolve through `dan_map` rather than `belt_map`.
+- `dan_map` maps a dan number to a local belt level. A black belt with no dan
+  number, or one outside the map, leaves the belt untouched and is flagged for
+  review rather than falling back to the lowest dan.
 - `deactivate_missing` deactivates students whose member disappeared from the
   export entirely.
 

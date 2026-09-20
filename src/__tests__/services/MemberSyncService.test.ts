@@ -1,7 +1,9 @@
 import { StudentModel } from '../../models/Student';
 import { MemberSyncRunModel } from '../../models/MemberSyncRun';
-import { StudentStatusEnum } from '../../types/interfaces';
+import { StudentCategoryEnum, StudentStatusEnum } from '../../types/interfaces';
 import {
+  MemberSyncResult,
+  MemberSyncRow,
   MemberSyncService,
   OgsMember,
   OgsMemberExport,
@@ -17,6 +19,7 @@ const buildMember = (overrides: Partial<OgsMember> = {}): OgsMember => ({
   category: 'Kids',
   categoryId: 'cat-kids',
   grade: null,
+  kyuDanGrade: null,
   status: 'approved',
   isActive: true,
   active: true,
@@ -36,7 +39,7 @@ const serviceFor = (...members: OgsMember[]): MemberSyncService => {
   return new MemberSyncService(async () => memberExport);
 };
 
-const rowFor = (result: { rows: { email: string }[] }, email: string) =>
+const rowFor = (result: MemberSyncResult, email: string): MemberSyncRow =>
   result.rows.find((row) => row.email === email)!;
 
 describe('MemberSyncService', () => {
@@ -88,7 +91,7 @@ describe('MemberSyncService', () => {
     await StudentModel.create({
       name: 'Gammalt Namn',
       email: 'anna@example.com',
-      categories: ['vuxen'],
+      categories: [StudentCategoryEnum.ADULT],
       phone: '070-000 00 00',
       external_source: 'payload',
       external_id: 'ogs-1',
@@ -110,7 +113,7 @@ describe('MemberSyncService', () => {
     await StudentModel.create({
       name: 'Anna Andersson',
       email: 'anna@example.com',
-      categories: ['barn'],
+      categories: [StudentCategoryEnum.KIDS],
       external_source: 'payload',
       external_id: 'ogs-1',
       active: true,
@@ -133,7 +136,7 @@ describe('MemberSyncService', () => {
     await StudentModel.create({
       name: 'Borttagen Medlem',
       email: 'borta@example.com',
-      categories: ['vuxen'],
+      categories: [StudentCategoryEnum.ADULT],
       external_source: 'payload',
       external_id: 'ogs-gone',
       active: true,
@@ -152,7 +155,7 @@ describe('MemberSyncService', () => {
     await StudentModel.create({
       name: 'Anna Andersson',
       email: 'anna@example.com',
-      categories: ['vuxen'],
+      categories: [StudentCategoryEnum.ADULT],
       active: true,
       status: StudentStatusEnum.ACTIVE,
     });
@@ -172,7 +175,7 @@ describe('MemberSyncService', () => {
     await StudentModel.create({
       name: 'Lokal Elev',
       email: 'lokal@example.com',
-      categories: ['vuxen'],
+      categories: [StudentCategoryEnum.ADULT],
       belt_level: '8kyu',
       active: true,
       status: StudentStatusEnum.ACTIVE,
@@ -198,11 +201,60 @@ describe('MemberSyncService', () => {
     expect(rowFor(result, 'anna@example.com').warnings.join(' ')).toMatch(/chartreuse/);
   });
 
+  it('resolves a black belt from the dan number rather than the grade', async () => {
+    // OGS has a single `black` grade option, so the dan lives in kyuDanGrade.
+    await serviceFor(buildMember({ grade: 'black', kyuDanGrade: 3 })).apply();
+
+    const student = await StudentModel.findOne({ external_id: 'ogs-1' });
+    expect(student!.belt_level).toBe('black_3rd');
+  });
+
+  it.each([
+    [1, 'black_1st'],
+    [2, 'black_2nd'],
+    [4, 'black_4th'],
+    [5, 'black_5th'],
+  ])('maps dan %i onto %s', async (dan, expected) => {
+    await serviceFor(buildMember({ grade: 'black', kyuDanGrade: dan as number })).apply();
+
+    const student = await StudentModel.findOne({ external_id: 'ogs-1' });
+    expect(student!.belt_level).toBe(expected);
+  });
+
+  it('leaves the belt untouched when a black belt has no dan number', async () => {
+    const result = await serviceFor(
+      buildMember({ grade: 'black', kyuDanGrade: null })
+    ).apply();
+
+    const student = await StudentModel.findOne({ external_id: 'ogs-1' });
+    // Falling back to the lowest dan is what made every black belt a 1st dan.
+    expect(student!.belt_level).toBeUndefined();
+    expect(rowFor(result, 'anna@example.com').warnings.join(' ')).toMatch(/Kyu\/Dan Grade/);
+  });
+
+  it('leaves the belt untouched when the dan number is outside the mapping', async () => {
+    const result = await serviceFor(
+      buildMember({ grade: 'black', kyuDanGrade: 9 })
+    ).apply();
+
+    const student = await StudentModel.findOne({ external_id: 'ogs-1' });
+    expect(student!.belt_level).toBeUndefined();
+    expect(rowFor(result, 'anna@example.com').warnings.join(' ')).toMatch(/Dan 9/);
+  });
+
+  it('does not corrupt an existing dan belt when the dan number goes missing', async () => {
+    await serviceFor(buildMember({ grade: 'black', kyuDanGrade: 4 })).apply();
+    await serviceFor(buildMember({ grade: 'black', kyuDanGrade: null })).apply();
+
+    const student = await StudentModel.findOne({ external_id: 'ogs-1' });
+    expect(student!.belt_level).toBe('black_4th');
+  });
+
   it('reports an email already claimed by a different member instead of overwriting', async () => {
     await StudentModel.create({
       name: 'Annan Medlem',
       email: 'anna@example.com',
-      categories: ['vuxen'],
+      categories: [StudentCategoryEnum.ADULT],
       external_source: 'payload',
       external_id: 'ogs-other',
       active: true,

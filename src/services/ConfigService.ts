@@ -223,6 +223,39 @@ export class ConfigService {
       }
     }
 
+    if (memberSync.dan_grades !== undefined) {
+      if (
+        !Array.isArray(memberSync.dan_grades) ||
+        memberSync.dan_grades.some((grade: unknown) => typeof grade !== 'string')
+      ) {
+        throw new Error('member_sync.dan_grades must be an array of grade names');
+      }
+    }
+
+    if (memberSync.dan_map !== undefined) {
+      if (typeof memberSync.dan_map !== 'object' || Array.isArray(memberSync.dan_map)) {
+        throw new Error('member_sync.dan_map must be an object');
+      }
+
+      for (const [dan, target] of Object.entries(memberSync.dan_map)) {
+        if (!/^\d+$/.test(dan)) {
+          throw new Error(`member_sync.dan_map keys must be dan numbers, got: ${dan}`);
+        }
+        if (target === null) continue;
+        if (typeof target !== 'string' || !validBeltLevels.has(target)) {
+          throw new Error(
+            `member_sync.dan_map.${dan} refers to unknown belt level: ${String(target)}`
+          );
+        }
+      }
+    }
+
+    // A grade that sources its level from kyuDanGrade is useless without a
+    // dan_map to look the number up in.
+    if ((memberSync.dan_grades ?? []).length > 0 && Object.keys(memberSync.dan_map ?? {}).length === 0) {
+      throw new Error('member_sync.dan_map must not be empty when dan_grades is set');
+    }
+
     if (
       memberSync.deactivate_missing !== undefined &&
       typeof memberSync.deactivate_missing !== 'boolean'
@@ -310,6 +343,8 @@ export class ConfigService {
       unmapped_category_action: memberSync?.unmapped_category_action ?? 'report',
       default_categories: memberSync?.default_categories ?? [],
       belt_map: memberSync?.belt_map ?? {},
+      dan_grades: memberSync?.dan_grades ?? [],
+      dan_map: memberSync?.dan_map ?? {},
       deactivate_missing: memberSync?.deactivate_missing ?? true,
     };
   }
