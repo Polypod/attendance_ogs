@@ -11,6 +11,7 @@ import { userRoutes } from './routes/userRoutes';
 import { configRoutes } from './routes/configRoutes';
 import { reportRoutes } from './routes/reportRoutes';
 import { reportPresetRoutes } from './routes/reportPresetRoutes';
+import { memberSyncRoutes } from './routes/memberSyncRoutes';
 import { metricsRoutes } from './routes/metricsRoutes';
 import { kioskAttendanceRoutes } from './routes/kioskAttendanceRoutes';
 import { kioskManagementRoutes } from './routes/kioskManagementRoutes';
@@ -20,6 +21,7 @@ import { authenticate, authorize } from './middleware/auth';
 import { apiLimiter } from './middleware/rateLimiter';
 import { UserRoleEnum } from './types/interfaces';
 import { ConfigService } from './services/ConfigService';
+import { MemberSyncScheduler } from './services/MemberSyncScheduler';
 import { logger } from './utils/logger';
 
 dotenv.config();
@@ -64,6 +66,7 @@ app.use('/api/schedules', authenticate, scheduleRoutes);
 app.use('/api/attendance', authenticate, attendanceRoutes);
 app.use('/api/reports', authenticate, reportRoutes);
 app.use('/api/report-presets', authenticate, reportPresetRoutes);
+app.use('/api/sync/members', authenticate, memberSyncRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
@@ -115,9 +118,15 @@ mongoose.connect(MONGODB_URI, MONGODB_OPTIONS)
       logger.info('server_listening', { port: PORT });
     });
 
+    // Nightly member sync from the OGS member register. Disabled unless
+    // MEMBER_SYNC_ENABLED is set and the source is configured.
+    const memberSyncScheduler = new MemberSyncScheduler();
+    memberSyncScheduler.start();
+
     // Handle graceful shutdown
     const gracefulShutdown = () => {
       logger.info('server_shutdown_start');
+      memberSyncScheduler.stop();
       server.close(() => {
         logger.info('server_shutdown_complete');
         process.exit(0);

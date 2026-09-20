@@ -6,7 +6,8 @@ export enum StudentCategoryEnum {
   KIDS = 'barn',
   YOUTH = 'ungdom',
   ADULT = 'vuxen',
-  ADVANCED = 'avancerad'
+  ADVANCED = 'avancerad',
+  INSTRUCTOR = 'instruktor'
 }
 
 export enum AttendanceStatusEnum {
@@ -89,6 +90,9 @@ export interface Student {
   emergency_contact: EmergencyContact;
   status: StudentStatusEnum;
   active?: boolean;
+  external_source?: 'payload';
+  external_id?: string;
+  last_synced_at?: Date;
   created_at?: Date;
   updated_at?: Date;
 }

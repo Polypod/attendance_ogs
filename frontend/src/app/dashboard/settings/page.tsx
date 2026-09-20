@@ -1,6 +1,7 @@
 "use client";
 
 import KioskSettings from "@/components/settings/KioskSettings";
+import MemberSyncSettings from "@/components/settings/MemberSyncSettings";
 import StudentDataSettings from "@/components/settings/StudentDataSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,10 +34,11 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Manage administrative configuration, student data exchange, and kiosk access settings.
+          Manage administrative configuration, member register sync, student data exchange, and kiosk access settings.
         </p>
       </div>
 
+      <MemberSyncSettings />
       <StudentDataSettings />
       <KioskSettings />
     </div>

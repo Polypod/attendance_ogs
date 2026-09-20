@@ -3,7 +3,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { SystemConfig, CategoryConfig, BeltLevelConfig } from '../types/config';
+import {
+  SystemConfig,
+  CategoryConfig,
+  BeltLevelConfig,
+  MemberSyncConfig,
+  UnmappedCategoryAction,
+} from '../types/config';
 import { logger } from '../utils/logger';
 
 export class ConfigService {
@@ -123,6 +129,106 @@ export class ConfigService {
     if (beltValues.length !== uniqueBeltValues.size) {
       throw new Error('Duplicate belt level values found in configuration');
     }
+
+    this.validateMemberSync(config, new Set(categoryValues), new Set(beltValues));
+  }
+
+  /**
+   * Validate the optional member_sync block.
+   *
+   * Validation happens here rather than at sync time so a typo in the mapping
+   * surfaces on startup instead of silently skipping members during a run.
+   * The valid values are passed in because `this.config` is not assigned yet.
+   */
+  private validateMemberSync(
+    config: any,
+    validCategories: Set<string>,
+    validBeltLevels: Set<string>
+  ): void {
+    const memberSync = config.member_sync;
+    if (memberSync === undefined || memberSync === null) {
+      return;
+    }
+
+    if (typeof memberSync !== 'object' || Array.isArray(memberSync)) {
+      throw new Error('member_sync must be an object');
+    }
+
+    const allowedActions: UnmappedCategoryAction[] = ['report', 'skip', 'default'];
+    if (!allowedActions.includes(memberSync.unmapped_category_action)) {
+      throw new Error(
+        `member_sync.unmapped_category_action must be one of: ${allowedActions.join(', ')}`
+      );
+    }
+
+    if (memberSync.category_map !== undefined) {
+      if (typeof memberSync.category_map !== 'object' || Array.isArray(memberSync.category_map)) {
+        throw new Error('member_sync.category_map must be an object');
+      }
+
+      for (const [sourceCategory, targets] of Object.entries(memberSync.category_map)) {
+        if (!Array.isArray(targets) || targets.length === 0) {
+          throw new Error(
+            `member_sync.category_map.${sourceCategory} must be a non-empty array of categories`
+          );
+        }
+
+        for (const target of targets) {
+          if (!validCategories.has(target)) {
+            throw new Error(
+              `member_sync.category_map.${sourceCategory} refers to unknown category: ${target}`
+            );
+          }
+        }
+      }
+    }
+
+    if (memberSync.default_categories !== undefined) {
+      if (!Array.isArray(memberSync.default_categories)) {
+        throw new Error('member_sync.default_categories must be an array');
+      }
+
+      for (const target of memberSync.default_categories) {
+        if (!validCategories.has(target)) {
+          throw new Error(
+            `member_sync.default_categories refers to unknown category: ${target}`
+          );
+        }
+      }
+    }
+
+    // 'default' without any default categories would produce students that fail
+    // the "at least one category" rule on every run.
+    if (
+      memberSync.unmapped_category_action === 'default' &&
+      (memberSync.default_categories ?? []).length === 0
+    ) {
+      throw new Error(
+        "member_sync.default_categories must not be empty when unmapped_category_action is 'default'"
+      );
+    }
+
+    if (memberSync.belt_map !== undefined) {
+      if (typeof memberSync.belt_map !== 'object' || Array.isArray(memberSync.belt_map)) {
+        throw new Error('member_sync.belt_map must be an object');
+      }
+
+      for (const [sourceGrade, target] of Object.entries(memberSync.belt_map)) {
+        if (target === null) continue;
+        if (typeof target !== 'string' || !validBeltLevels.has(target)) {
+          throw new Error(
+            `member_sync.belt_map.${sourceGrade} refers to unknown belt level: ${String(target)}`
+          );
+        }
+      }
+    }
+
+    if (
+      memberSync.deactivate_missing !== undefined &&
+      typeof memberSync.deactivate_missing !== 'boolean'
+    ) {
+      throw new Error('member_sync.deactivate_missing must be a boolean');
+    }
   }
 
   /**
@@ -187,6 +293,25 @@ export class ConfigService {
   public getBeltLevelByValue(value: string): BeltLevelConfig | undefined {
     this.ensureInitialized();
     return this.config.belt_levels.find(b => b.value === value);
+  }
+
+  /**
+   * Get the member sync configuration, with defaults applied.
+   *
+   * Returns a safe no-op configuration when the block is absent so the sync
+   * service can run without special-casing an unconfigured installation.
+   */
+  public getMemberSyncConfig(): MemberSyncConfig {
+    this.ensureInitialized();
+    const memberSync = this.config.member_sync;
+
+    return {
+      category_map: memberSync?.category_map ?? {},
+      unmapped_category_action: memberSync?.unmapped_category_action ?? 'report',
+      default_categories: memberSync?.default_categories ?? [],
+      belt_map: memberSync?.belt_map ?? {},
+      deactivate_missing: memberSync?.deactivate_missing ?? true,
+    };
   }
 
   /**
