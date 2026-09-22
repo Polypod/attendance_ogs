@@ -1,6 +1,6 @@
 import { ClassScheduleModel } from '../models/ClassSchedule';
-import { ClassStatusEnum, ClassScheduleSession } from '../types/interfaces';
 import { logger } from '../utils/logger';
+import { expandRecurringSchedule } from './scheduleExpansion';
 
 export interface GetAllSchedulesParams {
   startDate?: string;
@@ -73,106 +73,18 @@ export class ScheduleService {
 
       const expandedSchedules: any[] = [];
 
-      // Expand recurring schedules
+      // Expand recurring schedules into one virtual instance per matching occurrence
       for (const schedule of recurringSchedules) {
-        if (schedule.days_of_week && schedule.days_of_week.length > 0) {
-          if (debug) {
-            logger.debug('ScheduleService.expand_schedule', {
-              scheduleId: schedule._id?.toString?.() ?? String(schedule._id),
-              date: schedule.date,
-              daysOfWeek: schedule.days_of_week,
-              recurring: schedule.recurring,
-            });
-          }
-
-          const recurrenceEnd = schedule.recurrence_end_date ? new Date(schedule.recurrence_end_date) : rangeEnd;
-          const effectiveEnd = recurrenceEnd < rangeEnd ? recurrenceEnd : rangeEnd;
-          const scheduleDate = new Date(schedule.date);
-
-          // Start from the later of: schedule start date or range start date
-          let currentDate = new Date(scheduleDate > rangeStart ? scheduleDate : rangeStart);
-
-          while (currentDate <= effectiveEnd) {
-            const dayOfWeek = currentDate.getDay(); // 0=Sunday, 6=Saturday
-
-            if (schedule.days_of_week.includes(dayOfWeek)) {
-              // Only include if date is within the requested range
-              if (currentDate >= rangeStart && currentDate <= rangeEnd) {
-                // Check if a session exists for this date
-                const dateStr = currentDate.toISOString().split('T')[0];
-
-                if (debug) {
-                  logger.debug('ScheduleService.schedule_sessions', {
-                    scheduleId: schedule._id?.toString?.() ?? String(schedule._id),
-                    sessionCount: schedule.sessions?.length || 0,
-                    sessions: schedule.sessions?.map((s: ClassScheduleSession) => ({
-                      date: s.date.toISOString().split('T')[0],
-                      instructor: (s as any)['S-instructor'] ?? (s as any).instructor,
-                      status: s.status,
-                    })),
-                  });
-                }
-
-                const existingSession = schedule.sessions?.find(
-                  (s: ClassScheduleSession) => s.date.toISOString().split('T')[0] === dateStr
-                );
-
-                // Create a new date object for this instance
-                const instanceDate = new Date(currentDate);
-
-                if (debug) {
-                  logger.debug('ScheduleService.add_instance', { date: dateStr, dayOfWeek });
-                }
-
-                // If session exists for this date, use its data
-                if (existingSession) {
-                  if (debug) {
-                    logger.debug('ScheduleService.matching_session_found', {
-                      sessionDate: existingSession.date.toISOString().split('T')[0],
-                      sessionInstructor: (existingSession as any)['S-instructor'],
-                      sessionStatus: existingSession.status,
-                    });
-                  }
-
-                  // Create expanded instance with session-specific data
-                  // Keep sessions array for frontend to access S-instructor field
-                  expandedSchedules.push({
-                    ...schedule.toObject(),
-                    date: instanceDate,
-                    _isRecurringInstance: true,
-                    _originalScheduleId: schedule._id,
-                    _instanceDate: dateStr,
-                    status: existingSession.status,
-                    notes: existingSession.notes,
-                  });
-                } else {
-                  if (debug) {
-                    logger.debug('ScheduleService.no_session_for_date', { date: dateStr });
-                  }
-
-                  // No session yet, create instance without session-specific data
-                  const { sessions: _sessions, ...scheduleWithoutSessions } = schedule.toObject();
-                  expandedSchedules.push({
-                    ...scheduleWithoutSessions,
-                    date: instanceDate,
-                    _isRecurringInstance: true,
-                    _originalScheduleId: schedule._id,
-                    _instanceDate: dateStr,
-                    status: ClassStatusEnum.SCHEDULED,
-                  });
-                }
-              }
-            }
-
-            // Move to next day
-            currentDate = new Date(currentDate);
-            currentDate.setDate(currentDate.getDate() + 1);
-          }
-
-          if (debug) {
-            logger.debug('ScheduleService.instances_added', { count: expandedSchedules.length });
-          }
+        const instances = expandRecurringSchedule(schedule.toObject(), rangeStart, rangeEnd);
+        if (debug && instances.length > 0) {
+          logger.debug('ScheduleService.expand_schedule', {
+            scheduleId: schedule._id?.toString?.() ?? String(schedule._id),
+            date: schedule.date,
+            daysOfWeek: schedule.days_of_week,
+            instancesAdded: instances.length,
+          });
         }
+        expandedSchedules.push(...instances);
       }
 
       // Add non-recurring schedules

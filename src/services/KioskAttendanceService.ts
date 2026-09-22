@@ -4,6 +4,7 @@ import { Attendance } from '../models/Attendance';
 import { ClassScheduleModel } from '../models/ClassSchedule';
 import { StudentModel } from '../models/Student';
 import { AttendanceStatusEnum, ClassStatusEnum, StudentCategoryEnum, StudentStatusEnum } from '../types/interfaces';
+import { expandRecurringSchedule } from './scheduleExpansion';
 
 interface KioskClassInfo {
   _id: Types.ObjectId;
@@ -36,6 +37,9 @@ interface PopulatedSchedule {
   end_time: string;
   status: ClassStatusEnum;
   sessions?: KioskScheduleSession[];
+  recurring?: boolean;
+  days_of_week?: number[];
+  recurrence_end_date?: Date | null;
 }
 
 interface KioskSessionSource {
@@ -269,13 +273,34 @@ export class KioskAttendanceService {
     return override || schedule.class_id.instructor;
   }
 
+  // A day's sessions come from two kinds of ClassSchedule documents: one-off schedules
+  // anchored on this exact date, and recurring weekly templates that must be expanded
+  // (via days_of_week) into a virtual instance for this date, matching the dashboard's logic.
   private async getSessionSources(start: Date, end: Date): Promise<KioskSessionSource[]> {
-    const schedules = await ClassScheduleModel.find({
+    const notCancelled = { status: { $ne: ClassStatusEnum.CANCELLED } };
+
+    const nonRecurringSchedules = await ClassScheduleModel.find({
+      ...notCancelled,
+      recurring: { $ne: true },
       date: { $gte: start, $lt: end },
-      status: { $ne: ClassStatusEnum.CANCELLED },
     }).populate<{ class_id: KioskClassInfo }>('class_id', 'name instructor categories').lean<PopulatedSchedule[]>();
 
-    return schedules.map((schedule) => ({ schedule }));
+    const recurringTemplates = await ClassScheduleModel.find({
+      ...notCancelled,
+      recurring: true,
+      date: { $lte: start },
+      $or: [
+        { recurrence_end_date: { $exists: false } },
+        { recurrence_end_date: null },
+        { recurrence_end_date: { $gte: start } },
+      ],
+    }).populate<{ class_id: KioskClassInfo }>('class_id', 'name instructor categories').lean<PopulatedSchedule[]>();
+
+    const recurringInstances = recurringTemplates
+      .flatMap((schedule) => expandRecurringSchedule(schedule, start, start) as unknown as PopulatedSchedule[])
+      .filter((instance) => instance.status !== ClassStatusEnum.CANCELLED);
+
+    return [...nonRecurringSchedules, ...recurringInstances].map((schedule) => ({ schedule }));
   }
 
   private async getStudents(): Promise<KioskStudent[]> {
