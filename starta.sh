@@ -41,10 +41,13 @@ echo ""
 echo "  3) Båda miljöer"
 echo "     - Startar både development och production"
 echo ""
+echo "  4) Kör tester"
+echo "     - Alla tester, eller välj backend/frontend/ett filter"
+echo ""
 echo "  (Tryck Ctrl+C för att avbryta)"
 echo ""
 
-read -p "Välj (1/2/3): " choice
+read -p "Välj (1/2/3/4): " choice
 
 case "$choice" in
   1)
@@ -114,9 +117,58 @@ case "$choice" in
     # Wait for processes
     wait "$dev_pid"
     ;;
+  4)
+    echo ""
+    echo "Vilka tester vill du köra?"
+    echo ""
+    echo "  1) Alla tester (backend + frontend)"
+    echo "  2) Endast backend"
+    echo "  3) Endast frontend"
+    echo "  4) Filtrera på sökväg/namn (t.ex. 'Schedule' eller 'Kiosk')"
+    echo ""
+    read -p "Välj (1/2/3/4): " test_choice
+
+    case "$test_choice" in
+      1)
+        echo ""
+        echo "Kör alla tester..."
+        echo ""
+        exec node ./scripts/run-jest.js
+        ;;
+      2)
+        echo ""
+        echo "Kör backend-tester..."
+        echo ""
+        exec node ./scripts/run-jest.js --selectProjects backend
+        ;;
+      3)
+        echo ""
+        echo "Kör frontend-tester..."
+        echo ""
+        exec node ./scripts/run-jest.js --selectProjects frontend
+        ;;
+      4)
+        read -p "Ange sökväg/namn-mönster: " test_pattern
+        if [ -z "$test_pattern" ]; then
+          echo ""
+          echo "❌ Inget mönster angivet."
+          exit 1
+        fi
+        echo ""
+        echo "Kör tester som matchar \"$test_pattern\"..."
+        echo ""
+        exec node ./scripts/run-jest.js --testPathPatterns="$test_pattern"
+        ;;
+      *)
+        echo ""
+        echo "❌ Ogiltigt val. Vänligen välj 1, 2, 3 eller 4."
+        exit 1
+        ;;
+    esac
+    ;;
   *)
     echo ""
-    echo "❌ Ogiltigt val. Vänligen välj 1, 2 eller 3."
+    echo "❌ Ogiltigt val. Vänligen välj 1, 2, 3 eller 4."
     exit 1
     ;;
 esac
