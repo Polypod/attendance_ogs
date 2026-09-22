@@ -10,7 +10,7 @@ describe("studentHelpers", () => {
     it("omits empty phone and emergency_contact", () => {
       const payload = buildCreateStudentPayload({
         name: "Alice",
-        categories: ["kids"],
+        categories: ["barn"],
         belt_level: "white",
         email: "a@example.com",
         phone: "   ",
@@ -20,7 +20,7 @@ describe("studentHelpers", () => {
 
       expect(payload).toEqual({
         name: "Alice",
-        categories: ["kids"],
+        categories: ["barn"],
         belt_level: "white",
         email: "a@example.com",
         active: true,
@@ -30,7 +30,7 @@ describe("studentHelpers", () => {
     it("keeps trimmed phone and only filled emergency_contact fields", () => {
       const payload = buildCreateStudentPayload({
         name: "Bob",
-        categories: ["adult"],
+        categories: ["vuxen"],
         belt_level: "yellow",
         email: "b@example.com",
         phone: "  070-123  ",
@@ -40,7 +40,7 @@ describe("studentHelpers", () => {
 
       expect(payload).toEqual({
         name: "Bob",
-        categories: ["adult"],
+        categories: ["vuxen"],
         belt_level: "yellow",
         email: "b@example.com",
         phone: "070-123",
@@ -54,7 +54,7 @@ describe("studentHelpers", () => {
     it("sets phone to null when cleared", () => {
       const payload = buildUpdateStudentPayload({
         name: "Alice",
-        categories: ["kids"],
+        categories: ["barn"],
         belt_level: "white",
         phone: "",
         emergency_contact: { name: "X", phone: "Y" },
@@ -67,7 +67,7 @@ describe("studentHelpers", () => {
     it("sets emergency_contact to null when both empty", () => {
       const payload = buildUpdateStudentPayload({
         name: "Alice",
-        categories: ["kids"],
+        categories: ["barn"],
         belt_level: "white",
         phone: "070",
         emergency_contact: { name: " ", phone: "" },
@@ -80,7 +80,7 @@ describe("studentHelpers", () => {
     it("sets empty emergency_contact fields to null", () => {
       const payload = buildUpdateStudentPayload({
         name: "Alice",
-        categories: ["kids"],
+        categories: ["barn"],
         belt_level: "white",
         phone: "070",
         emergency_contact: { name: "Dad", phone: "  " },

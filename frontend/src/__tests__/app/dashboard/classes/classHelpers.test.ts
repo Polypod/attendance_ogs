@@ -12,7 +12,7 @@ describe("classHelpers", () => {
       _id: "c1",
       name: "Class",
       description: "Desc",
-      categories: ["kids"],
+      categories: ["barn"],
       instructor: "Sensei",
       max_capacity: 10,
       duration_minutes: 60,
@@ -50,7 +50,7 @@ describe("classHelpers", () => {
       const form = buildClassFormFromClass({
         name: "Beginner",
         description: "Intro",
-        categories: ["adult"],
+        categories: ["vuxen"],
         instructor: "A",
         max_capacity: 25,
         duration_minutes: 75,
@@ -58,7 +58,7 @@ describe("classHelpers", () => {
       expect(form).toEqual({
         name: "Beginner",
         description: "Intro",
-        categories: ["adult"],
+        categories: ["vuxen"],
         instructor: "A",
         max_capacity: 25,
         duration_minutes: 75,
@@ -68,25 +68,25 @@ describe("classHelpers", () => {
 
   describe("toggleCategorySelection", () => {
     it("adds category when checked", () => {
-      expect(toggleCategorySelection(["kids"], "adult", true)).toEqual(["kids", "adult"]);
+      expect(toggleCategorySelection(["barn"], "vuxen", true)).toEqual(["barn", "vuxen"]);
     });
 
     it("does not add duplicates", () => {
-      expect(toggleCategorySelection(["kids"], "kids", true)).toEqual(["kids"]);
+      expect(toggleCategorySelection(["barn"], "barn", true)).toEqual(["barn"]);
     });
 
     it("removes category when unchecked", () => {
-      expect(toggleCategorySelection(["kids", "adult"], "kids", false)).toEqual(["adult"]);
+      expect(toggleCategorySelection(["barn", "vuxen"], "barn", false)).toEqual(["vuxen"]);
     });
   });
 
   describe("formatCategoriesForDisplay", () => {
     it("joins arrays", () => {
-      expect(formatCategoriesForDisplay(["kids", "adult"])).toBe("kids, adult");
+      expect(formatCategoriesForDisplay(["barn", "vuxen"])).toBe("barn, vuxen");
     });
 
     it("returns string when given a non-empty string", () => {
-      expect(formatCategoriesForDisplay("kids")).toBe("kids");
+      expect(formatCategoriesForDisplay("barn")).toBe("barn");
     });
 
     it("returns N/A for other values", () => {

@@ -5,7 +5,7 @@ describe('ClassModel validation', () => {
     const cls = new ClassModel({
       name: 'Valid Class',
       description: 'A valid class',
-      categories: ['kids'],
+      categories: ['barn'],
       instructor: 'Instructor A',
       max_capacity: 10,
       duration_minutes: 60
@@ -13,7 +13,7 @@ describe('ClassModel validation', () => {
 
     const saved = await cls.save();
     expect(saved._id).toBeDefined();
-    expect(saved.categories).toEqual(['kids']);
+    expect(saved.categories).toEqual(['barn']);
   });
 
   it('fails validation for unknown category', async () => {
