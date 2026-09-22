@@ -15,6 +15,7 @@ describe('requireMetricsAccess', () => {
   it('allows loopback without token', () => {
     const req: any = {
       ip: '127.0.0.1',
+      socket: { remoteAddress: '127.0.0.1' },
       headers: {},
       get: jest.fn(),
       requestId: 'r1',
