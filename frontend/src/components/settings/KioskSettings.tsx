@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { QRCodeCanvas } from "qrcode.react";
+import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -176,6 +177,15 @@ export default function KioskSettings() {
       <CardHeader>
         <CardTitle>Närvarokiosker</CardTitle>
         <CardDescription>Skapa en unik aktiveringslänk för varje enhet. Länken visas bara när en kiosk skapas eller nyckeln byts.</CardDescription>
+        <a
+          href="/narvaro"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+        >
+          <ExternalLink className="w-3 h-3" />
+          Öppna närvaro-sidan
+        </a>
       </CardHeader>
       <CardContent className="space-y-5">
         <form onSubmit={createKiosk} className="flex flex-col gap-3 sm:flex-row">

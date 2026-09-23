@@ -6,7 +6,7 @@ import { createApiClient } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, ExternalLink } from "lucide-react";
 import { logger } from "@/lib/logger";
 
 type ClassInfo = {
@@ -236,6 +236,18 @@ export default function DashboardPage() {
           <Calendar className="w-4 h-4 mr-2" />
           {showDateRange ? "Show Today Only" : "Show Date Range"}
         </Button>
+      </div>
+
+      <div className="mb-6">
+        <a
+          href="/narvaro"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+        >
+          <ExternalLink className="w-3 h-3" />
+          Öppna närvarokiosken
+        </a>
       </div>
 
       {showDateRange && (
