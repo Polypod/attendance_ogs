@@ -295,9 +295,25 @@ export default function CalendarPage() {
       for (const [scheduleId, instanceDates] of recurringDatesBySchedule) {
         const currentSchedule = await api.get(`/api/schedules/${scheduleId}`);
         const sessions: ClassScheduleSession[] = currentSchedule.data?.sessions || [];
-        const updatedSessions = sessions.filter(
-          (session: ClassScheduleSession) => !instanceDates.has(session.date.split("T")[0])
+
+        // Mark each selected occurrence as deleted rather than removing it from the
+        // array - without an explicit "deleted" status the expansion service just
+        // regenerates the occurrence from days_of_week on the next fetch.
+        const coveredDates = new Set(sessions.map((session) => session.date.split("T")[0]));
+        const updatedSessions: ClassScheduleSession[] = sessions.map((session) =>
+          instanceDates.has(session.date.split("T")[0]) ? { ...session, status: "deleted" } : session
         );
+        for (const dateStr of instanceDates) {
+          if (!coveredDates.has(dateStr)) {
+            updatedSessions.push({
+              date: new Date(dateStr).toISOString(),
+              status: "deleted",
+              notes: "",
+              "S-instructor": "",
+            });
+          }
+        }
+
         await api.put(`/api/schedules/${scheduleId}`, { sessions: updatedSessions });
       }
 
@@ -469,17 +485,24 @@ export default function CalendarPage() {
       // Check if this is a recurring instance - if so, delete only the session
       if ((selectedSchedule as any)._isRecurringInstance && (selectedSchedule as any)._originalScheduleId) {
         const instanceDate = selectedSchedule.date.split('T')[0];
-        
+
         // Fetch current schedule to get all sessions
         const currentSchedule = await api.get(`/api/schedules/${(selectedSchedule as any)._originalScheduleId}`);
-        const existingSessions = currentSchedule.data?.sessions || [];
-        
-        // Filter out the session for this date
-        const updatedSessions = existingSessions.filter((s: any) => 
-          !s.date || new Date(s.date).toISOString().split('T')[0] !== instanceDate
-        );
-        
-        // Update the sessions array (removes the session without deleting the whole schedule)
+        const existingSessions: ClassScheduleSession[] = currentSchedule.data?.sessions || [];
+
+        // Mark the session for this date as deleted instead of removing it from the array.
+        // The occurrence is otherwise regenerated from days_of_week on every fetch, so a
+        // plain removal from `sessions` doesn't stop it from reappearing after reload -
+        // the expansion service has to see an explicit "deleted" status to skip it.
+        const matchesInstanceDate = (s: ClassScheduleSession) =>
+          s.date && new Date(s.date).toISOString().split('T')[0] === instanceDate;
+        const updatedSessions = existingSessions.some(matchesInstanceDate)
+          ? existingSessions.map((s) => (matchesInstanceDate(s) ? { ...s, status: 'deleted' } : s))
+          : [
+              ...existingSessions,
+              { date: new Date(instanceDate).toISOString(), status: 'deleted', notes: '', 'S-instructor': '' },
+            ];
+
         const payload = { sessions: updatedSessions };
         await api.put(`/api/schedules/${(selectedSchedule as any)._originalScheduleId}`, payload);
         

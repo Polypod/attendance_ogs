@@ -21,7 +21,11 @@ export enum ClassStatusEnum {
   SCHEDULED = 'scheduled',
   IN_PROGRESS = 'in_progress',
   CANCELLED = 'cancelled',
-  COMPLETED = 'completed'
+  COMPLETED = 'completed',
+  // Marks a single occurrence of a recurring schedule as removed. Only ever set on a
+  // `sessions` entry (never on the schedule's own `status`); expandRecurringSchedule
+  // skips occurrences with this status instead of regenerating them from days_of_week.
+  DELETED = 'deleted'
 }
 
 export enum StudentStatusEnum {

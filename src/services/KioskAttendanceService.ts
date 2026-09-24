@@ -249,9 +249,12 @@ export class KioskAttendanceService {
   }
 
   private dateRangeFor(dateKey: string): { dateKey: string; start: Date; end: Date } {
+    // Must be UTC, not local time: schedule/session dates are stored as UTC-midnight
+    // timestamps, and expandRecurringSchedule derives its date keys via toISOString(),
+    // which a local-midnight `start` would shift onto the wrong calendar day.
     const [year, month, day] = dateKey.split('-').map(Number);
-    const start = new Date(year, month - 1, day, 0, 0, 0, 0);
-    const end = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
+    const start = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    const end = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0, 0));
     return { dateKey, start, end };
   }
 

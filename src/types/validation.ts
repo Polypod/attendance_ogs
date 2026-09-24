@@ -156,7 +156,7 @@ export const updateClassScheduleSchema = Joi.object<UpdateClassScheduleDto>({
   sessions: Joi.array().items(
     Joi.object({
       date: Joi.alternatives().try(Joi.date(), Joi.string().isoDate()).required(),
-      status: Joi.string().valid('scheduled', 'completed', 'cancelled').default('scheduled'),
+      status: Joi.string().valid('scheduled', 'completed', 'cancelled', 'deleted').default('scheduled'),
       notes: Joi.string().allow('').optional(),
       'S-instructor': Joi.string().allow('').optional(),
       _id: Joi.string().optional() // Allow MongoDB _id in updates

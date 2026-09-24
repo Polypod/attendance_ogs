@@ -135,4 +135,43 @@ describe('ScheduleService', () => {
     expect(instance.status).toBe(ClassStatusEnum.SCHEDULED);
     expect('sessions' in instance).toBe(false);
   });
+
+  it('omits an occurrence whose session status is DELETED instead of regenerating it', async () => {
+    const base = startOfToday();
+    const rangeStart = addDays(base, 1);
+    const rangeEnd = addDays(base, 4);
+
+    const deletedDate = new Date(rangeStart);
+    const dayOfWeek = deletedDate.getDay();
+
+    const recurring = await ClassScheduleModel.create({
+      class_id: testClassId,
+      date: rangeStart,
+      start_time: '10:00',
+      end_time: '11:30',
+      recurring: true,
+      days_of_week: [dayOfWeek],
+      recurrence_end_date: rangeEnd,
+      sessions: [
+        {
+          date: deletedDate,
+          status: ClassStatusEnum.DELETED,
+        } as any,
+      ],
+    });
+
+    const schedules = await scheduleService.getAllSchedules({
+      startDate: rangeStart.toISOString(),
+      endDate: rangeEnd.toISOString(),
+      classId: testClassId.toString(),
+      expandRecurring: true,
+    });
+
+    const deletedDateStr = isoDateOnly(deletedDate);
+    const deletedInstance = schedules.find(
+      (s: any) => s._isRecurringInstance === true && String(s._originalScheduleId) === String(recurring._id) && isoDateOnly(new Date(s.date)) === deletedDateStr
+    );
+
+    expect(deletedInstance).toBeUndefined();
+  });
 });

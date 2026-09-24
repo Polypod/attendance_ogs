@@ -27,7 +27,9 @@ export interface ExpandedScheduleInstance extends RecurringScheduleLike {
 // recurring weekly on `days_of_week`) into one virtual instance per matching
 // occurrence within [rangeStart, rangeEnd] (inclusive on both ends). A stored
 // entry in `sessions` for a given occurrence date overrides that instance's
-// status/notes; otherwise the instance defaults to SCHEDULED.
+// status/notes; otherwise the instance defaults to SCHEDULED. An occurrence
+// whose session status is DELETED was removed by the user and is omitted
+// entirely rather than regenerated.
 export function expandRecurringSchedule<T extends RecurringScheduleLike>(
   schedule: T,
   rangeStart: Date,
@@ -55,7 +57,9 @@ export function expandRecurringSchedule<T extends RecurringScheduleLike>(
       );
       const instanceDate = new Date(currentDate);
 
-      if (existingSession) {
+      if (existingSession?.status === ClassStatusEnum.DELETED) {
+        // Occurrence was explicitly deleted by the user - do not regenerate it.
+      } else if (existingSession) {
         instances.push({
           ...schedule,
           date: instanceDate,

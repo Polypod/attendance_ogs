@@ -11,14 +11,16 @@ import {
   AttendanceStatusEnum,
 } from '../../types/interfaces';
 
-// Mirrors the service's own local-midnight math so fixtures land inside the
-// [start, end) window it queries for "today", regardless of the host timezone.
+// The "local calendar day" the kiosk considers "today" (see todayKey()) -
+// used to derive date keys and day-of-week math in fixtures, never as a
+// stored date value itself.
 const localMidnight = (date: Date = new Date()): Date =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-// Mirrors the service's dateOnlyUtc(): real schedule.sessions[] entries are
-// always written with a true UTC-midnight date (see completeSession), so any
-// fixture emulating one has to match that, not local midnight.
+// Mirrors the service's dateOnlyUtc(): every stored date - schedule.date,
+// schedule.sessions[].date, Attendance.date - is a true UTC-midnight
+// timestamp for that calendar day (see completeSession/dateRangeFor), so
+// fixtures must match that, not local midnight.
 const utcMidnight = (date: Date = new Date()): Date =>
   new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
 
@@ -62,7 +64,7 @@ describe('KioskAttendanceService', () => {
 
       const barnSchedule = await ClassScheduleModel.create({
         class_id: barnClass._id,
-        date: today,
+        date: utcMidnight(today),
         start_time: '10:00',
         end_time: '11:00',
         status: ClassStatusEnum.SCHEDULED,
@@ -70,8 +72,8 @@ describe('KioskAttendanceService', () => {
         sessions: [{ date: utcMidnight(today), 'S-instructor': 'Vikarie' }],
       });
 
-      const templateAnchor = new Date(today);
-      templateAnchor.setDate(templateAnchor.getDate() - 28);
+      const templateAnchor = new Date(utcMidnight(today));
+      templateAnchor.setUTCDate(templateAnchor.getUTCDate() - 28);
       const vuxenTemplate = await ClassScheduleModel.create({
         class_id: vuxenClass._id,
         date: templateAnchor,
@@ -85,7 +87,7 @@ describe('KioskAttendanceService', () => {
       // Cancelled session on the same day must not appear
       await ClassScheduleModel.create({
         class_id: barnClass._id,
-        date: today,
+        date: utcMidnight(today),
         start_time: '15:00',
         end_time: '16:00',
         status: ClassStatusEnum.CANCELLED,
@@ -108,7 +110,7 @@ describe('KioskAttendanceService', () => {
       await Attendance.create({
         student_id: barnActive._id,
         class_schedule_id: barnSchedule._id,
-        date: today,
+        date: utcMidnight(today),
         status: AttendanceStatusEnum.PRESENT,
         category: StudentCategoryEnum.KIDS,
         recorded_by: 'kiosk:test-setup',
@@ -131,6 +133,36 @@ describe('KioskAttendanceService', () => {
       expect(vuxenSession!.instructorName).toBe('Sensei B');
       expect(vuxenSession!.students.map((student) => student.name)).toEqual(['Vuxen Aktiv']);
       expect(vuxenSession!.otherStudents.map((student) => student.name)).toEqual(['Barn Aktiv']);
+    });
+
+    it('omits a recurring occurrence whose session for today is marked deleted', async () => {
+      const vuxenClass = await ClassModel.create({
+        name: 'Vuxenträning',
+        description: 'Vuxenträning',
+        categories: [StudentCategoryEnum.ADULT],
+        instructor: 'Sensei B',
+        max_capacity: 20,
+        duration_minutes: 60,
+      });
+
+      const today = localMidnight();
+      const templateAnchor = new Date(utcMidnight(today));
+      templateAnchor.setUTCDate(templateAnchor.getUTCDate() - 28);
+
+      await ClassScheduleModel.create({
+        class_id: vuxenClass._id,
+        date: templateAnchor,
+        start_time: '19:00',
+        end_time: '20:00',
+        status: ClassStatusEnum.SCHEDULED,
+        recurring: true,
+        days_of_week: [today.getDay()],
+        sessions: [{ date: utcMidnight(today), status: ClassStatusEnum.DELETED }],
+      });
+
+      const result = await service.getSessionsForDate();
+
+      expect(result.sessions).toHaveLength(0);
     });
 
     it('rejects an invalid date format', async () => {
@@ -163,7 +195,7 @@ describe('KioskAttendanceService', () => {
 
       const schedule = await ClassScheduleModel.create({
         class_id: barnClass._id,
-        date: localMidnight(),
+        date: utcMidnight(),
         start_time: '10:00',
         end_time: '11:00',
         status: ClassStatusEnum.SCHEDULED,
