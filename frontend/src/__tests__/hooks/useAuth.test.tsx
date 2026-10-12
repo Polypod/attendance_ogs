@@ -35,9 +35,22 @@ describe('useAuth', () => {
     expect(result.current.user).toEqual({ role: 'admin', name: 'A' });
 
     expect(result.current.isAdmin).toBe(true);
+    expect(result.current.isEditor).toBe(false);
     expect(result.current.isInstructor).toBe(false);
     expect(result.current.isStaff).toBe(false);
     expect(result.current.isStudent).toBe(false);
+  });
+
+  it('keeps editor distinct from admin', () => {
+    mockUseSession.mockReturnValue({
+      data: { user: { role: 'editor', name: 'E' } },
+      status: 'authenticated',
+    });
+
+    const { result } = renderHook(() => useAuth());
+
+    expect(result.current.isEditor).toBe(true);
+    expect(result.current.isAdmin).toBe(false);
   });
 
   it('returns unauthenticated defaults', () => {
@@ -50,6 +63,7 @@ describe('useAuth', () => {
     expect(result.current.user).toBeUndefined();
 
     expect(result.current.isAdmin).toBe(false);
+    expect(result.current.isEditor).toBe(false);
     expect(result.current.isInstructor).toBe(false);
     expect(result.current.isStaff).toBe(false);
     expect(result.current.isStudent).toBe(false);

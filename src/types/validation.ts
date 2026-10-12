@@ -18,7 +18,7 @@ import {
 } from './interfaces';
 import { ConfigService } from '../services/ConfigService';
 const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
-const userRoles = ['admin', 'instructor', 'staff', 'student'] as const;
+const userRoles = ['admin', 'editor', 'instructor', 'staff', 'student'] as const;
 const userStatuses = ['active', 'inactive', 'suspended'] as const;
 
 // Student validation schemas

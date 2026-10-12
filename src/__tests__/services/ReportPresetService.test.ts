@@ -118,6 +118,48 @@ describe('ReportPresetService', () => {
     expect(updated?.name).toBe('Shared v2');
   });
 
+  it('allows editor to manage shared presets while preserving private preset ownership', async () => {
+    const editor = await createUser(UserRoleEnum.EDITOR, 'editor@example.com');
+    const anotherEditor = await createUser(UserRoleEnum.EDITOR, 'other-editor@example.com');
+
+    const shared = await service.createPreset(
+      { _id: editor._id.toString(), role: UserRoleEnum.EDITOR },
+      {
+        name: 'Shared by editor',
+        shared: true,
+        schemaVersion: 1,
+        state: { mode: 'raw', from: '2026-04-01', to: '2026-04-02' }
+      }
+    );
+    expect(shared.shared).toBe(true);
+
+    const updated = await service.updatePreset(
+      { _id: editor._id.toString(), role: UserRoleEnum.EDITOR },
+      shared._id.toString(),
+      { name: 'Updated by editor' }
+    );
+    expect(updated?.name).toBe('Updated by editor');
+
+    const privatePreset = await service.createPreset(
+      { _id: editor._id.toString(), role: UserRoleEnum.EDITOR },
+      {
+        name: 'Private by editor',
+        shared: false,
+        schemaVersion: 1,
+        state: { mode: 'raw', from: '2026-04-01', to: '2026-04-02' }
+      }
+    );
+    await expect(service.deletePreset(
+      { _id: anotherEditor._id.toString(), role: UserRoleEnum.EDITOR },
+      privatePreset._id.toString()
+    )).rejects.toBeInstanceOf(ForbiddenError);
+
+    await expect(service.deletePreset(
+      { _id: editor._id.toString(), role: UserRoleEnum.EDITOR },
+      shared._id.toString()
+    )).resolves.not.toBeNull();
+  });
+
   it('blocks admin from modifying another user\'s private preset', async () => {
     const adminA = await createUser(UserRoleEnum.ADMIN, 'admin-a@example.com');
     const adminB = await createUser(UserRoleEnum.ADMIN, 'admin-b@example.com');

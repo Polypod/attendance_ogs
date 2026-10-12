@@ -12,24 +12,24 @@ const router = Router();
 router.get('/', classController.getAllClasses);
 router.get('/:id', classController.getClassById);
 
-// Admin-only routes for creating, updating, and deleting classes
+// Admin and editor routes for creating, updating, and deleting classes
 router.post(
   '/',
-  authorize(UserRoleEnum.ADMIN),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR),
   validateRequest(createClassSchema),
   classController.createClass
 );
 
 router.put(
   '/:id',
-  authorize(UserRoleEnum.ADMIN),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR),
   validateRequest(updateClassSchema),
   classController.updateClass
 );
 
 router.delete(
   '/:id',
-  authorize(UserRoleEnum.ADMIN),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR),
   classController.deleteClass
 );
 

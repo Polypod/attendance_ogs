@@ -11,18 +11,18 @@ import { reportPresetController } from '@/controllers/ReportPresetController';
 
 const router = Router();
 
-router.get('/', authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR), reportPresetController.listPresets);
+router.get('/', authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR), reportPresetController.listPresets);
 
 router.post(
   '/',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR),
   validateRequest(createReportPresetSchema),
   reportPresetController.createPreset
 );
 
 router.put(
   '/:id',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR),
   validateParams(reportPresetIdParamSchema),
   validateRequest(updateReportPresetSchema),
   reportPresetController.updatePreset
@@ -30,7 +30,7 @@ router.put(
 
 router.delete(
   '/:id',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR),
   validateParams(reportPresetIdParamSchema),
   reportPresetController.deletePreset
 );

@@ -11,11 +11,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "next-auth/react";
 
 const navLinks = [
-  { href: "/dashboard", label: "Dashboard", roles: ["admin", "instructor", "staff", "student"] },
-  { href: "/dashboard/students", label: "Students", roles: ["admin", "instructor", "staff"] },
-  { href: "/dashboard/classes", label: "Classes", roles: ["admin", "instructor", "staff", "student"] },
-  { href: "/dashboard/calendar", label: "Calendar", roles: ["admin", "instructor", "staff", "student"] },
-  { href: "/dashboard/reports", label: "Reports", roles: ["admin", "instructor"] },
+  { href: "/dashboard", label: "Dashboard", roles: ["admin", "editor", "instructor", "staff", "student"] },
+  { href: "/dashboard/students", label: "Students", roles: ["admin", "editor", "instructor", "staff"] },
+  { href: "/dashboard/classes", label: "Classes", roles: ["admin", "editor", "instructor", "staff", "student"] },
+  { href: "/dashboard/calendar", label: "Calendar", roles: ["admin", "editor", "instructor", "staff", "student"] },
+  { href: "/dashboard/reports", label: "Reports", roles: ["admin", "editor", "instructor"] },
   { href: "/dashboard/users", label: "Users", roles: ["admin"] },
   { href: "/dashboard/settings", label: "Settings", roles: ["admin"] },
 ];

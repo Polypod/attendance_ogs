@@ -45,6 +45,7 @@ export enum DayOfWeekEnum {
 
 export enum UserRoleEnum {
   ADMIN = 'admin',
+  EDITOR = 'editor',
   INSTRUCTOR = 'instructor',
   STAFF = 'staff',
   STUDENT = 'student'

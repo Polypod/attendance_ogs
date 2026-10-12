@@ -19,25 +19,25 @@ router.get('/:id', scheduleController.getScheduleById);
 // Example: /api/schedules?startDate=2025-01-01&endDate=2025-12-31
 // Or with class ID: /api/schedules?classId=123
 
-// Admin and instructor routes for creating and updating schedules
+// Admin, editor, and instructor routes for creating and updating schedules
 router.post(
   '/',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR),
   validateRequest(createClassScheduleSchema),
   scheduleController.createSchedule
 );
 
 router.put(
   '/:id',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR),
   validateRequest(updateClassScheduleSchema),
   scheduleController.updateSchedule
 );
 
-// Admin and instructor routes for deleting schedules
+// Admin, editor, and instructor routes for deleting schedules
 router.delete(
   '/:id',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR),
   scheduleController.deleteSchedule
 );
 

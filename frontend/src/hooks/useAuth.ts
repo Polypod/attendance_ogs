@@ -11,6 +11,7 @@ export function useAuth() {
     isAuthenticated: status === "authenticated",
     isLoading: status === "loading",
     isAdmin: session?.user?.role === "admin",
+    isEditor: session?.user?.role === "editor",
     isInstructor: session?.user?.role === "instructor",
     isStaff: session?.user?.role === "staff",
     isStudent: session?.user?.role === "student"

@@ -8,16 +8,16 @@ import { UserRoleEnum } from '@/types/interfaces';
 
 const router = Router();
 
-// Routes accessible to admins, instructors, and staff
+// Routes accessible to admins, editors, instructors, and staff
 router.get(
   '/',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
   studentController.getAllStudents
 );
 
 router.get(
   '/category/:category',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
   studentController.getStudentsByCategory
 );
 
@@ -41,24 +41,24 @@ router.post(
   studentController.applyStudentImport
 );
 
-// Admin-only routes for creating, updating, and deleting students
+// Admin and editor routes for creating, updating, and deleting students
 router.post(
   '/',
-  authorize(UserRoleEnum.ADMIN),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR),
   validateRequest(createStudentSchema),
   studentController.createStudent
 );
 
 router.put(
   '/:id',
-  authorize(UserRoleEnum.ADMIN),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR),
   validateRequest(updateStudentSchema),
   studentController.updateStudent
 );
 
 router.delete(
   '/:id',
-  authorize(UserRoleEnum.ADMIN),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR),
   studentController.deleteStudent
 );
 

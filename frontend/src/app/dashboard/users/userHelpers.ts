@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "instructor" | "staff" | "student";
+export type UserRole = "admin" | "editor" | "instructor" | "staff" | "student";
 export type UserStatus = "active" | "inactive" | "suspended";
 
 export type UserLike = {
@@ -26,6 +26,8 @@ export function getRoleBadgeColor(role: UserRole): string {
   switch (role) {
     case "admin":
       return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+    case "editor":
+      return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
     case "instructor":
       return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
     case "staff":

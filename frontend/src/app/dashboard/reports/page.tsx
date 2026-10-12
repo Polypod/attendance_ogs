@@ -69,8 +69,9 @@ import { fetchApiPostData, getApiErrorMessage } from "./fetchHelpers";
 
 export default function ReportsPage() {
   const { data: session, status: authStatus } = useSession();
-  const { isAdmin, isInstructor } = useAuth();
-  const hasAccess = isAdmin || isInstructor;
+  const { isAdmin, isEditor, isInstructor } = useAuth();
+  const canManageSharedPresets = isAdmin || isEditor;
+  const hasAccess = canManageSharedPresets || isInstructor;
   const accessToken = (session as any)?.accessToken as string | undefined;
   const canLoad = hasAccess && authStatus === "authenticated" && !!accessToken;
 
@@ -376,7 +377,7 @@ export default function ReportsPage() {
         state: buildPresetState(),
       };
 
-      if (isAdmin) body.shared = presetSharedDraft;
+      if (canManageSharedPresets) body.shared = presetSharedDraft;
 
       const data = await api.post("/api/report-presets", body);
       const created: ReportPreset | undefined = data?.data;
@@ -406,7 +407,7 @@ export default function ReportsPage() {
 
       const name = presetNameDraft.trim();
       if (name) body.name = name;
-      if (isAdmin) body.shared = presetSharedDraft;
+      if (canManageSharedPresets) body.shared = presetSharedDraft;
 
       await api.put(`/api/report-presets/${selectedPresetId}`, body);
       await reloadPresets(selectedPresetId);
@@ -561,8 +562,8 @@ export default function ReportsPage() {
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
           <p className="text-muted-foreground">
-            You do not have permission to access this page. Only administrators
-            and instructors can view reports.
+            You do not have permission to access this page. Only administrators,
+            editors, and instructors can view reports.
           </p>
         </Card>
       )}
@@ -616,7 +617,7 @@ export default function ReportsPage() {
                 presetSharedDraft={presetSharedDraft}
                 presetBusy={presetBusy}
                 presetError={presetError}
-                isAdmin={isAdmin}
+                isAdmin={canManageSharedPresets}
                 instructorEditingShared={instructorEditingShared}
                 onSelectedPresetIdChange={setSelectedPresetId}
                 onPresetNameDraftChange={setPresetNameDraft}

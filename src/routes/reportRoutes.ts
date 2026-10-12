@@ -14,28 +14,28 @@ const router = Router();
 
 router.post(
   '/attendance/raw',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR),
   validateRequest(rawAttendanceReportQuerySchema),
   reportController.getRawAttendanceReport
 );
 
 router.post(
   '/attendance/aggregate',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR),
   validateRequest(aggregatedAttendanceReportQuerySchema),
   reportController.getAggregatedAttendanceReport
 );
 
 router.post(
   '/attendance/raw/export/csv',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR),
   validateRequest(rawAttendanceReportExportCsvSchema),
   reportController.getRawAttendanceReportExportCsv
 );
 
 router.post(
   '/attendance/aggregate/export/csv',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR),
   validateRequest(aggregatedAttendanceReportExportCsvSchema),
   reportController.getAggregatedAttendanceReportExportCsv
 );

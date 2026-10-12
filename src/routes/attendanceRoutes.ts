@@ -33,7 +33,7 @@ router.get('/search', attendanceController.searchPastClasses);
 // Routes for staff who can mark attendance
 router.post(
   '/mark',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
   validateRequest(markAttendanceSchema),
   attendanceController.markAttendance
 );
@@ -41,21 +41,21 @@ router.post(
 // Bulk attendance route (alias for mark)
 router.post(
   '/bulk',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
   attendanceController.markAttendance
 );
 
-// Routes for admins and instructors who can view reports
+// Routes for admins, editors, and instructors who can view reports
 router.get(
   '/reports/:dateRange',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR),
   attendanceController.getAttendanceReports
 );
 
 // Get attendance history for a specific student
 router.get(
   '/student/:studentId',
-  authorize(UserRoleEnum.ADMIN, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
+  authorize(UserRoleEnum.ADMIN, UserRoleEnum.EDITOR, UserRoleEnum.INSTRUCTOR, UserRoleEnum.STAFF),
   attendanceController.getStudentAttendance
 );
 

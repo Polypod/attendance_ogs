@@ -44,7 +44,7 @@ type User = {
   _id: string;
   name: string;
   email: string;
-  role: "admin" | "instructor" | "staff" | "student";
+  role: "admin" | "editor" | "instructor" | "staff" | "student";
   status: "active" | "inactive" | "suspended";
   created_at?: string;
   last_login?: string;
@@ -316,6 +316,7 @@ export default function UsersPage() {
                       <SelectItem value="student">Student</SelectItem>
                       <SelectItem value="staff">Staff</SelectItem>
                       <SelectItem value="instructor">Instructor</SelectItem>
+                      <SelectItem value="editor">Editor</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
@@ -462,6 +463,7 @@ export default function UsersPage() {
                     <SelectItem value="student">Student</SelectItem>
                     <SelectItem value="staff">Staff</SelectItem>
                     <SelectItem value="instructor">Instructor</SelectItem>
+                    <SelectItem value="editor">Editor</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>

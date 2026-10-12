@@ -59,9 +59,9 @@ export class ReportPresetService {
       if (ownerId !== actor._id) {
         throw new ForbiddenError('You can only modify your own presets');
       }
-    } else if (actor.role === UserRoleEnum.ADMIN) {
+    } else if (actor.role === UserRoleEnum.ADMIN || actor.role === UserRoleEnum.EDITOR) {
       if (!preset.shared && ownerId !== actor._id) {
-        throw new ForbiddenError('Admins can only modify their own private presets');
+        throw new ForbiddenError('Admins and editors can only modify their own private presets');
       }
     } else {
       throw new ForbiddenError('You do not have permission to perform this action');
@@ -71,7 +71,7 @@ export class ReportPresetService {
     if (dto.schemaVersion !== undefined) preset.schemaVersion = dto.schemaVersion;
     if (dto.state !== undefined) preset.state = dto.state;
 
-    if (actor.role === UserRoleEnum.ADMIN && dto.shared !== undefined) {
+    if ((actor.role === UserRoleEnum.ADMIN || actor.role === UserRoleEnum.EDITOR) && dto.shared !== undefined) {
       preset.shared = dto.shared;
     }
     if (actor.role === UserRoleEnum.INSTRUCTOR) {
@@ -99,9 +99,9 @@ export class ReportPresetService {
       if (ownerId !== actor._id) {
         throw new ForbiddenError('You can only delete your own presets');
       }
-    } else if (actor.role === UserRoleEnum.ADMIN) {
+    } else if (actor.role === UserRoleEnum.ADMIN || actor.role === UserRoleEnum.EDITOR) {
       if (!preset.shared && ownerId !== actor._id) {
-        throw new ForbiddenError('Admins can only delete their own private presets');
+        throw new ForbiddenError('Admins and editors can only delete their own private presets');
       }
     } else {
       throw new ForbiddenError('You do not have permission to perform this action');
