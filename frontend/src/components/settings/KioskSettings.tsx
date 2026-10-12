@@ -17,6 +17,14 @@ type Kiosk = {
   lastUsedAt?: string;
 };
 
+type PendingKioskRequest = {
+  id: string;
+  name: string;
+  requestedAt: string;
+  ipAddress: string;
+  userAgent: string;
+};
+
 type SessionWithAccessToken = { accessToken?: string };
 
 type KioskResponse<T> = { success: boolean; data?: T; message?: string; error?: string };
@@ -30,9 +38,24 @@ function formatTimestamp(value?: string): string {
   return new Date(value).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
 }
 
+function describeDevice(userAgent: string): string {
+  const device = /iPad/i.test(userAgent) ? "iPad" :
+    /iPhone/i.test(userAgent) ? "iPhone" :
+    /Android/i.test(userAgent) ? "Android-enhet" :
+    /Windows/i.test(userAgent) ? "Windows-enhet" :
+    /Macintosh|Mac OS/i.test(userAgent) ? "Mac" :
+    /Linux/i.test(userAgent) ? "Linux-enhet" : "Okänd enhet";
+  const browser = /Edg\//i.test(userAgent) ? "Edge" :
+    /Chrome\//i.test(userAgent) ? "Chrome" :
+    /Firefox\//i.test(userAgent) ? "Firefox" :
+    /Safari\//i.test(userAgent) ? "Safari" : "Okänd webbläsare";
+  return `${device} · ${browser}`;
+}
+
 export default function KioskSettings() {
   const { data: session, status } = useSession();
   const [kiosks, setKiosks] = useState<Kiosk[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<PendingKioskRequest[]>([]);
   const [name, setName] = useState("");
   const [activationUrl, setActivationUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -51,14 +74,40 @@ export default function KioskSettings() {
     setKiosks(response.data);
   };
 
+  const loadPendingRequests = async () => {
+    if (!accessToken) return;
+    const response = await api.get("/api/kiosk-requests") as KioskResponse<PendingKioskRequest[]>;
+    if (!response.success || !response.data) {
+      throw new Error(response.error || response.message || "Kunde inte hämta åtkomstbegäran");
+    }
+    setPendingRequests(response.data);
+  };
+
   useEffect(() => {
     if (status === "authenticated") {
-      loadKiosks().catch((nextError: unknown) => setError(messageFor(nextError)));
+      Promise.all([loadKiosks(), loadPendingRequests()]).catch((nextError: unknown) => setError(messageFor(nextError)));
     }
   }, [status, accessToken]);
 
   const showActivationUrl = (accessKey: string) => {
     setActivationUrl(`${window.location.origin}/narvaro?k=${encodeURIComponent(accessKey)}`);
+  };
+
+  const approveRequest = async (request: PendingKioskRequest) => {
+    if (!accessToken) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await api.post(`/api/kiosk-requests/${request.id}/approve`, {}) as KioskResponse<void>;
+      if (!response.success) {
+        throw new Error(response.error || response.message || "Kunde inte godkänna begäran");
+      }
+      await Promise.all([loadPendingRequests(), loadKiosks()]);
+    } catch (nextError: unknown) {
+      setError(messageFor(nextError));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const createKiosk = async (event: FormEvent<HTMLFormElement>) => {
@@ -176,7 +225,7 @@ export default function KioskSettings() {
     <Card>
       <CardHeader>
         <CardTitle>Närvarokiosker</CardTitle>
-        <CardDescription>Skapa en unik aktiveringslänk för varje enhet. Länken visas bara när en kiosk skapas eller nyckeln byts.</CardDescription>
+        <CardDescription>Godkänn enheternas åtkomstbegäran eller skapa en kiosk manuellt med en aktiveringslänk.</CardDescription>
         <a
           href="/narvaro"
           target="_blank"
@@ -188,6 +237,27 @@ export default function KioskSettings() {
         </a>
       </CardHeader>
       <CardContent className="space-y-5">
+        <section className="space-y-3" aria-labelledby="pending-kiosk-requests">
+          <div className="flex items-center justify-between gap-3">
+            <h3 id="pending-kiosk-requests" className="font-semibold">Väntande åtkomstbegäran ({pendingRequests.length})</h3>
+            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => loadPendingRequests().catch((nextError: unknown) => setError(messageFor(nextError)))}>Uppdatera</Button>
+          </div>
+          {pendingRequests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Inga väntande begäran.</p>
+          ) : pendingRequests.map((request) => (
+            <div key={request.id} className="rounded-md border p-4">
+              <p className="font-medium">{request.name}</p>
+              <dl className="mt-2 space-y-1 text-sm text-muted-foreground">
+                <div><dt className="inline font-medium">Begärd:</dt> <dd className="inline">{formatTimestamp(request.requestedAt)}</dd></div>
+                <div><dt className="inline font-medium">IP-adress:</dt> <dd className="inline">{request.ipAddress}</dd></div>
+                <div><dt className="inline font-medium">Enhet:</dt> <dd className="inline">{describeDevice(request.userAgent)}</dd></div>
+                <div className="break-all text-xs"><dt className="inline">Webbläsaridentifiering:</dt> <dd className="inline">{request.userAgent}</dd></div>
+              </dl>
+              <Button type="button" className="mt-3" disabled={busy} onClick={() => approveRequest(request)}>Godkänn åtkomst</Button>
+            </div>
+          ))}
+        </section>
+
         <form onSubmit={createKiosk} className="flex flex-col gap-3 sm:flex-row">
           <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Exempel: Entré-iPad" maxLength={100} aria-label="Kioskens namn" />
           <Button type="submit" disabled={busy || !name.trim()}>Skapa kiosk</Button>

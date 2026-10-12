@@ -103,3 +103,13 @@ export const apiLimiter = rateLimit({
     );
   }
 });
+
+// Public kiosk requests need a tighter limit than ordinary API reads.
+export const kioskAccessRequestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, message: 'Too many kiosk access requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip ? ipKeyGenerator(req.ip) : 'unknown',
+});

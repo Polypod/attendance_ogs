@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Check, ChevronLeft, ChevronRight, LogIn, RefreshCw, Save, Search, Users } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { getBeltLabel, useConfig } from "@/hooks/useConfig";
 
 const KIOSK_STORAGE_KEY = "attendance-kiosk-key";
+const KIOSK_REQUEST_STORAGE_KEY = "attendance-kiosk-request";
 const MAX_DAY_OFFSET = 3;
 
 function dateKeyForOffset(offset: number): string {
@@ -42,6 +43,7 @@ type KioskSession = {
   otherStudents: KioskStudent[];
 };
 type KioskPayload<T> = { success: boolean; data?: T; message?: string; error?: string };
+type PendingKioskRequest = { id: string; requestToken: string; name: string };
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Något gick fel";
@@ -65,9 +67,26 @@ async function kioskRequest<T>(path: string, accessKey: string, init?: RequestIn
   return payload.data;
 }
 
+async function accessRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers },
+    cache: "no-store",
+  });
+  const payload = await response.json() as KioskPayload<T>;
+  if (!response.ok || !payload.success || !payload.data) {
+    throw new Error(payload.error || payload.message || "Kunde inte skicka åtkomstbegäran");
+  }
+  return payload.data;
+}
+
 export default function AttendanceKioskPage() {
   const { config } = useConfig();
   const [accessKey, setAccessKey] = useState<string | null>(null);
+  const [requestName, setRequestName] = useState("");
+  const [pendingRequest, setPendingRequest] = useState<PendingKioskRequest | null>(null);
+  const [requestBusy, setRequestBusy] = useState(false);
   const [date, setDate] = useState("");
   const [dayOffset, setDayOffset] = useState(0);
   const [sessions, setSessions] = useState<KioskSession[]>([]);
@@ -101,8 +120,63 @@ export default function AttendanceKioskPage() {
       url.searchParams.delete("k");
       window.history.replaceState({}, "", url);
     }
+    const storedRequest = window.localStorage.getItem(KIOSK_REQUEST_STORAGE_KEY);
+    if (storedRequest) {
+      try {
+        const parsed = JSON.parse(storedRequest) as PendingKioskRequest;
+        if (parsed.id && parsed.requestToken && parsed.name) setPendingRequest(parsed);
+      } catch {
+        window.localStorage.removeItem(KIOSK_REQUEST_STORAGE_KEY);
+      }
+    }
     setAccessKey(storedKey);
   }, []);
+
+  const submitAccessRequest = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = requestName.trim();
+    if (name.length < 2 || requestBusy) return;
+    setRequestBusy(true);
+    setError(null);
+    try {
+      const data = await accessRequest<{ id: string; requestToken: string }>("/api/kiosk-requests", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      const pending = { ...data, name };
+      window.localStorage.setItem(KIOSK_REQUEST_STORAGE_KEY, JSON.stringify(pending));
+      setPendingRequest(pending);
+    } catch (nextError: unknown) {
+      setError(errorMessage(nextError));
+    } finally {
+      setRequestBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!pendingRequest || accessKey) return;
+    let active = true;
+    const checkApproval = async () => {
+      try {
+        const data = await accessRequest<{ status: "pending" | "approved" }>(
+          `/api/kiosk-requests/${pendingRequest.id}/status`,
+          { headers: { "X-Kiosk-Request-Token": pendingRequest.requestToken } }
+        );
+        if (active && data.status === "approved") {
+          window.localStorage.setItem(KIOSK_STORAGE_KEY, pendingRequest.requestToken);
+          window.localStorage.removeItem(KIOSK_REQUEST_STORAGE_KEY);
+          setPendingRequest(null);
+          setAccessKey(pendingRequest.requestToken);
+          setError(null);
+        }
+      } catch (nextError: unknown) {
+        if (active) setError(errorMessage(nextError));
+      }
+    };
+    void checkApproval();
+    const timer = window.setInterval(() => { void checkApproval(); }, 20_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [pendingRequest, accessKey]);
 
   const loadSessions = async (key = accessKey, offset = dayOffset) => {
     if (!key) return;
@@ -319,7 +393,24 @@ export default function AttendanceKioskPage() {
             <CardTitle className="mt-2 text-2xl text-slate-950">Närvarokiosken är inte aktiverad</CardTitle>
           </CardHeader>
           <CardContent className="px-8 pb-8">
-            <p className="text-slate-600">Öppna den unika aktiveringslänken från administratören på denna enhet.</p>
+            {pendingRequest ? (
+              <div className="space-y-3 text-slate-600">
+                <p>Åtkomst har begärts för <strong>{pendingRequest.name}</strong>.</p>
+                <p>Väntar på godkännande från en administratör. Sidan aktiveras automatiskt när begäran godkänns.</p>
+              </div>
+            ) : (
+              <>
+                <p className="mb-5 text-slate-600">Namnge enheten och begär åtkomst till närvarokiosken.</p>
+                <form onSubmit={submitAccessRequest} className="space-y-4">
+                  <label htmlFor="kiosk-request-name" className="block text-sm font-semibold text-slate-700">Enhetens namn</label>
+                  <Input id="kiosk-request-name" value={requestName} onChange={(event) => setRequestName(event.target.value)} minLength={2} maxLength={100} placeholder="Exempel: Entré-iPad" required />
+                  <Button type="submit" disabled={requestBusy || requestName.trim().length < 2} className="w-full">
+                    {requestBusy ? "Skickar begäran..." : "Begär åtkomst till närvarokiosken"}
+                  </Button>
+                </form>
+                <p className="mt-5 text-sm text-slate-500">Har du redan fått en aktiveringslänk? Öppna den på den här enheten.</p>
+              </>
+            )}
             {error && <p role="alert" className="mt-4 text-destructive">{error}</p>}
           </CardContent>
         </Card>

@@ -15,6 +15,7 @@ import { memberSyncRoutes } from './routes/memberSyncRoutes';
 import { metricsRoutes } from './routes/metricsRoutes';
 import { kioskAttendanceRoutes } from './routes/kioskAttendanceRoutes';
 import { kioskManagementRoutes } from './routes/kioskManagementRoutes';
+import { kioskAccessRequestRoutes } from './routes/kioskAccessRequestRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { applyMiddleware } from './middleware/middleware';
 import { authenticate, authorize } from './middleware/auth';
@@ -54,6 +55,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/kiosk-attendance', kioskAttendanceRoutes);
+app.use('/api/kiosk-requests', kioskAccessRequestRoutes);
 
 // Admin-only routes
 app.use('/api/users', authenticate, authorize(UserRoleEnum.ADMIN), userRoutes);

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import AttendanceKioskPage from '@/app/narvaro/page';
 
@@ -63,5 +63,31 @@ describe('AttendanceKioskPage', () => {
     fireEvent.click(within(groups).getByRole('button', { name: /Cecilia/ }));
     expect(within(present).getByRole('button', { name: /Cecilia/ })).toBeInTheDocument();
     expect(within(groups).queryByRole('button', { name: /Cecilia/ })).not.toBeInTheDocument();
+  });
+
+  it('requests access for a named device and opens the kiosk after approval', async () => {
+    window.localStorage.removeItem('attendance-kiosk-key');
+    const fetchMock = jest.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/kiosk-requests' && init?.method === 'POST') {
+        return { ok: true, json: async () => ({ success: true, data: { id: 'request-1', requestToken: 'device-secret' } }) };
+      }
+      if (url === '/api/kiosk-requests/request-1/status') {
+        expect((init?.headers as Record<string, string>)['X-Kiosk-Request-Token']).toBe('device-secret');
+        return { ok: true, json: async () => ({ success: true, data: { status: 'approved' } }) };
+      }
+      return { ok: true, json: async () => ({ success: true, data: { date: '2026-10-12', sessions: [] } }) };
+    });
+    global.fetch = fetchMock as typeof fetch;
+
+    render(<AttendanceKioskPage />);
+    fireEvent.change(screen.getByLabelText('Enhetens namn'), { target: { value: 'Entré-iPad' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Begär åtkomst till närvarokiosken' }));
+
+    await waitFor(() => expect(window.localStorage.getItem('attendance-kiosk-key')).toBe('device-secret'));
+    expect(window.localStorage.getItem('attendance-kiosk-request')).toBeNull();
+    expect(await screen.findByText('Dagens närvaro')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith('/api/kiosk-requests', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ name: 'Entré-iPad' }),
+    }));
   });
 });
