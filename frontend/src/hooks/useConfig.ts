@@ -52,3 +52,7 @@ export function useConfig() {
 
   return { config, loading, error };
 }
+
+export function getBeltLabel(config: SystemConfig | null, beltLevel: string): string {
+  return config?.beltLevels.find((belt) => belt.value === beltLevel)?.label || beltLevel;
+}

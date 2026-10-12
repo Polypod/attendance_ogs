@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { getBeltLabel, useConfig } from "@/hooks/useConfig";
 
 const KIOSK_STORAGE_KEY = "attendance-kiosk-key";
 const MAX_DAY_OFFSET = 3;
@@ -65,6 +66,7 @@ async function kioskRequest<T>(path: string, accessKey: string, init?: RequestIn
 }
 
 export default function AttendanceKioskPage() {
+  const { config } = useConfig();
   const [accessKey, setAccessKey] = useState<string | null>(null);
   const [date, setDate] = useState("");
   const [dayOffset, setDayOffset] = useState(0);
@@ -170,12 +172,32 @@ export default function AttendanceKioskPage() {
     setError(null);
   };
 
+  // Mirrors a save into the session list so the overview and reopening the session show it without a reload
+  const applyAttendanceToSession = (sessionId: string, presentStudentIds: string[], nextInstructorName: string) => {
+    const presentIds = new Set(presentStudentIds);
+    const withStatus = (student: KioskStudent, inSessionGroups: boolean): KioskStudent => {
+      if (presentIds.has(student.id)) return { ...student, attendanceStatus: "present" };
+      if (student.attendanceStatus === "present" || (inSessionGroups && student.active)) {
+        return { ...student, attendanceStatus: "absent" };
+      }
+      return student;
+    };
+    setSessions((current) => current.map((session) => session.id !== sessionId ? session : {
+      ...session,
+      instructorName: nextInstructorName,
+      students: session.students.map((student) => withStatus(student, true)),
+      otherStudents: session.otherStudents.map((student) => withStatus(student, false)),
+    }));
+  };
+
   // Persists attendance + instructor together, since the backend saves both in one call
   const persistAttendance = async (
     presentStudentIds: string[],
     instructorOverride: string
   ): Promise<{ presentCount: number; absentCount: number } | null> => {
     if (!accessKey || !selectedSession) return null;
+    // Applied before the request so reopening the session while the save is in flight doesn't start from stale data
+    applyAttendanceToSession(selectedSession.id, presentStudentIds, instructorOverride);
     try {
       return await kioskRequest<{ presentCount: number; absentCount: number }>(
         `/api/kiosk-attendance/sessions/${selectedSession.id}/finalize`,
@@ -272,7 +294,7 @@ export default function AttendanceKioskPage() {
             <span className="min-w-0 flex-1">
               <span className="block text-lg font-semibold text-slate-950">{student.name}</span>
               <span className="mt-0.5 block text-sm font-medium text-slate-500">
-                Grupp: {student.category} <span className="px-1 text-slate-300">·</span> {student.beltLevel}
+                Grupp: {student.category} <span className="px-1 text-slate-300">·</span> {getBeltLabel(config, student.beltLevel)}
                 {!student.active && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Inaktiv</span>}
               </span>
             </span>

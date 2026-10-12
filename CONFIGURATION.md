@@ -47,11 +47,15 @@ in code, so categories and belt levels can be adjusted without a release.
   missing or unmapped: `report` (skip and flag for review), `skip`, or
   `default` (use `default_categories`). A student requires at least one
   category, so these members cannot simply be created anyway.
-- `belt_map` maps the OGS grade to a local belt level; `null` clears the field.
-  An unknown grade leaves the belt untouched and raises a warning.
-- `dan_grades` lists the grades whose level comes from the `kyuDanGrade` field
-  in OGS instead of from `grade`. OGS has a single `black` option for every
-  dan, so black belts resolve through `dan_map` rather than `belt_map`.
+- `belt_map` identifies known OGS belt colors. For non-black colors, the local
+  level is determined by the number in `kyuDanGrade` (for example, 7 becomes
+  `7kyu`); the old fixed color mappings are ignored. A `null` entry clears the
+  belt for a non-color grade such as `instructor`. An unknown color, missing kyu
+  number, or kyu number with no local level leaves the belt untouched and raises
+  a warning.
+- `dan_grades` lists colors for which `kyuDanGrade` is interpreted as a dan
+  number. OGS has a single `black` option for every dan, so black belts resolve
+  through `dan_map`.
 - `dan_map` maps a dan number to a local belt level. A black belt with no dan
   number, or one outside the map, leaves the belt untouched and is flagged for
   review rather than falling back to the lowest dan.

@@ -23,9 +23,9 @@ export interface MemberSyncConfig {
   unmapped_category_action: UnmappedCategoryAction;
   /** Categories applied when unmapped_category_action is 'default'. */
   default_categories: string[];
-  /** OGS grade -> belt_level here. null clears the belt field. */
+  /** Known OGS belt colors; non-null fixed levels are legacy and ignored. null clears the belt. */
   belt_map: Record<string, string | null>;
-  /** Grades whose level comes from kyuDanGrade rather than from grade itself. */
+  /** Belt colors for which kyuDanGrade is a dan number rather than a kyu number. */
   dan_grades: string[];
   /** kyuDanGrade -> belt_level, used for the grades listed in dan_grades. */
   dan_map: Record<string, string | null>;

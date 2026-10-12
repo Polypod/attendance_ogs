@@ -139,8 +139,9 @@ member_sync:
   unmapped_category_action: "report"
   default_categories: []
 
-  # grade i OGS -> belt_level här. null tömmer bältesfältet.
-  # OGS saknar upplösning under brown, så den mappas till en fast nivå.
+  # Kända bältesfärger i OGS. För färger som inte är svarta bestäms kyugraden
+  # av kyuDanGrade. De äldre fasta värdena nedan används inte vid synkning.
+  # null används för värden utan bälte, exempelvis instructor, och tömmer fältet.
   belt_map:
     white: "10kyu"
     yellow: "8kyu"
@@ -151,8 +152,7 @@ member_sync:
     black: "black_1st"
     instructor: null
 
-  # Grader där dan-nivån framgår av fältet kyuDanGrade i OGS i stället för av
-  # grade. För dessa används dan_map nedan, inte belt_map.
+  # Färger där kyuDanGrade ska tolkas som dangrad i stället för kyugrad.
   dan_grades: ["black"]
 
   # kyuDanGrade -> belt_level. Saknas dan-numret lämnas bältet orört och raden

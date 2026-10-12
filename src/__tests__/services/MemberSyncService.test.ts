@@ -189,16 +189,61 @@ describe('MemberSyncService', () => {
     expect(student!.external_id).toBeUndefined();
   });
 
-  it('maps a known grade onto a belt level and leaves an unknown grade untouched', async () => {
-    const mapped = await serviceFor(buildMember({ grade: 'white' })).apply();
-    expect(mapped.summary.created).toBe(1);
-    const whiteBelt = await StudentModel.findOne({ external_id: 'ogs-1' });
-    expect(whiteBelt!.belt_level).toBe('10kyu');
+  it.each([
+    ['white', 9, '9kyu'],
+    ['yellow', 7, '7kyu'],
+    ['brown', 2, '2kyu'],
+  ])('uses %s belt with Kyu/Dan Grade %i', async (grade, kyu, expected) => {
+    const result = await serviceFor(
+      buildMember({ grade: grade as string, kyuDanGrade: kyu as number })
+    ).apply();
 
-    const result = await serviceFor(buildMember({ grade: 'chartreuse' })).apply();
+    expect(result.summary.created).toBe(1);
+    const student = await StudentModel.findOne({ external_id: 'ogs-1' });
+    expect(student!.belt_level).toBe(expected);
+  });
+
+  it('leaves an unknown belt color untouched', async () => {
+    await serviceFor(buildMember({ grade: 'white', kyuDanGrade: 9 })).apply();
+
+    const result = await serviceFor(buildMember({ grade: 'chartreuse', kyuDanGrade: 4 })).apply();
+    const student = await StudentModel.findOne({ external_id: 'ogs-1' });
+    expect(student!.belt_level).toBe('9kyu');
+    expect(rowFor(result, 'anna@example.com').warnings.join(' ')).toMatch(/chartreuse/);
+  });
+
+  it('preserves an existing kyu belt when the number is missing or unmapped', async () => {
+    await serviceFor(buildMember({ grade: 'white', kyuDanGrade: 9 })).apply();
+
+    const missing = await serviceFor(buildMember({ grade: 'yellow', kyuDanGrade: null })).apply();
+    expect(rowFor(missing, 'anna@example.com').warnings.join(' ')).toMatch(/kyu number/i);
+
+    const unmapped = await serviceFor(buildMember({ grade: 'brown', kyuDanGrade: 11 })).apply();
+    expect(rowFor(unmapped, 'anna@example.com').warnings.join(' ')).toMatch(/Kyu 11/);
+
+    const student = await StudentModel.findOne({ external_id: 'ogs-1' });
+    expect(student!.belt_level).toBe('9kyu');
+  });
+
+  it('previews correction of an existing fixed-color grade without writing it', async () => {
+    await StudentModel.create({
+      name: 'Anna Andersson',
+      email: 'anna@example.com',
+      categories: [StudentCategoryEnum.KIDS],
+      belt_level: '10kyu',
+      external_source: 'payload',
+      external_id: 'ogs-1',
+      active: true,
+      status: StudentStatusEnum.ACTIVE,
+    });
+
+    const result = await serviceFor(buildMember({ grade: 'white', kyuDanGrade: 8 })).preview();
+
+    expect(rowFor(result, 'anna@example.com').action).toBe('update');
+    expect(rowFor(result, 'anna@example.com').changes.belt_level.from).toBe('10kyu');
+    expect(rowFor(result, 'anna@example.com').changes.belt_level.to).toBe('8kyu');
     const student = await StudentModel.findOne({ external_id: 'ogs-1' });
     expect(student!.belt_level).toBe('10kyu');
-    expect(rowFor(result, 'anna@example.com').warnings.join(' ')).toMatch(/chartreuse/);
   });
 
   it('resolves a black belt from the dan number rather than the grade', async () => {

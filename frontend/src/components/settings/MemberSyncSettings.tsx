@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -98,12 +99,120 @@ const summarizeChanges = (changes: SyncRow["changes"]): string => {
     .join("; ");
 };
 
+type DisplayRow = {
+  key: string;
+  action: string;
+  name: string;
+  email: string;
+  changes: string;
+  notes: string;
+};
+
+type SortColumn = keyof Omit<DisplayRow, "key">;
+type SortState = { column: SortColumn; direction: "asc" | "desc" } | null;
+
+const displayRow = (row: SyncRow): DisplayRow => ({
+  key: `${row.externalId ?? "none"}-${row.email}`,
+  action: ACTION_LABELS[row.action] ?? row.action,
+  name: row.name,
+  email: row.email,
+  changes: summarizeChanges(row.changes),
+  notes: [row.reason, ...row.warnings, ...row.errors].filter(Boolean).join("; ") || "-",
+});
+
+const filterAndSortRows = (
+  rows: DisplayRow[],
+  query: string,
+  sort: SortState,
+  columns: SortColumn[],
+): DisplayRow[] => {
+  const search = query.trim().toLocaleLowerCase();
+  const filtered = search
+    ? rows.filter((row) =>
+        columns.some((column) => row[column].toLocaleLowerCase().includes(search)),
+      )
+    : rows;
+
+  if (!sort) return filtered;
+
+  return [...filtered].sort((a, b) => {
+    const comparison = a[sort.column].localeCompare(b[sort.column], undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    return sort.direction === "asc" ? comparison : -comparison;
+  });
+};
+
+const RESULT_COLUMNS: SortColumn[] = ["action", "name", "email", "changes", "notes"];
+const ATTENTION_COLUMNS: SortColumn[] = ["name", "email", "notes"];
+
+function SortableHead({
+  column,
+  label,
+  sort,
+  onSort,
+}: {
+  column: SortColumn;
+  label: string;
+  sort: SortState;
+  onSort: (column: SortColumn) => void;
+}) {
+  const direction = sort?.column === column ? sort.direction : null;
+
+  return (
+    <TableHead
+      aria-sort={direction === "asc" ? "ascending" : direction === "desc" ? "descending" : undefined}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className="-ml-2 inline-flex items-center gap-1 rounded px-2 py-1 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        {label}
+        <span aria-hidden="true" className="text-muted-foreground">
+          {direction === "asc" ? "↑" : direction === "desc" ? "↓" : "↕"}
+        </span>
+      </button>
+    </TableHead>
+  );
+}
+
 export default function MemberSyncSettings() {
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [result, setResult] = useState<SyncResult | null>(null);
   const [busyAction, setBusyAction] = useState<"preview" | "run" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rowSearch, setRowSearch] = useState("");
+  const [attentionSearch, setAttentionSearch] = useState("");
+  const [rowSort, setRowSort] = useState<SortState>(null);
+  const [attentionSort, setAttentionSort] = useState<SortState>(null);
+
+  const rows = useMemo(() => result?.rows.map(displayRow) ?? [], [result]);
+  const attentionRows = useMemo(() => result?.attention.map(displayRow) ?? [], [result]);
+  const visibleRows = useMemo(
+    () => filterAndSortRows(rows, rowSearch, rowSort, RESULT_COLUMNS),
+    [rows, rowSearch, rowSort],
+  );
+  const visibleAttentionRows = useMemo(
+    () => filterAndSortRows(attentionRows, attentionSearch, attentionSort, ATTENTION_COLUMNS),
+    [attentionRows, attentionSearch, attentionSort],
+  );
+
+  const toggleRowSort = (column: SortColumn) => {
+    setRowSort((current) => ({
+      column,
+      direction: current?.column === column && current.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const toggleAttentionSort = (column: SortColumn) => {
+    setAttentionSort((current) => ({
+      column,
+      direction: current?.column === column && current.direction === "asc" ? "desc" : "asc",
+    }));
+  };
 
   const loadStatus = useCallback(async () => {
     try {
@@ -138,6 +247,10 @@ export default function MemberSyncSettings() {
       }
 
       setResult(payload.data);
+      setRowSearch("");
+      setAttentionSearch("");
+      setRowSort(null);
+      setAttentionSort(null);
       setMessage(
         action === "preview"
           ? "Preview generated. Nothing has been written yet."
@@ -233,45 +346,124 @@ export default function MemberSyncSettings() {
           </CardHeader>
           <CardContent className="space-y-4">
             {result.attention.length > 0 && (
-              <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+              <div className="space-y-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
                 <p className="font-medium">
                   {result.attention.length} member(s) need attention
                 </p>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
-                  {result.attention.map((row) => (
-                    <li key={`attention-${row.email}-${row.externalId ?? "none"}`}>
-                      {row.email}: {row.reason ?? row.errors.join("; ")}
-                    </li>
-                  ))}
-                </ul>
+                <label htmlFor="sync-attention-search" className="sr-only">
+                  Search members needing attention
+                </label>
+                <Input
+                  id="sync-attention-search"
+                  type="search"
+                  value={attentionSearch}
+                  onChange={(event) => setAttentionSearch(event.target.value)}
+                  placeholder="Search members needing attention..."
+                  className="max-w-sm bg-white"
+                />
+                <p aria-live="polite">
+                  Showing {visibleAttentionRows.length} of {attentionRows.length}
+                </p>
+                <Table className="min-w-[600px]">
+                  <TableHeader>
+                    <TableRow>
+                      <SortableHead
+                        column="name"
+                        label="Name"
+                        sort={attentionSort}
+                        onSort={toggleAttentionSort}
+                      />
+                      <SortableHead
+                        column="email"
+                        label="Email"
+                        sort={attentionSort}
+                        onSort={toggleAttentionSort}
+                      />
+                      <SortableHead
+                        column="notes"
+                        label="Notes"
+                        sort={attentionSort}
+                        onSort={toggleAttentionSort}
+                      />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visibleAttentionRows.map((row) => (
+                      <TableRow key={`attention-${row.key}`}>
+                        <TableCell>{row.name}</TableCell>
+                        <TableCell>{row.email}</TableCell>
+                        <TableCell className="max-w-[28rem] whitespace-normal">{row.notes}</TableCell>
+                      </TableRow>
+                    ))}
+                    {visibleAttentionRows.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3}>No matching members.</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             )}
 
-            <Table>
+            <label htmlFor="sync-member-search" className="sr-only">
+              Search sync members
+            </label>
+            <Input
+              id="sync-member-search"
+              type="search"
+              value={rowSearch}
+              onChange={(event) => setRowSearch(event.target.value)}
+              placeholder="Search sync members..."
+              className="max-w-sm"
+            />
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              Showing {visibleRows.length} of {rows.length}
+            </p>
+            <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Changes</TableHead>
-                  <TableHead>Notes</TableHead>
+                  <SortableHead
+                    column="action"
+                    label="Action"
+                    sort={rowSort}
+                    onSort={toggleRowSort}
+                  />
+                  <SortableHead column="name" label="Name" sort={rowSort} onSort={toggleRowSort} />
+                  <SortableHead
+                    column="email"
+                    label="Email"
+                    sort={rowSort}
+                    onSort={toggleRowSort}
+                  />
+                  <SortableHead
+                    column="changes"
+                    label="Changes"
+                    sort={rowSort}
+                    onSort={toggleRowSort}
+                  />
+                  <SortableHead
+                    column="notes"
+                    label="Notes"
+                    sort={rowSort}
+                    onSort={toggleRowSort}
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {result.rows.map((row) => (
-                  <TableRow key={`${row.externalId ?? "none"}-${row.email}`}>
-                    <TableCell className="whitespace-nowrap">
-                      {ACTION_LABELS[row.action] ?? row.action}
-                    </TableCell>
+                {visibleRows.map((row) => (
+                  <TableRow key={row.key}>
+                    <TableCell className="whitespace-nowrap">{row.action}</TableCell>
                     <TableCell>{row.name}</TableCell>
                     <TableCell>{row.email}</TableCell>
-                    <TableCell className="text-xs">{summarizeChanges(row.changes)}</TableCell>
-                    <TableCell className="text-xs">
-                      {[row.reason, ...row.warnings, ...row.errors].filter(Boolean).join("; ") ||
-                        "-"}
-                    </TableCell>
+                    <TableCell className="max-w-[28rem] whitespace-normal text-xs">{row.changes}</TableCell>
+                    <TableCell className="max-w-[28rem] whitespace-normal text-xs">{row.notes}</TableCell>
                   </TableRow>
                 ))}
+                {visibleRows.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5}>No matching members.</TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

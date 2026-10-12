@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createApiClient } from "@/lib/api";
-import { useConfig } from "@/hooks/useConfig";
+import { getBeltLabel, useConfig } from "@/hooks/useConfig";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -599,7 +599,7 @@ export default function TakeAttendancePage() {
                     <div className="flex-1">
                       <p className="font-semibold">{student.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {student.belt_level} | {student.categories.join(", ")}
+                        {getBeltLabel(config, student.belt_level)} | {student.categories.join(", ")}
                       </p>
                     </div>
                     
@@ -671,7 +671,7 @@ export default function TakeAttendancePage() {
                       <div className="flex-1">
                         <p className="font-semibold">{student.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {student.belt_level} | {student.categories.join(", ")}
+                          {getBeltLabel(config, student.belt_level)} | {student.categories.join(", ")}
                         </p>
                       </div>
                       

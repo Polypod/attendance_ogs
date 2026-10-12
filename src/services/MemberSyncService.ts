@@ -500,7 +500,9 @@ export class MemberSyncService {
   }
 
   /**
-   * Map the OGS grade onto a local belt level.
+   * Use the OGS belt color to choose kyu or dan, then read the number from
+   * kyuDanGrade. The belt_map still identifies known colors and special values
+   * such as instructor, but its fixed kyu levels are not used.
    *
    * An unknown grade leaves the belt untouched rather than clearing it: that is
    * a gap in the mapping table, not an instruction to wipe the value.
@@ -516,9 +518,7 @@ export class MemberSyncService {
       return { apply: true, value: '' };
     }
 
-    // For black belts the level lives in kyuDanGrade, not in grade: OGS has a
-    // single `black` option for every dan. Reading belt_map here would collapse
-    // every dan holder onto the same belt.
+    // Black belts use the number as a dan grade; other known colors use it as kyu.
     if (syncConfig.dan_grades.includes(grade)) {
       return this.resolveDanBeltLevel(member, syncConfig, grade, warnings);
     }
@@ -528,7 +528,26 @@ export class MemberSyncService {
       return { apply: false, value: '' };
     }
 
-    return { apply: true, value: syncConfig.belt_map[grade] ?? '' };
+    // Non-color values such as instructor explicitly clear the local belt.
+    if (syncConfig.belt_map[grade] === null) {
+      return { apply: true, value: '' };
+    }
+
+    const kyu = member.kyuDanGrade;
+    if (typeof kyu !== 'number' || !Number.isInteger(kyu) || kyu <= 0) {
+      warnings.push(
+        `Grade "${grade}" requires a kyu number in Kyu/Dan Grade in the member register`
+      );
+      return { apply: false, value: '' };
+    }
+
+    const value = `${kyu}kyu`;
+    if (!ConfigService.getInstance().isValidBeltLevel(value)) {
+      warnings.push(`Kyu ${kyu} has no matching local belt level`);
+      return { apply: false, value: '' };
+    }
+
+    return { apply: true, value };
   }
 
   /**
