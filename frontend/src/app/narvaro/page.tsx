@@ -140,21 +140,26 @@ export default function AttendanceKioskPage() {
   }, [accessKey]);
 
   const selectedSession = sessions.find((session) => session.id === selectedSessionId) ?? null;
-  const filterStudents = (students: KioskStudent[]) => {
+  const { presentStudents, visibleStudents, visibleOtherStudents } = useMemo(() => {
+    if (!selectedSession) {
+      return { presentStudents: [], visibleStudents: [], visibleOtherStudents: [] };
+    }
+
     const query = search.trim().toLocaleLowerCase("sv-SE");
-    return students.filter((student) =>
-      (showInactive || student.active) &&
-      student.name.toLocaleLowerCase("sv-SE").includes(query)
-    );
-  };
-  const visibleStudents = useMemo(
-    () => selectedSession ? filterStudents(selectedSession.students) : [],
-    [selectedSession, search, showInactive]
-  );
-  const visibleOtherStudents = useMemo(
-    () => selectedSession && showOtherStudents ? filterStudents(selectedSession.otherStudents) : [],
-    [selectedSession, search, showInactive, showOtherStudents]
-  );
+    const presentIds = new Set(selectedStudentIds);
+    const matchesSearch = (student: KioskStudent) => student.name.toLocaleLowerCase("sv-SE").includes(query);
+    const isVisibleUnselected = (student: KioskStudent) =>
+      !presentIds.has(student.id) && (showInactive || student.active) && matchesSearch(student);
+
+    return {
+      presentStudents: [...selectedSession.students, ...selectedSession.otherStudents]
+        .filter((student) => presentIds.has(student.id) && matchesSearch(student)),
+      visibleStudents: selectedSession.students.filter(isVisibleUnselected),
+      visibleOtherStudents: showOtherStudents
+        ? selectedSession.otherStudents.filter(isVisibleUnselected)
+        : [],
+    };
+  }, [selectedSession, selectedStudentIds, search, showInactive, showOtherStudents]);
 
   const openSession = (session: KioskSession) => {
     setSelectedSessionId(session.id);
@@ -407,6 +412,15 @@ export default function AttendanceKioskPage() {
           </div>
           {error && <p role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 font-medium text-red-800">{error}</p>}
           {success && <p role="status" className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 font-medium text-emerald-800">{success}</p>}
+          {presentStudents.length > 0 && (
+            <section className="mb-7">
+              <div className="mb-3 flex items-baseline justify-between">
+                <h2 className="text-xl font-bold">Närvarande</h2>
+                <span className="text-sm font-medium text-slate-500">{presentStudents.length} medlemmar</span>
+              </div>
+              {renderStudentCards(presentStudents)}
+            </section>
+          )}
           <section>
             <div className="mb-3 flex items-baseline justify-between">
               <h2 className="text-xl font-bold">Passets grupper</h2>
