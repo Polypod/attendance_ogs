@@ -14,6 +14,7 @@
 | Fråga | Beslut |
 | --- | --- |
 | OIDC-utfärdare | `node-oidc-provider` inbyggd i OGS (Next.js/Payload), med Payload-sessionen som inloggningskälla |
+| Issuer-URL | `https://gojuryu.se/api/oidc` i produktion, `https://ogs.minamail.se/api/oidc` i test. Värdet sparas i varje kontolänk och får inte ändras i efterhand |
 | Kontroll av roll och status | Ny endpoint `GET /api/attendance-sync/staff` i OGS, skyddad med samma tjänsteanvändare som medlemssynken. Medlemsexporten används inte, eftersom allt i den blir elever i attendance |
 | Next-servern mot backenden | Backenden verifierar själv ID-token från OGS mot OGS JWKS (`iss`, `aud`, ålder, signatur) och tar emot varje token en gång. Därutöver krävs `SSO_INTERNAL_SECRET` i headern `X-Internal-Secret` |
 | Kontolänkning | Admin länkar manuellt i Users och aktiverar SSO med en kryssruta per användare. Ingen automatisk kontoskapning och ingen matchning på e-post |
