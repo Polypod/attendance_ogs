@@ -80,8 +80,15 @@ export interface User {
   created_by: string;
   last_login?: Date;
   password_changed_at?: Date;
+  external_identity?: ExternalIdentity;
+  sso_enabled?: boolean;
   created_at?: Date;
   updated_at?: Date;
+}
+
+export interface ExternalIdentity {
+  issuer: string;
+  subject: string;
 }
 
 export interface Student {
@@ -235,9 +242,11 @@ export interface AttendanceReport {
 // User management DTOs
 export interface CreateUserDto {
   email: string;
-  password: string;
+  password?: string; // Optional when the user is linked to an OGS account
   name: string;
   role: UserRoleEnum;
+  ogs_user_id?: string | null;
+  sso_enabled?: boolean;
 }
 
 export interface UpdateUserDto {
@@ -245,6 +254,8 @@ export interface UpdateUserDto {
   role?: UserRoleEnum;
   status?: UserStatusEnum;
   password?: string; // Only for password reset
+  ogs_user_id?: string | null; // null unlinks the OGS account
+  sso_enabled?: boolean;
 }
 
 export interface LoginDto {

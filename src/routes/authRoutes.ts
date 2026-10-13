@@ -4,11 +4,13 @@ import { authController } from '@/controllers/AuthController';
 import { authenticate } from '@/middleware/auth';
 import { authLimiter, authLimiterStore, refreshTokenLimiter } from '@/middleware/rateLimiter';
 import { validateRequest } from '@/middleware/validation';
+import { requireInternalSecret } from '@/middleware/internalAuth';
 import { ipKeyGenerator } from 'express-rate-limit';
 import {
   loginSchema,
   changePasswordSchema,
-  refreshTokenSchema
+  refreshTokenSchema,
+  ogsSsoLoginSchema
 } from '@/types/validation';
 
 const router = Router();
@@ -28,6 +30,9 @@ router.get('/rate-limit-status', async (req, res) => {
   res.json({ rateLimited: limited, resetAt });
 });
 router.post('/refresh-token', refreshTokenLimiter, validateRequest(refreshTokenSchema), authController.refreshToken);
+
+// Server-to-server: the Next.js server exchanges a verified OGS ID token
+router.post('/sso/ogs', requireInternalSecret, validateRequest(ogsSsoLoginSchema), authController.ogsSsoLogin);
 
 // Protected routes (require authentication)
 router.get('/me', authenticate, authController.getMe);

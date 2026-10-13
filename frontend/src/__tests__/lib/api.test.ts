@@ -112,6 +112,62 @@ describe('fetchWithAuth', () => {
     }
   });
 
+  it('retries once with a renewed access token after a 401', async () => {
+    const { getSession } = jest.requireMock('next-auth/react') as { getSession: jest.Mock };
+    getSession.mockResolvedValue({ accessToken: 'tok_new' });
+
+    const unauthorized = {
+      ok: false,
+      status: 401,
+      headers: new Headers(),
+      text: async () => 'expired',
+    } as any;
+    const ok = {
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({ ok: true }),
+    } as any;
+    (global.fetch as jest.Mock).mockResolvedValueOnce(unauthorized).mockResolvedValueOnce(ok);
+
+    const originalWindow = (global as any).window;
+    (global as any).window = { location: { href: '' } };
+    let res: Response;
+    try {
+      res = await fetchWithAuth('/api/secure', { method: 'GET', token: 'tok_old' });
+    } finally {
+      (global as any).window = originalWindow;
+    }
+
+    expect(res.status).toBe(200);
+    const calls = (global.fetch as jest.Mock).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][1].headers.Authorization).toBe('Bearer tok_old');
+    expect(calls[1][1].headers.Authorization).toBe('Bearer tok_new');
+  });
+
+  it('does not retry when the session could not be renewed', async () => {
+    const { getSession } = jest.requireMock('next-auth/react') as { getSession: jest.Mock };
+    getSession.mockResolvedValue({ accessToken: '', error: 'RefreshAccessTokenError' });
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: new Headers(),
+      text: async () => 'revoked',
+    } as any);
+
+    const originalWindow = (global as any).window;
+    (global as any).window = { location: { href: '' } };
+    try {
+      await expect(fetchWithAuth('/api/secure', { method: 'GET', token: 'tok_old' })).rejects.toThrow('Unauthorized');
+      expect((global as any).window.location.href).toBe('/login');
+    } finally {
+      (global as any).window = originalWindow;
+    }
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('throws a detailed error on non-OK responses and includes requestId', async () => {
     const response = {
       ok: false,

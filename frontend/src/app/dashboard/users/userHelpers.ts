@@ -56,3 +56,62 @@ export function formatLastLogin(lastLoginIso?: string): string {
   if (!lastLoginIso) return "Never";
   return new Date(lastLoginIso).toLocaleDateString();
 }
+
+// OGS single sign-on link, edited per user by an admin
+export type OgsLink = {
+  ogs_user_id: string;
+  sso_enabled: boolean;
+};
+
+export type OgsLinkChanges = {
+  ogs_user_id?: string | null;
+  sso_enabled?: boolean;
+};
+
+export type OgsStaffAccount = {
+  id: string;
+  email: string;
+  displayName: string;
+  roles: string[];
+  status: string | null;
+  isActive: boolean | null;
+};
+
+export function getOgsLinkFromUser(user: {
+  external_identity?: { subject?: string } | null;
+  sso_enabled?: boolean;
+}): OgsLink {
+  return {
+    ogs_user_id: user.external_identity?.subject ?? "",
+    sso_enabled: Boolean(user.sso_enabled),
+  };
+}
+
+/**
+ * Only the fields the admin changed, so saving a user's name never touches
+ * the OGS link.
+ */
+export function buildOgsLinkChanges(initial: OgsLink, current: OgsLink): OgsLinkChanges {
+  const changes: OgsLinkChanges = {};
+  const id = current.ogs_user_id.trim();
+
+  if (id !== initial.ogs_user_id.trim()) {
+    changes.ogs_user_id = id || null;
+  }
+  const ssoEnabled = id ? current.sso_enabled : false;
+  if (ssoEnabled !== initial.sso_enabled || (changes.ogs_user_id !== undefined && ssoEnabled)) {
+    changes.sso_enabled = ssoEnabled;
+  }
+  return changes;
+}
+
+/**
+ * The attendance role OGS grants, using the same rule as the backend:
+ * approved, not explicitly inactive, and admin (preferred) or editor.
+ */
+export function getOgsGrantedRole(account?: OgsStaffAccount | null): "admin" | "editor" | null {
+  if (!account || account.status !== "approved" || account.isActive === false) return null;
+  if (account.roles?.includes("admin")) return "admin";
+  if (account.roles?.includes("editor")) return "editor";
+  return null;
+}

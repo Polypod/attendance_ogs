@@ -17,6 +17,9 @@ const router = Router();
 // Get all users
 router.get('/', userController.getAllUsers);
 
+// OGS accounts available for linking (before /:id)
+router.get('/ogs-staff', userController.listOgsStaff);
+
 // Get user by ID
 router.get('/:id', userController.getUserById);
 

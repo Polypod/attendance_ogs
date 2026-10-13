@@ -48,5 +48,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  return <SessionProvider>{children}</SessionProvider>;
+  // Re-fetch the session every 4 minutes so the server renews the short-lived
+  // access token of an OGS session before it expires.
+  return <SessionProvider refetchInterval={4 * 60}>{children}</SessionProvider>;
 }

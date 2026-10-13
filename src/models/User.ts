@@ -21,9 +21,15 @@ const userSchema = new Schema<IUserDocument>({
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address']
   },
+  // SSO accounts linked to an OGS user may have no local password.
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: [
+      function (this: IUserDocument) {
+        return !this.external_identity?.subject;
+      },
+      'Password is required'
+    ],
     minlength: [8, 'Password must be at least 8 characters long'],
     select: false // Exclude password from queries by default
   },
@@ -59,6 +65,16 @@ const userSchema = new Schema<IUserDocument>({
   },
   password_changed_at: {
     type: Date
+  },
+  // OGS account this user is linked to, set manually by an admin. SSO logins
+  // match on (issuer, subject) only, never on email.
+  external_identity: {
+    issuer: { type: String, trim: true },
+    subject: { type: String, trim: true }
+  },
+  sso_enabled: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: {
@@ -69,6 +85,10 @@ const userSchema = new Schema<IUserDocument>({
 });
 
 
+userSchema.index(
+  { 'external_identity.issuer': 1, 'external_identity.subject': 1 },
+  { unique: true, partialFilterExpression: { 'external_identity.subject': { $type: 'string' } } }
+);
 
 // Pre-save middleware to hash password
 userSchema.pre('save', async function() {
@@ -87,6 +107,7 @@ userSchema.pre('save', async function() {
 
 // Instance method to compare password
 userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
+  if (!this.password) return false;
   return await bcrypt.compare(candidatePassword, this.password);
 };
 

@@ -35,10 +35,15 @@ import { Trash2, Edit, Key, UserPlus } from "lucide-react";
 import { logger } from "@/lib/logger";
 import {
   buildEditUserFormFromUser,
+  buildOgsLinkChanges,
   formatLastLogin,
+  getOgsLinkFromUser,
   getRoleBadgeColor,
   getStatusBadgeColor,
+  OgsLink,
+  OgsStaffAccount,
 } from "./userHelpers";
+import { OgsLinkFields } from "./OgsLinkFields";
 
 type User = {
   _id: string;
@@ -48,7 +53,11 @@ type User = {
   status: "active" | "inactive" | "suspended";
   created_at?: string;
   last_login?: string;
+  external_identity?: { issuer?: string; subject?: string } | null;
+  sso_enabled?: boolean;
 };
+
+const EMPTY_OGS_LINK: OgsLink = { ogs_user_id: "", sso_enabled: false };
 
 export default function UsersPage() {
   const { data: session, status } = useSession();
@@ -78,6 +87,12 @@ export default function UsersPage() {
     role: "student" as User["role"],
     status: "active" as User["status"],
   });
+
+  // OGS link for the create and edit dialogs
+  const [createOgsLink, setCreateOgsLink] = useState<OgsLink>(EMPTY_OGS_LINK);
+  const [editOgsLink, setEditOgsLink] = useState<OgsLink>(EMPTY_OGS_LINK);
+  const [ogsAccounts, setOgsAccounts] = useState<OgsStaffAccount[] | null>(null);
+  const [ogsAccountsError, setOgsAccountsError] = useState<string | null>(null);
 
   // Form state for reset password
   const [newPassword, setNewPassword] = useState("");
@@ -116,6 +131,19 @@ export default function UsersPage() {
     }
   }
 
+  // OGS admin/editor accounts, loaded when a dialog that links them opens
+  async function loadOgsAccounts() {
+    if (!session?.accessToken || ogsAccounts) return;
+    try {
+      const api = createApiClient((session as any)?.accessToken);
+      const data = await api.get("/api/users/ogs-staff");
+      setOgsAccounts(data.data || []);
+      setOgsAccountsError(null);
+    } catch (e: unknown) {
+      setOgsAccountsError(e instanceof Error ? e.message : "unavailable");
+    }
+  }
+
   // Create user
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
@@ -123,10 +151,19 @@ export default function UsersPage() {
     setError(null);
     try {
       const api = createApiClient((session as any)?.accessToken);
-      const data = await api.post("/api/users", createForm);
+      const linkChanges = buildOgsLinkChanges(EMPTY_OGS_LINK, createOgsLink);
+      const { password, ...rest } = createForm;
+      // A user linked to OGS may be created without a local password
+      const payload = {
+        ...rest,
+        ...(password ? { password } : {}),
+        ...linkChanges,
+      };
+      const data = await api.post("/api/users", payload);
       setUsers((prev) => [...prev, data.data]);
       setCreateDialogOpen(false);
       setCreateForm({ name: "", email: "", password: "", role: "student" });
+      setCreateOgsLink(EMPTY_OGS_LINK);
     } catch (e: unknown) {
       if (e instanceof Error) setError(e.message);
       else setError("Failed to create user");
@@ -140,7 +177,8 @@ export default function UsersPage() {
     setError(null);
     try {
       const api = createApiClient((session as any)?.accessToken);
-      const data = await api.put(`/api/users/${selectedUser._id}`, editForm);
+      const linkChanges = buildOgsLinkChanges(getOgsLinkFromUser(selectedUser), editOgsLink);
+      const data = await api.put(`/api/users/${selectedUser._id}`, { ...editForm, ...linkChanges });
       setUsers((prev) =>
         prev.map((u) => (u._id === selectedUser._id ? data.data : u))
       );
@@ -191,7 +229,9 @@ export default function UsersPage() {
   function openEditDialog(user: User) {
     setSelectedUser(user);
     setEditForm(buildEditUserFormFromUser(user));
+    setEditOgsLink(getOgsLinkFromUser(user));
     setEditDialogOpen(true);
+    void loadOgsAccounts();
   }
 
   // Open delete dialog
@@ -234,7 +274,13 @@ export default function UsersPage() {
         </div>
 
         {/* Create User Dialog */}
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <Dialog
+          open={createDialogOpen}
+          onOpenChange={(open) => {
+            setCreateDialogOpen(open);
+            if (open) void loadOgsAccounts();
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <UserPlus className="w-4 h-4 mr-2" />
@@ -291,8 +337,12 @@ export default function UsersPage() {
                     onChange={(e) =>
                       setCreateForm({ ...createForm, password: e.target.value })
                     }
-                    required
-                    placeholder="Minimum 8 characters"
+                    required={!createOgsLink.ogs_user_id.trim()}
+                    placeholder={
+                      createOgsLink.ogs_user_id.trim()
+                        ? "Optional for a user linked to OGS"
+                        : "Minimum 8 characters"
+                    }
                     minLength={8}
                   />
                 </div>
@@ -321,6 +371,13 @@ export default function UsersPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <OgsLinkFields
+                  idPrefix="create"
+                  value={createOgsLink}
+                  onChange={setCreateOgsLink}
+                  accounts={ogsAccounts}
+                  accountsError={ogsAccountsError}
+                />
               </div>
               <DialogFooter>
                 <Button
@@ -363,6 +420,7 @@ export default function UsersPage() {
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last Login</TableHead>
+                <TableHead>OGS</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -391,6 +449,13 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell>
                     {formatLastLogin(user.last_login)}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {user.external_identity?.subject
+                      ? user.sso_enabled
+                        ? "SSO"
+                        : "Linked"
+                      : "-"}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button
@@ -491,6 +556,18 @@ export default function UsersPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <OgsLinkFields
+                idPrefix="edit"
+                value={editOgsLink}
+                onChange={setEditOgsLink}
+                accounts={ogsAccounts}
+                accountsError={ogsAccountsError}
+              />
+              {editOgsLink.sso_enabled && editOgsLink.ogs_user_id.trim() && (
+                <p className="text-xs text-muted-foreground">
+                  For a user signing in through OGS, the role is taken from OGS at every sign-in.
+                </p>
+              )}
             </div>
             <DialogFooter>
               <Button
