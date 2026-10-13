@@ -7,7 +7,9 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      // A session whose access token could not be renewed (for example an
+      // OGS role that was removed) no longer opens the dashboard.
+      authorized: ({ token }) => !!token && !token.error,
     },
   }
 );

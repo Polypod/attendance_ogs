@@ -31,6 +31,12 @@ Start with `cp .env.example .env` and replace all placeholders.
 | `MEMBER_SYNC_HOUR` | No | Hour of the nightly sync (0-23); defaults to `3`. |
 | `MEMBER_SYNC_MINUTE` | No | Minute of the nightly sync (0-59); defaults to `0`. |
 | `MEMBER_SYNC_TIMEZONE` | No | Timezone for the schedule; defaults to `Europe/Stockholm`. |
+| `OGS_OIDC_ISSUER` | For OGS SSO | Issuer URL of the OGS OIDC provider; must equal the frontend's value. |
+| `OGS_OIDC_CLIENT_ID` | For OGS SSO | Client id of attendance in OGS; the ID token audience. |
+| `OGS_OIDC_JWKS_URI` | No | Signing keys URL; read from the issuer's discovery document when unset. |
+| `SSO_INTERNAL_SECRET` | For OGS SSO | Shared with the frontend; guards `POST /api/auth/sso/ogs`. |
+| `OGS_STAFF_URL` | No | OGS staff export; defaults to `OGS_SYNC_URL` with `/members` replaced by `/staff`. |
+| `JWT_SSO_EXPIRES_IN` | No | Access-token lifetime of an OGS SSO session; defaults to `5m`. |
 
 `BCRYPT_ROUNDS` is not an active setting; passwords are hashed with 10 rounds
 in the model. Do not add it to deployment configuration expecting it to alter
@@ -68,6 +74,26 @@ Admins can preview and trigger a sync from Settings in the dashboard, or call
 `membersyncruns` collection. The sync never deletes students, and never
 modifies students that were created locally.
 
+### OGS single sign-on
+
+Users can sign in with their OGS account (see `SSO_IMPLEMENTATION_PLAN.md`).
+An admin links each attendance user to an OGS account under Users and ticks
+"Allow sign-in through OGS". Accounts are never matched on email.
+
+- Only OGS accounts that are approved, not marked inactive, and hold `admin`
+  or `editor` get in. The attendance role follows OGS (`admin` wins).
+- The Next.js server sends the ID token from OGS to
+  `POST /api/auth/sso/ogs` with the `X-Internal-Secret` header. The backend
+  verifies the token's signature, issuer, audience and age itself, accepts
+  each token once, and asks OGS (`/api/attendance-sync/staff`, with the
+  member sync API key) for the account's current role.
+- An SSO session's access token lives 5 minutes. Every refresh asks OGS
+  again, so a removed role or deactivated account ends the session within
+  about 5 minutes. When OGS cannot be reached, access is refused.
+- Production attendance trusts only the production issuer
+  (`https://gojuryu.se`). Test the flow against `https://ogs.minamail.se`
+  from a local or temporary instance, never by pointing production at it.
+
 ## Frontend: `frontend/.env.local`
 
 Create this file manually; the project has no `frontend/.env.example`.
@@ -88,6 +114,10 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 | `BACKEND_URL` | Recommended | Internal backend URL for NextAuth and the Next.js API proxy. |
 | `NEXT_PUBLIC_API_URL` | No | Backend URL for client-side code. An empty string uses the Next.js proxy. |
 | `NEXT_PUBLIC_LOG_LEVEL` | No | Client-side log level. |
+| `OGS_OIDC_ISSUER` | For OGS SSO | Issuer URL of the OGS OIDC provider. The "Logga in med OGS" button only shows when this and the two below are set. |
+| `OGS_OIDC_CLIENT_ID` | For OGS SSO | Client id of attendance in OGS. |
+| `OGS_OIDC_CLIENT_SECRET` | For OGS SSO | Client secret of attendance in OGS. |
+| `SSO_INTERNAL_SECRET` | For OGS SSO | Same value as in the backend `.env`. |
 
 The backend URL is selected in this order: `BACKEND_URL`,
 `NEXT_PUBLIC_API_URL`, then `http://localhost:4000` in development. Production
@@ -123,7 +153,7 @@ The limits are code constants, not environment variables:
 | Endpoint type | Limit |
 | --- | --- |
 | Login | 5 attempts per 15 minutes |
-| Token refresh | 30 attempts per 15 minutes |
+| Token refresh | 30 attempts per 15 minutes per refresh token (per client when none is sent) |
 | Other API requests | 100 per 15 minutes, or 1,000 for authenticated requests |
 
 ## Troubleshooting

@@ -60,6 +60,18 @@ describe('rateLimiter middleware', () => {
     });
   });
 
+  it('refresh limiter keys on the refresh token, not the shared server IP', () => {
+    const refreshOptions = (refreshTokenLimiter as any).__rateLimitOptions;
+    const hash = crypto.createHash('sha256').update('refresh-1').digest('hex').slice(0, 16);
+
+    expect(refreshOptions.keyGenerator({ headers: {}, ip: '127.0.0.1', body: { refreshToken: 'refresh-1' } }))
+      .toBe(`refresh:${hash}`);
+    expect(refreshOptions.keyGenerator({ headers: {}, ip: '127.0.0.1', body: { refreshToken: 'refresh-2' } }))
+      .not.toBe(`refresh:${hash}`);
+    expect(refreshOptions.keyGenerator({ headers: {}, ip: '203.0.113.10', body: {} })).toBe('ip:203.0.113.10');
+    (ipKeyGenerator as unknown as jest.Mock).mockClear();
+  });
+
   it('keyGenerator uses bearer token hash when present', () => {
     const authOptions = (authLimiter as any).__rateLimitOptions;
 

@@ -2,6 +2,44 @@
 import { Request, Response } from 'express';
 import { UserModel } from '../models/User';
 import { CreateUserDto, UpdateUserDto } from '../types/interfaces';
+import { getOgsIssuer } from '../services/SsoService';
+import { ogsStaffService } from '../services/OgsStaffService';
+
+type UserDocument = InstanceType<typeof UserModel>;
+
+class OgsLinkError extends Error {}
+
+/**
+ * Apply the admin's OGS link settings. The issuer always comes from this
+ * server's configuration, never from the request.
+ */
+const applyOgsLink = (user: UserDocument, data: Pick<UpdateUserDto, 'ogs_user_id' | 'sso_enabled'>): void => {
+  if ('ogs_user_id' in data && data.ogs_user_id !== undefined) {
+    const subject = data.ogs_user_id?.trim();
+    if (subject) {
+      const issuer = getOgsIssuer();
+      if (!issuer) {
+        throw new OgsLinkError('OGS single sign-on is not configured (OGS_OIDC_ISSUER)');
+      }
+      user.external_identity = { issuer, subject };
+    } else {
+      user.external_identity = undefined;
+      user.sso_enabled = false;
+    }
+  }
+
+  if (typeof data.sso_enabled === 'boolean') {
+    if (data.sso_enabled && !user.external_identity?.subject) {
+      throw new OgsLinkError('Link an OGS account before enabling sign-in through OGS');
+    }
+    user.sso_enabled = data.sso_enabled;
+  }
+};
+
+const isOgsLinkConflict = (error: unknown): boolean => {
+  const keyPattern = (error as { keyPattern?: Record<string, unknown> })?.keyPattern;
+  return Boolean(keyPattern && 'external_identity.subject' in keyPattern);
+};
 
 export class UserController {
   /**
@@ -68,13 +106,14 @@ export class UserController {
         return;
       }
 
-      const userData: CreateUserDto = req.body;
+      const { ogs_user_id, sso_enabled, ...userData }: CreateUserDto = req.body;
 
       // Add created_by field
       const newUser = new UserModel({
         ...userData,
         created_by: req.user._id
       });
+      applyOgsLink(newUser, { ogs_user_id, sso_enabled });
 
       await newUser.save();
 
@@ -87,7 +126,17 @@ export class UserController {
         data: userResponse
       });
     } catch (error) {
-      if (error instanceof Error && 'name' in error && error.name === 'ValidationError') {
+      if (error instanceof OgsLinkError) {
+        res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      } else if (isOgsLinkConflict(error)) {
+        res.status(400).json({
+          success: false,
+          message: 'The OGS account is already linked to another user'
+        });
+      } else if (error instanceof Error && 'name' in error && error.name === 'ValidationError') {
         res.status(400).json({
           success: false,
           message: 'Validation error',
@@ -123,6 +172,32 @@ export class UserController {
         delete updateData.password;
       }
 
+      // Linking needs the document: unlinking must not leave an account
+      // with neither a password nor an OGS identity.
+      if ('ogs_user_id' in updateData || 'sso_enabled' in updateData) {
+        const { ogs_user_id, sso_enabled, ...fields } = updateData;
+        const user = await UserModel.findById(id).select('+password');
+        if (!user) {
+          res.status(404).json({
+            success: false,
+            message: 'User not found'
+          });
+          return;
+        }
+
+        user.set(fields);
+        applyOgsLink(user, { ogs_user_id, sso_enabled });
+        await user.save();
+
+        const savedUser = await UserModel.findById(id).select('-password');
+        res.status(200).json({
+          success: true,
+          message: 'User updated successfully',
+          data: savedUser
+        });
+        return;
+      }
+
       const updatedUser = await UserModel.findByIdAndUpdate(
         id,
         updateData,
@@ -143,9 +218,55 @@ export class UserController {
         data: updatedUser
       });
     } catch (error) {
+      if (error instanceof OgsLinkError) {
+        res.status(400).json({ success: false, message: error.message });
+        return;
+      }
+      if (isOgsLinkConflict(error)) {
+        res.status(400).json({
+          success: false,
+          message: 'The OGS account is already linked to another user'
+        });
+        return;
+      }
+      if (error instanceof Error && error.name === 'ValidationError') {
+        res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          error: error.message
+        });
+        return;
+      }
       res.status(500).json({
         success: false,
         message: 'Error updating user',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  /**
+   * OGS admin/editor accounts an attendance user can be linked to
+   * GET /api/users/ogs-staff
+   */
+  async listOgsStaff(_req: Request, res: Response): Promise<void> {
+    try {
+      const accounts = await ogsStaffService.list();
+      res.status(200).json({
+        success: true,
+        data: accounts.map((account) => ({
+          id: String(account.id),
+          email: account.email,
+          displayName: account.displayName,
+          roles: account.roles,
+          status: account.status,
+          isActive: account.isActive
+        }))
+      });
+    } catch (error) {
+      res.status(502).json({
+        success: false,
+        message: 'Could not fetch accounts from OGS',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }

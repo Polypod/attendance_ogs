@@ -170,13 +170,25 @@ export const loginSchema = Joi.object<LoginDto>({
   password: Joi.string().required()
 });
 
+// OGS user ids are Payload document ids (Mongo ObjectIds in practice).
+const ogsUserId = Joi.string().trim().pattern(/^[A-Za-z0-9_-]{1,64}$/).messages({
+  'string.pattern.base': 'OGS user id has an invalid format'
+});
+
 export const createUserSchema = Joi.object<CreateUserDto>({
   email: Joi.string().email().required(),
-  password: Joi.string().min(8).required().messages({
+  // An account linked to OGS may be created without a local password.
+  password: Joi.string().min(8).when('ogs_user_id', {
+    is: Joi.string().min(1).required(),
+    then: Joi.optional(),
+    otherwise: Joi.required()
+  }).messages({
     'string.min': 'Password must be at least 8 characters long'
   }),
   name: Joi.string().min(2).max(100).required(),
-  role: Joi.string().valid(...userRoles).required()
+  role: Joi.string().valid(...userRoles).required(),
+  ogs_user_id: ogsUserId.allow(null),
+  sso_enabled: Joi.boolean()
 });
 
 export const updateUserSchema = Joi.object<UpdateUserDto>({
@@ -185,8 +197,15 @@ export const updateUserSchema = Joi.object<UpdateUserDto>({
   status: Joi.string().valid(...userStatuses),
   password: Joi.string().min(8).messages({
     'string.min': 'Password must be at least 8 characters long'
-  })
+  }),
+  ogs_user_id: ogsUserId.allow(null),
+  sso_enabled: Joi.boolean()
 }).min(1); // At least one field is required
+
+// Body of the internal SSO login call from the Next.js server.
+export const ogsSsoLoginSchema = Joi.object({
+  idToken: Joi.string().max(8192).required()
+});
 
 export const changePasswordSchema = Joi.object<ChangePasswordDto>({
   currentPassword: Joi.string().required(),

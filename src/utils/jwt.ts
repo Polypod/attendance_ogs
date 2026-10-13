@@ -3,25 +3,36 @@ import jwt from 'jsonwebtoken';
 
 interface TokenPayload {
   id: string;
+  sso?: boolean; // Session started through OGS single sign-on
   iat?: number;
   exp?: number;
+}
+
+interface SignOptions {
+  sso?: boolean;
 }
 
 /**
  * Sign a JWT access token
  * @param userId - User ID to encode in the token
+ * @param options.sso - Short-lived token for an OGS SSO session, so that a
+ *   removed OGS role takes effect at the next refresh
  * @returns Signed JWT token
  */
-export const signToken = (userId: string): string => {
+export const signToken = (userId: string, options: SignOptions = {}): string => {
   const secret = process.env.JWT_SECRET;
-  const expiresIn = process.env.JWT_EXPIRES_IN || '24h';
+  const expiresIn = options.sso
+    ? process.env.JWT_SSO_EXPIRES_IN || '5m'
+    : process.env.JWT_EXPIRES_IN || '24h';
 
   if (!secret) {
     throw new Error('JWT_SECRET is not defined in environment variables');
   }
 
+  const payload = options.sso ? { id: userId, sso: true } : { id: userId };
+
   // Cast to jwt.Secret and jwt.SignOptions to satisfy TypeScript signatures
-  return jwt.sign({ id: userId }, secret as jwt.Secret, {
+  return jwt.sign(payload, secret as jwt.Secret, {
     expiresIn
   } as jwt.SignOptions);
 };
@@ -29,9 +40,10 @@ export const signToken = (userId: string): string => {
 /**
  * Sign a JWT refresh token
  * @param userId - User ID to encode in the token
+ * @param options.sso - Marks the session as OGS SSO; refreshing it re-checks OGS
  * @returns Signed refresh token
  */
-export const signRefreshToken = (userId: string): string => {
+export const signRefreshToken = (userId: string, options: SignOptions = {}): string => {
   const secret = process.env.JWT_REFRESH_SECRET;
   const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
@@ -39,8 +51,10 @@ export const signRefreshToken = (userId: string): string => {
     throw new Error('JWT_REFRESH_SECRET is not defined in environment variables');
   }
 
+  const payload = options.sso ? { id: userId, sso: true } : { id: userId };
+
   // Cast to jwt.Secret and jwt.SignOptions to satisfy TypeScript signatures
-  return jwt.sign({ id: userId }, secret as jwt.Secret, {
+  return jwt.sign(payload, secret as jwt.Secret, {
     expiresIn
   } as jwt.SignOptions);
 };

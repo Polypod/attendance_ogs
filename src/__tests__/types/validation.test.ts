@@ -1,6 +1,8 @@
 import {
   createClassScheduleSchema,
-  updateClassScheduleSchema
+  createUserSchema,
+  updateClassScheduleSchema,
+  updateUserSchema
 } from '../../types/validation';
 
 describe('class schedule validation', () => {
@@ -37,5 +39,28 @@ describe('class schedule validation', () => {
     });
 
     expect(error).toBeUndefined();
+  });
+});
+
+describe('user OGS link validation', () => {
+  const base = { email: 'e@example.com', name: 'Editor', role: 'editor' };
+
+  it('requires a password for an account without an OGS link', () => {
+    expect(createUserSchema.validate(base).error).toBeDefined();
+    expect(createUserSchema.validate({ ...base, password: 'password123' }).error).toBeUndefined();
+  });
+
+  it('allows an OGS-linked account without a password', () => {
+    expect(createUserSchema.validate({ ...base, ogs_user_id: 'abc123', sso_enabled: true }).error).toBeUndefined();
+  });
+
+  it('still checks the length of an optional password', () => {
+    expect(createUserSchema.validate({ ...base, ogs_user_id: 'abc123', password: 'short' }).error).toBeDefined();
+  });
+
+  it('accepts null to unlink and rejects malformed ids', () => {
+    expect(updateUserSchema.validate({ ogs_user_id: null }).error).toBeUndefined();
+    expect(updateUserSchema.validate({ ogs_user_id: '../../etc' }).error).toBeDefined();
+    expect(updateUserSchema.validate({ sso_enabled: 'yes please' }).error).toBeDefined();
   });
 });

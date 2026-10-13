@@ -12,6 +12,8 @@ declare module "next-auth" {
     refreshToken?: string;
   }
 
+  // The refresh token stays in the encrypted JWT cookie and is never part
+  // of the session object sent to the browser.
   interface Session {
     user: {
       id: string;
@@ -20,7 +22,7 @@ declare module "next-auth" {
       role: string;
     };
     accessToken: string;
-    refreshToken?: string;
+    error?: "RefreshAccessTokenError";
   }
 }
 
@@ -29,6 +31,8 @@ declare module "next-auth/jwt" {
     id: string;
     role: string;
     accessToken: string;
+    accessTokenExpires?: number;
     refreshToken?: string;
+    error?: "RefreshAccessTokenError";
   }
 }

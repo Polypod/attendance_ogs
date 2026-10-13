@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { UserModel } from '../models/User';
 import { signToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt';
 import { LoginDto, ChangePasswordDto } from '../types/interfaces';
+import { ssoService, SsoError } from '../services/SsoService';
 
 export class AuthController {
   /**
@@ -121,19 +122,68 @@ export class AuthController {
         return;
       }
 
-      // 4. Generate new access token
-      const newToken = signToken(user._id.toString());
+      // 4. An OGS SSO session is re-checked against OGS at every refresh, so a
+      // removed role or deactivated account takes effect within one access
+      // token lifetime.
+      if (decoded.sso) {
+        try {
+          await ssoService.assertSsoAccess(user);
+        } catch (error) {
+          if (error instanceof SsoError) {
+            res.status(error.status).json({
+              success: false,
+              code: error.code,
+              message: error.message
+            });
+            return;
+          }
+          throw error;
+        }
+      }
+
+      // 5. Generate new access token
+      const newToken = signToken(user._id.toString(), { sso: decoded.sso === true });
 
       res.status(200).json({
         success: true,
         message: 'Token refreshed successfully',
-        token: newToken
+        token: newToken,
+        role: user.role
       });
     } catch (error) {
       res.status(500).json({
         success: false,
         message: 'Token refresh error',
         error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  /**
+   * Exchange an OGS ID token for an attendance session. Called only by the
+   * Next.js server after the OIDC callback, behind the internal secret.
+   * POST /api/auth/sso/ogs
+   */
+  async ogsSsoLogin(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await ssoService.loginWithIdToken(req.body.idToken);
+      res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        ...result
+      });
+    } catch (error) {
+      if (error instanceof SsoError) {
+        res.status(error.status).json({
+          success: false,
+          code: error.code,
+          message: error.message
+        });
+        return;
+      }
+      res.status(500).json({
+        success: false,
+        message: 'SSO login error'
       });
     }
   }

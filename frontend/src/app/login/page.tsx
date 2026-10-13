@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from "react";
-import { signIn } from "next-auth/react";
+import { getProviders, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [rateLimitSecondsLeft, setRateLimitSecondsLeft] = useState(0);
+  const [ogsAvailable, setOgsAvailable] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unlockAtRef = useRef<number>(0);
 
@@ -27,6 +28,12 @@ export default function LoginPage() {
         return "Authentication is misconfigured";
       case "SessionRequired":
         return "Please sign in to continue";
+      case "OgsAccessDenied":
+        return "Your OGS account does not have access to attendance. Ask an administrator to link it and enable sign-in through OGS.";
+      case "OgsUnavailable":
+      case "OAuthSignin":
+      case "OAuthCallback":
+        return "Sign-in through OGS failed. Please try again.";
       default:
         return "An error occurred. Please try again.";
     }
@@ -52,6 +59,13 @@ export default function LoginPage() {
     } catch {
       // ignore
     }
+  }, []);
+
+  // Show the OGS button only when the server has the OGS provider configured
+  useEffect(() => {
+    getProviders()
+      .then((providers) => setOgsAvailable(Boolean(providers?.ogs)))
+      .catch(() => setOgsAvailable(false));
   }, []);
 
   // On mount: ask the server if this IP is currently rate limited
@@ -224,6 +238,23 @@ export default function LoginPage() {
             {isLoading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
+
+        {ogsAvailable && (
+          <div className="mt-6">
+            <div className="relative mb-6 text-center text-sm text-gray-500">
+              <span className="bg-white px-2">or</span>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={isLoading}
+              onClick={() => signIn("ogs", { callbackUrl: "/dashboard" })}
+            >
+              Logga in med OGS
+            </Button>
+          </div>
+        )}
 
         <div className="mt-6 text-center text-sm text-gray-600">
           <p>Enter login credentials</p>

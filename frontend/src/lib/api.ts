@@ -67,11 +67,25 @@ export async function fetchWithAuth(
     logger.debug('api_request', { endpoint, method: options.method ?? 'GET', requestId, headers: safeHeaders });
   }
 
-  const response = await fetch(`${baseUrl}${endpoint}`, {
+  let response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined
   });
+
+  // The access token may have expired since the component read it. Fetching
+  // the session renews it on the server; retry once with the new token.
+  if (response.status === 401 && typeof window !== "undefined" && token) {
+    const session = await getSession();
+    const freshToken = (session as any)?.accessToken;
+    if (freshToken && freshToken !== token && !(session as any)?.error) {
+      response = await fetch(`${baseUrl}${endpoint}`, {
+        ...options,
+        headers: { ...headers, Authorization: `Bearer ${freshToken}` },
+        body: options.body ? JSON.stringify(options.body) : undefined
+      });
+    }
+  }
 
   const responseRequestId = response.headers.get('x-request-id') ?? requestId;
 

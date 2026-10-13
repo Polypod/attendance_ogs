@@ -1,6 +1,7 @@
 import { AuthController } from '../../controllers/AuthController';
 import { UserModel } from '../../models/User';
 import { signRefreshToken, signToken, verifyRefreshToken } from '../../utils/jwt';
+import { ssoService, SsoError } from '../../services/SsoService';
 
 jest.mock('../../models/User', () => ({
   UserModel: {
@@ -14,6 +15,21 @@ jest.mock('../../utils/jwt', () => ({
   signRefreshToken: jest.fn(),
   verifyRefreshToken: jest.fn(),
 }));
+
+jest.mock('../../services/SsoService', () => {
+  class MockSsoError extends Error {
+    constructor(public code: string, public status: number, message: string) {
+      super(message);
+    }
+  }
+  return {
+    SsoError: MockSsoError,
+    ssoService: {
+      assertSsoAccess: jest.fn(),
+      loginWithIdToken: jest.fn(),
+    },
+  };
+});
 
 describe('AuthController', () => {
   const controller = new AuthController();
@@ -163,7 +179,79 @@ describe('AuthController', () => {
         success: true,
         message: 'Token refreshed successfully',
         token: 'new-access',
+        role: undefined,
       });
+      expect(ssoService.assertSsoAccess).not.toHaveBeenCalled();
+      expect(signToken).toHaveBeenCalledWith('u1', { sso: false });
+    });
+
+    it('re-checks OGS and issues a short-lived token for an SSO session', async () => {
+      const user = { _id: { toString: () => 'u1' }, status: 'active', role: 'editor' };
+      (verifyRefreshToken as jest.Mock).mockReturnValue({ id: 'u1', sso: true });
+      (UserModel.findById as jest.Mock).mockResolvedValue(user);
+      (ssoService.assertSsoAccess as jest.Mock).mockResolvedValue('editor');
+      (signToken as jest.Mock).mockReturnValue('sso-access');
+
+      await controller.refreshToken({ body: { refreshToken: 'ok' } } as any, res);
+
+      expect(ssoService.assertSsoAccess).toHaveBeenCalledWith(user);
+      expect(signToken).toHaveBeenCalledWith('u1', { sso: true });
+      expect(status).toHaveBeenCalledWith(200);
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ token: 'sso-access', role: 'editor' }));
+    });
+
+    it('refuses to refresh an SSO session that OGS no longer allows', async () => {
+      (verifyRefreshToken as jest.Mock).mockReturnValue({ id: 'u1', sso: true });
+      (UserModel.findById as jest.Mock).mockResolvedValue({ _id: { toString: () => 'u1' }, status: 'active' });
+      (ssoService.assertSsoAccess as jest.Mock).mockRejectedValue(
+        new SsoError('ogs_role_missing', 403, 'The OGS account has no access to attendance')
+      );
+
+      await controller.refreshToken({ body: { refreshToken: 'ok' } } as any, res);
+
+      expect(status).toHaveBeenCalledWith(403);
+      expect(json).toHaveBeenCalledWith({
+        success: false,
+        code: 'ogs_role_missing',
+        message: 'The OGS account has no access to attendance',
+      });
+      expect(signToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ogsSsoLogin', () => {
+    it('returns the session from a successful exchange', async () => {
+      (ssoService.loginWithIdToken as jest.Mock).mockResolvedValue({
+        token: 't',
+        refreshToken: 'r',
+        user: { _id: 'u1', role: 'admin' },
+      });
+
+      await controller.ogsSsoLogin({ body: { idToken: 'id' } } as any, res);
+
+      expect(ssoService.loginWithIdToken).toHaveBeenCalledWith('id');
+      expect(status).toHaveBeenCalledWith(200);
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ success: true, token: 't', refreshToken: 'r' }));
+    });
+
+    it('maps SSO errors to their status and code', async () => {
+      (ssoService.loginWithIdToken as jest.Mock).mockRejectedValue(
+        new SsoError('not_linked', 403, 'not linked')
+      );
+
+      await controller.ogsSsoLogin({ body: { idToken: 'id' } } as any, res);
+
+      expect(status).toHaveBeenCalledWith(403);
+      expect(json).toHaveBeenCalledWith({ success: false, code: 'not_linked', message: 'not linked' });
+    });
+
+    it('returns 500 without details on unexpected errors', async () => {
+      (ssoService.loginWithIdToken as jest.Mock).mockRejectedValue(new Error('db down'));
+
+      await controller.ogsSsoLogin({ body: { idToken: 'id' } } as any, res);
+
+      expect(status).toHaveBeenCalledWith(500);
+      expect(json).toHaveBeenCalledWith({ success: false, message: 'SSO login error' });
     });
   });
 });

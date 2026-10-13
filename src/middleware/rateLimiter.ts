@@ -29,6 +29,16 @@ const getClientRateLimitKey = (req: any): string => {
   return 'unknown';
 };
 
+// Refreshes come from the Next.js server, so every user shares its IP. Each
+// session is limited on its own refresh token instead.
+const getRefreshTokenRateLimitKey = (req: any): string => {
+  const refreshToken = req.body?.refreshToken;
+  if (typeof refreshToken === 'string' && refreshToken) {
+    return `refresh:${crypto.createHash('sha256').update(refreshToken).digest('hex').slice(0, 16)}`;
+  }
+  return getClientRateLimitKey(req);
+};
+
 const isAuthenticatedRequest = (req: any): boolean => {
   const authHeader = req.headers?.authorization;
   if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
@@ -75,7 +85,7 @@ export const refreshTokenLimiter = rateLimit({
   legacyHeaders: false,
   skipSuccessfulRequests: false,
   skipFailedRequests: false,
-  keyGenerator: getClientRateLimitKey
+  keyGenerator: getRefreshTokenRateLimitKey
 });
 
 /**
