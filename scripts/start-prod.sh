@@ -187,8 +187,14 @@ NODE_ENV=production FRONTEND_URL=http://localhost:4011 NODE_OPTIONS=--require=./
     --wait-ready \
     --listen-timeout 10000
 
-echo "Starting frontend on port 4011 with PM2..."
-NODE_ENV=production PORT=4011 BACKEND_URL=http://localhost:4010 NEXTAUTH_URL=http://localhost:4011 \
+# NextAuth builds its callback URLs from NEXTAUTH_URL, so production must use
+# the public address: OGS sign-in only accepts
+# https://att.minamail.se/api/auth/callback/ogs. frontend/.env.local is shared
+# with the development environment, so it is not read here.
+PROD_NEXTAUTH_URL="${ATTENDANCE_PUBLIC_URL:-https://att.minamail.se}"
+
+echo "Starting frontend on port 4011 with PM2 (NEXTAUTH_URL=${PROD_NEXTAUTH_URL})..."
+NODE_ENV=production PORT=4011 BACKEND_URL=http://localhost:4010 NEXTAUTH_URL="$PROD_NEXTAUTH_URL" \
   pm2 start "pnpm start" \
     --name "frontend" \
     --cwd "$ROOT_DIR/frontend" \
