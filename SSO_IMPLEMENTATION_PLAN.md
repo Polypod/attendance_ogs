@@ -33,7 +33,7 @@
 ## Arbete i OGS
 
 - [x] `GET /api/attendance-sync/staff[?id=]` exporterar admin- och editorkonton (`id`, `email`, `displayName`, `roles`, `status`, `isActive`).
-- [ ] `node-oidc-provider` inbyggd i Next.js/Payload med Payload-sessionen som inloggningskälla. Undvik ett egenbyggt tokenprotokoll.
+- [x] `oidc-provider` på `/api/oidc` med Payload-sessionen som inloggningskälla. Interaktionen körs vid varje inloggning och släpper bara igenom godkända admin- och editorkonton som inte är inaktiva; kontot kontrolleras igen när koden byts mot token. Koder gäller 60 sekunder och en gång, PKCE krävs. Nycklar och klienthemlighet genereras med `node scripts/generate-oidc-config.mjs <OGS-URL> <attendance-URL>` i OGS.
 - Registrera attendance som klient med strikt tillåtna callback-URL:er, klient-ID och separata nycklar per miljö. Exponera discovery, JWKS, authorize- och token-endpoints enligt OIDC.
 - Kontrollera roller och kontostatus när auktoriseringskoden skapas och när den byts mot token. Koden ska vara engångsbruk, kortlivad och bunden till klient, redirect-URI och PKCE.
 - Exponera ett säkert sätt för attendance att kontrollera aktuell roll och status för redan inloggade användare, till exempel kortlivade token med serverbaserad förnyelse.
