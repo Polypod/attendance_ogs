@@ -101,8 +101,12 @@ An admin links each attendance user to an OGS account under Users and ticks
 The same procedure is in the OGS project's `CLAUDE.md` ("Rotating the sign-on
 secrets"); keep the two in step. Production is `att.minamail.se` with OGS on
 `gojuryu.se`; the test environment `ogs.minamail.se` has its own values and
-is rotated the same way. Restart attendance with `./starta.sh` (choice 2) and
-OGS with its own `omstarta` script.
+is rotated the same way. Restart attendance with `./starta.sh` (choice 2).
+Restart OGS with `pm2 restart ogs-app` in production and `omstarta` in the
+test environment; a secret change needs no rebuild, so do not run OGS's
+`deploy_ogs.sh` for it. On the OGS server the environment file is
+`.env.production` when it exists, otherwise `.env`; a value in `.env.local`
+overrides both.
 
 | Secret | Where it lives | Effect of a change |
 | --- | --- | --- |
