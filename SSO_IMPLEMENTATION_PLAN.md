@@ -49,6 +49,7 @@
 
 ## Miljöer och driftsättning
 
+- Byte av nycklar och hemligheter beskrivs i `CONFIGURATION.md` ("Rotating the OGS sign-on secrets") och i OGS `CLAUDE.md` ("Rotating the sign-on secrets").
 - Produktion: OGS på `https://gojuryu.se` är utfärdare; attendance på `https://att.minamail.se` är klient.
 - Test: OGS på `https://ogs.minamail.se` använder en separat issuer, klient och nycklar. Det finns ingen separat attendance-testserver, så provet körs lokalt eller i en tillfällig instans. Produktions-attendance konfigureras bara med produktionens issuer, så testidentiteter kan inte logga in där.
 - Genomför först ett tekniskt prov av OGS-session → OIDC-kod → NextAuth-callback → backend-token. Därefter kontomigrering, behörighetstester och stegvis aktivering.
