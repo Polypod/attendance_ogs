@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { describeOgsSignInError } from "@/lib/ogsSignInErrors";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,12 +29,10 @@ export default function LoginPage() {
         return "Authentication is misconfigured";
       case "SessionRequired":
         return "Please sign in to continue";
-      case "OgsAccessDenied":
-        return "Your OGS account does not have access to attendance. Ask an administrator to link it and enable sign-in through OGS.";
-      case "OgsUnavailable":
       case "OAuthSignin":
       case "OAuthCallback":
-        return "Sign-in through OGS failed. Please try again.";
+      case "Callback":
+        return describeOgsSignInError(null);
       default:
         return "An error occurred. Please try again.";
     }
@@ -53,7 +52,9 @@ export default function LoginPage() {
     try {
       const url = new URL(window.location.href);
       const code = url.searchParams.get("error");
-      if (code) {
+      if (code === "OgsSignIn") {
+        setError(describeOgsSignInError(url.searchParams.get("reason")));
+      } else if (code) {
         setError(describeAuthError(code));
       }
     } catch {

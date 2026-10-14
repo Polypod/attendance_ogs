@@ -36,6 +36,7 @@ import { logger } from "@/lib/logger";
 import {
   buildEditUserFormFromUser,
   buildOgsLinkChanges,
+  formatApiError,
   formatLastLogin,
   getOgsLinkFromUser,
   getRoleBadgeColor,
@@ -124,8 +125,7 @@ export default function UsersPage() {
       const data = await api.get("/api/users");
       setUsers(data.data || []);
     } catch (e: unknown) {
-      if (e instanceof Error) setError(e.message);
-      else setError("Failed to fetch users");
+      setError(formatApiError(e, "Failed to fetch users"));
     } finally {
       setLoading(false);
     }
@@ -140,7 +140,7 @@ export default function UsersPage() {
       setOgsAccounts(data.data || []);
       setOgsAccountsError(null);
     } catch (e: unknown) {
-      setOgsAccountsError(e instanceof Error ? e.message : "unavailable");
+      setOgsAccountsError(formatApiError(e, "unavailable"));
     }
   }
 
@@ -165,8 +165,7 @@ export default function UsersPage() {
       setCreateForm({ name: "", email: "", password: "", role: "student" });
       setCreateOgsLink(EMPTY_OGS_LINK);
     } catch (e: unknown) {
-      if (e instanceof Error) setError(e.message);
-      else setError("Failed to create user");
+      setError(formatApiError(e, "Failed to create user"));
     }
   }
 
@@ -185,8 +184,7 @@ export default function UsersPage() {
       setEditDialogOpen(false);
       setSelectedUser(null);
     } catch (e: unknown) {
-      if (e instanceof Error) setError(e.message);
-      else setError("Failed to update user");
+      setError(formatApiError(e, "Failed to update user"));
     }
   }
 
@@ -201,8 +199,7 @@ export default function UsersPage() {
       setDeleteDialogOpen(false);
       setSelectedUser(null);
     } catch (e: unknown) {
-      if (e instanceof Error) setError(e.message);
-      else setError("Failed to delete user");
+      setError(formatApiError(e, "Failed to delete user"));
     }
   }
 
@@ -220,8 +217,7 @@ export default function UsersPage() {
       setSelectedUser(null);
       setNewPassword("");
     } catch (e: unknown) {
-      if (e instanceof Error) setError(e.message);
-      else setError("Failed to reset password");
+      setError(formatApiError(e, "Failed to reset password"));
     }
   }
 
