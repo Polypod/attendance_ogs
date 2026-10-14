@@ -96,6 +96,57 @@ An admin links each attendance user to an OGS account under Users and ticks
   (`https://gojuryu.se`). Test the flow against `https://ogs.minamail.se`
   from a local or temporary instance, never by pointing production at it.
 
+### Rotating the OGS sign-on secrets
+
+The same procedure is in the OGS project's `CLAUDE.md` ("Rotating the sign-on
+secrets"); keep the two in step. Production is `att.minamail.se` with OGS on
+`gojuryu.se`; the test environment `ogs.minamail.se` has its own values and
+is rotated the same way. Restart attendance with `./starta.sh` (choice 2) and
+OGS with its own `omstarta` script.
+
+| Secret | Where it lives | Effect of a change |
+| --- | --- | --- |
+| `OGS_OIDC_ISSUER` | backend `.env`, `frontend/.env.local`; `OIDC_ISSUER` in OGS | **Never change it.** It is stored in every OGS account link; a new value unlinks every user |
+| `OGS_OIDC_CLIENT_SECRET` | `frontend/.env.local`; `OIDC_ATTENDANCE_CLIENT_SECRET` in OGS, same value | Sign-in through OGS fails until both have the new value. Running sessions are not affected |
+| `SSO_INTERNAL_SECRET` | backend `.env` **and** `frontend/.env.local`, same value | Sign-in through OGS fails while the two differ. Running sessions are not affected |
+| `OGS_SYNC_API_KEY` | backend `.env`; API key of the sync service user in OGS | The old key stops working as soon as OGS has a new one: member sync fails and SSO users lose access within about 5 minutes until attendance has the new key |
+| Signing key and cookie keys | OGS only (`OIDC_JWKS`, `OIDC_COOKIE_KEYS`) | Nothing to change in attendance; it fetches new public keys by itself |
+
+New OIDC values come from `node scripts/generate-oidc-config.mjs
+https://gojuryu.se https://att.minamail.se` in the OGS project. Copy **only
+the lines of the secret being replaced**: every run creates new values for
+all of them. Keep the values out of chat, tickets and Git.
+
+**Client secret** (`OGS_OIDC_CLIENT_SECRET`):
+
+1. Put the new value in `frontend/.env.local` and in OGS `.env`
+   (`OIDC_ATTENDANCE_CLIENT_SECRET`).
+2. Restart OGS, then attendance, right after each other.
+3. Sign in with **Logga in med OGS**. `invalid_client` in
+   `logs/frontend-prod-error.log` means the two values differ.
+
+**Internal secret** (`SSO_INTERNAL_SECRET`):
+
+1. Generate a value: `openssl rand -hex 32`.
+2. Put the same value in the backend `.env` and in `frontend/.env.local`.
+3. Restart attendance and sign in with **Logga in med OGS**.
+
+**Sync service user API key** (`OGS_SYNC_API_KEY`):
+
+1. In the OGS admin panel, open the user whose email is
+   `ATTENDANCE_SYNC_USER_EMAIL` in OGS, generate a new API key and save.
+2. Put the new key in the backend `.env` and restart attendance straight away.
+3. Check that the Users page lists OGS accounts when you edit a user, and
+   that **Preview sync** under Settings > Member register sync works.
+
+**Signing key** (`OIDC_JWKS` in OGS): nothing to do here. After OGS has
+restarted, a sign-in through OGS may fail during the first minute, because
+attendance fetches unknown keys at most once a minute; try again.
+
+**If a secret has leaked**, rotate it as above. A leaked `SSO_INTERNAL_SECRET`
+alone does not let anyone sign in, since the backend also requires an ID token
+signed by OGS, but replace it anyway.
+
 ## Frontend: `frontend/.env.local`
 
 Create this file manually; the project has no `frontend/.env.example`.
