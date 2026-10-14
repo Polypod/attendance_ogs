@@ -10,6 +10,7 @@ import {
   getBackendUrl,
   refreshAccessToken,
 } from "@/lib/backendAuth";
+import { ogsSignInErrorPath } from "@/lib/ogsSignInErrors";
 
 export const OGS_PROVIDER_ID = "ogs";
 
@@ -121,17 +122,14 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (account?.provider !== OGS_PROVIDER_ID) return true;
 
-      if (!account.id_token) return "/login?error=OgsAccessDenied";
+      if (!account.id_token) return ogsSignInErrorPath("failed");
 
       // OGS has authenticated the user; attendance decides whether they get a
       // session. The backend result replaces the OGS profile on `user`, which
       // NextAuth passes on to the jwt callback.
       const result = await exchangeOgsIdToken(account.id_token);
       if ("error" in result) {
-        return result.error === "not_linked" || result.error === "sso_disabled" ||
-          result.error === "ogs_role_missing" || result.error === "account_inactive"
-          ? "/login?error=OgsAccessDenied"
-          : "/login?error=OgsUnavailable";
+        return ogsSignInErrorPath(result.error);
       }
 
       const session: BackendSession = result.session;

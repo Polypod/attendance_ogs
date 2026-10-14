@@ -20,6 +20,7 @@ import {
   apiLimiter,
   authLimiter,
   authLimiterStore,
+  kioskAccessRequestLimiter,
   refreshTokenLimiter,
   refreshTokenLimiterStore,
 } from '../../middleware/rateLimiter';
@@ -32,7 +33,8 @@ describe('rateLimiter middleware', () => {
   });
 
   it('configures authLimiter and refreshTokenLimiter with expected limits', () => {
-    expect((rateLimit as unknown as jest.Mock).mock.calls).toHaveLength(3);
+    // auth, refresh token, general API and public kiosk access requests
+    expect((rateLimit as unknown as jest.Mock).mock.calls).toHaveLength(4);
 
     const authOptions = (authLimiter as any).__rateLimitOptions;
     const refreshOptions = (refreshTokenLimiter as any).__rateLimitOptions;
@@ -69,6 +71,16 @@ describe('rateLimiter middleware', () => {
     expect(refreshOptions.keyGenerator({ headers: {}, ip: '127.0.0.1', body: { refreshToken: 'refresh-2' } }))
       .not.toBe(`refresh:${hash}`);
     expect(refreshOptions.keyGenerator({ headers: {}, ip: '203.0.113.10', body: {} })).toBe('ip:203.0.113.10');
+    (ipKeyGenerator as unknown as jest.Mock).mockClear();
+  });
+
+  it('limits public kiosk access requests per IP', () => {
+    const kioskOptions = (kioskAccessRequestLimiter as any).__rateLimitOptions;
+
+    expect(kioskOptions.windowMs).toBe(15 * 60 * 1000);
+    expect(kioskOptions.max).toBe(5);
+    expect(kioskOptions.keyGenerator({ ip: '203.0.113.10' })).toBe('ip:203.0.113.10');
+    expect(kioskOptions.keyGenerator({})).toBe('unknown');
     (ipKeyGenerator as unknown as jest.Mock).mockClear();
   });
 

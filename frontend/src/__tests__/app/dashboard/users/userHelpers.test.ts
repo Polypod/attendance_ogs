@@ -98,3 +98,27 @@ describe("userHelpers", () => {
     });
   });
 });
+
+describe("formatApiError", () => {
+  const { formatApiError } = jest.requireActual("../../../../app/dashboard/users/userHelpers");
+
+  it("shows the backend message instead of the raw HTTP error", () => {
+    const error = new Error(
+      'HTTP 400 [requestId=abc]: {"success":false,"message":"OGS single sign-on is not configured (OGS_OIDC_ISSUER)"}'
+    );
+    expect(formatApiError(error, "Failed")).toBe("OGS single sign-on is not configured (OGS_OIDC_ISSUER)");
+  });
+
+  it("adds the detail when the backend gives one", () => {
+    const error = new Error(
+      'HTTP 400 [requestId=abc]: {"success":false,"message":"Validation error","error":"Password is required"}'
+    );
+    expect(formatApiError(error, "Failed")).toBe("Validation error: Password is required");
+  });
+
+  it("falls back for non-JSON bodies, other errors and non-errors", () => {
+    expect(formatApiError(new Error("HTTP 502 [requestId=x]: Bad gateway"), "Failed")).toBe("Bad gateway");
+    expect(formatApiError(new Error("Unauthorized"), "Failed")).toBe("Unauthorized");
+    expect(formatApiError("nope", "Failed")).toBe("Failed");
+  });
+});

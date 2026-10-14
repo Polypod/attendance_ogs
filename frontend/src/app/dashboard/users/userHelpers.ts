@@ -115,3 +115,24 @@ export function getOgsGrantedRole(account?: OgsStaffAccount | null): "admin" | "
   if (account.roles?.includes("editor")) return "editor";
   return null;
 }
+
+/**
+ * A readable message from an API error. fetchWithAuth throws
+ * "HTTP <status> [requestId=...]: <body>"; the backend body is JSON with a
+ * `message` and sometimes an `error` with details.
+ */
+export function formatApiError(error: unknown, fallback: string): string {
+  const raw = error instanceof Error ? error.message : "";
+  const match = /^HTTP \d+ \[requestId=[^\]]*\]: ([\s\S]*)$/.exec(raw);
+  if (!match) return raw || fallback;
+
+  try {
+    const body = JSON.parse(match[1]);
+    const message = typeof body?.message === "string" ? body.message : "";
+    const detail = typeof body?.error === "string" ? body.error : "";
+    if (message && detail && detail !== message) return `${message}: ${detail}`;
+    return message || detail || fallback;
+  } catch {
+    return match[1].trim() || fallback;
+  }
+}
