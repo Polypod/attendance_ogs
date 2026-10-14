@@ -98,15 +98,25 @@ describe('SsoService', () => {
     expect(verifyRefreshToken(result.refreshToken).sso).toBe(true);
   });
 
-  it('syncs the local role from OGS', async () => {
+  it('keeps the attendance role when the user is admin in OGS', async () => {
     const user = await createUser({ role: UserRoleEnum.EDITOR });
     staffAccount!.roles = ['editor', 'admin'];
 
     const result = await service.loginWithIdToken(await idToken());
 
-    expect(result.user.role).toBe(UserRoleEnum.ADMIN);
+    expect(result.user.role).toBe(UserRoleEnum.EDITOR);
     const stored = await UserModel.findById(user._id);
-    expect(stored?.role).toBe(UserRoleEnum.ADMIN);
+    expect(stored?.role).toBe(UserRoleEnum.EDITOR);
+    await expect(service.assertSsoAccess(stored!)).resolves.toBe(UserRoleEnum.EDITOR);
+  });
+
+  it('keeps an attendance admin who is editor in OGS', async () => {
+    await createUser({ role: UserRoleEnum.ADMIN });
+    staffAccount!.roles = ['editor'];
+
+    const result = await service.loginWithIdToken(await idToken());
+
+    expect(result.user.role).toBe(UserRoleEnum.ADMIN);
   });
 
   it('accepts an ID token only once', async () => {

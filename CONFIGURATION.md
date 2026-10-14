@@ -81,12 +81,14 @@ An admin links each attendance user to an OGS account under Users and ticks
 "Allow sign-in through OGS". Accounts are never matched on email.
 
 - Only OGS accounts that are approved, not marked inactive, and hold `admin`
-  or `editor` get in. The attendance role follows OGS (`admin` wins).
+  or `editor` get in. OGS only decides who gets in: the role is the one set
+  in attendance and is never overwritten, so an OGS admin can be an editor
+  here.
 - The Next.js server sends the ID token from OGS to
   `POST /api/auth/sso/ogs` with the `X-Internal-Secret` header. The backend
   verifies the token's signature, issuer, audience and age itself, accepts
   each token once, and asks OGS (`/api/attendance-sync/staff`, with the
-  member sync API key) for the account's current role.
+  member sync API key) whether the account is still admin or editor there.
 - An SSO session's access token lives 5 minutes. Every refresh asks OGS
   again, so a removed role or deactivated account ends the session within
   about 5 minutes. When OGS cannot be reached, access is refused.
