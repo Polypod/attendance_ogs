@@ -5,7 +5,7 @@
 - En användare som är inloggad i OGS ska kunna öppna `att.minamail.se` utan att ange lösenord igen.
 - Endast godkända OGS-användare med `admin` eller `editor` får en attendance-session. `isActive` spärrar bara när värdet är `false`; admin och editor utan värde släpps igenom.
 - Kontot måste dessutom vara manuellt länkat av en admin i attendance och ha SSO aktiverat för just den användaren (kryssruta per användare).
-- `admin` i OGS blir `admin` i attendance; `editor` blir `editor`. Om båda finns har `admin` företräde.
+- OGS avgör bara om användaren får logga in. Rollen i attendance sätts av en admin i attendance och skrivs aldrig över från OGS, så en admin i OGS kan begränsas till `editor` i attendance.
 - `member` utan någon av rollerna ovan nekas. Editor får inte åtkomst till Users, Settings eller deras administrativa API-operationer.
 - Befintlig lösenordsinloggning i attendance behålls under migreringen och kan avvecklas separat.
 
@@ -28,7 +28,7 @@
 2. Attendance initierar OpenID Connect Authorization Code Flow med PKCE och skickar webbläsaren till OGS. OGS ser sin egen inloggningscookie på sin domän och kontrollerar aktuell användare, `status === 'approved'`, `isActive !== false` samt `roles`.
 3. OGS utfärdar en kortlivad engångskod till en registrerad callback-URL. Attendance byter koden server-till-server mot ett signerat ID-token och validerar `iss`, `aud`, `exp`, `nonce`, signatur och `state`.
 4. Attendance slår upp användaren på `(issuer, sub)`, där `sub` är OGS användar-ID och länken har satts av en admin. E-post används aldrig för att hitta eller länka konton.
-5. Attendance kräver att SSO är aktiverat för användaren, hämtar aktuell roll från OGS staff-endpoint, synkar den lokala rollen och utfärdar sin egen API-session med ett access-token på 5 minuter. Varje förnyelse kontrollerar OGS igen.
+5. Attendance kräver att SSO är aktiverat för användaren, kontrollerar mot OGS staff-endpoint att kontot fortfarande är admin eller editor där, behåller rollen som satts i attendance och utfärdar sin egen API-session med ett access-token på 5 minuter. Varje förnyelse kontrollerar OGS igen.
 
 ## Arbete i OGS
 
@@ -43,7 +43,7 @@
 - [x] OIDC-provider `ogs` i `frontend/src/lib/authOptions.ts` (PKCE, state, nonce) och knappen **Logga in med OGS** på inloggningssidan. Båda visas bara när `OGS_OIDC_*` är satta.
 - [x] Användarmodellen har en unik extern identitet `(issuer, sub)` och `sso_enabled`. SSO-konton kan sakna lokalt lösenord.
 - [x] Admin länkar OGS-konto och kryssar i SSO under Users; listan hämtas från OGS staff-endpoint.
-- [x] `POST /api/auth/sso/ogs` verifierar ID-token, kräver länkat konto med SSO aktiverat, hämtar roll från OGS och utfärdar attendance-token. Browserklienten kan aldrig tilldela sig en roll.
+- [x] `POST /api/auth/sso/ogs` verifierar ID-token, kräver länkat konto med SSO aktiverat, kontrollerar behörigheten i OGS och utfärdar attendance-token med rollen som satts i attendance. Browserklienten kan aldrig tilldela sig en roll.
 - [x] Access-token för SSO gäller 5 minuter. NextAuth förnyar det på servern och varje förnyelse kontrollerar OGS, så en borttagen roll eller ett avaktiverat konto spärras inom cirka fem minuter. Om OGS inte svarar nekas åtkomst. Refresh-token ligger bara i den krypterade JWT-cookien, inte i webbläsarens sessionsobjekt.
 - [ ] Behåll backendens adminskydd för `/api/users`, kioskhantering, medlemsynk och studentimport/export. Verifiera att editor kan använda övriga avsedda sidor och API:er.
 
@@ -55,7 +55,7 @@
 
 ## Godkännandekriterier
 
-- OGS `admin` respektive `editor` kan logga in i attendance utan nytt lösenord och får korrekt lokal roll.
+- OGS `admin` respektive `editor` kan logga in i attendance utan nytt lösenord och får den roll som satts i attendance.
 - `member`, `pending`, `rejected` och `isActive === false` nekas.
 - Editor kan inte läsa Users eller Settings via meny, direkt URL eller administrativa API:er; admin kan fortfarande använda dem.
 - Rollborttagning och avaktivering slår igenom inom fem minuter, även för en redan aktiv attendance-session.

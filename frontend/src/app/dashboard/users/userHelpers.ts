@@ -106,7 +106,7 @@ export function buildOgsLinkChanges(initial: OgsLink, current: OgsLink): OgsLink
 }
 
 /**
- * The attendance role OGS grants, using the same rule as the backend:
+ * The OGS role that lets an account sign in, using the same rule as the backend:
  * approved, not explicitly inactive, and admin (preferred) or editor.
  */
 export function getOgsGrantedRole(account?: OgsStaffAccount | null): "admin" | "editor" | null {

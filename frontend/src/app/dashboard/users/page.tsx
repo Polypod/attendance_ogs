@@ -565,7 +565,7 @@ export default function UsersPage() {
               />
               {editOgsLink.sso_enabled && editOgsLink.ogs_user_id.trim() && (
                 <p className="text-xs text-muted-foreground">
-                  For a user signing in through OGS, the role is taken from OGS at every sign-in.
+                  OGS decides whether this user may sign in (admin or editor in OGS). The role above applies in attendance.
                 </p>
               )}
             </div>

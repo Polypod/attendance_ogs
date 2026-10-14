@@ -83,8 +83,8 @@ export function OgsLinkFields({ idPrefix, value, onChange, accounts, accountsErr
         {selected && (
           <p className="mt-1 text-xs text-muted-foreground">
             {grantedRole
-              ? `OGS grants the ${grantedRole} role in attendance.`
-              : "OGS grants no access: the account lacks admin/editor or is not active."}
+              ? `OGS allows sign-in (${grantedRole} in OGS). The role in attendance is set here.`
+              : "OGS allows no sign-in: the account lacks admin/editor or is not active."}
           </p>
         )}
       </div>

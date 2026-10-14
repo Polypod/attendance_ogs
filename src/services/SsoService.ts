@@ -136,10 +136,10 @@ export class SsoService {
   }
 
   /**
-   * The role OGS currently grants this account in attendance. Fails closed:
-   * when OGS cannot be asked, access is denied.
+   * Check that OGS still lets this account in (admin or editor, approved,
+   * not inactive). Fails closed: when OGS cannot be asked, access is denied.
    */
-  async resolveOgsRole(subject: string): Promise<UserRoleEnum.ADMIN | UserRoleEnum.EDITOR> {
+  async assertOgsAccess(subject: string): Promise<void> {
     let account;
     try {
       account = await this.staff.findById(subject);
@@ -147,16 +147,16 @@ export class SsoService {
       throw new SsoError('ogs_unavailable', 503, 'Could not verify the account with OGS');
     }
 
-    const role = resolveAttendanceRole(account);
-    if (!role) {
+    if (!resolveAttendanceRole(account)) {
       throw new SsoError('ogs_role_missing', 403, 'The OGS account has no access to attendance');
     }
-    return role;
   }
 
   /**
-   * Check that a user may (still) hold an SSO session and sync the local role
-   * from OGS. Used both at login and at every access token refresh.
+   * Check that a user may (still) hold an SSO session. Used both at login and
+   * at every access token refresh. OGS only decides whether the user gets in;
+   * the role is the one an admin set in attendance, so an OGS admin can be
+   * limited to editor here.
    */
   async assertSsoAccess(user: UserDocument): Promise<UserRoleEnum> {
     const issuer = getOgsIssuer();
@@ -172,12 +172,8 @@ export class SsoService {
       throw new SsoError('account_inactive', 403, `Account is ${user.status}`);
     }
 
-    const role = await this.resolveOgsRole(identity.subject);
-    if (user.role !== role) {
-      user.role = role;
-      await user.save({ validateBeforeSave: false });
-    }
-    return role;
+    await this.assertOgsAccess(identity.subject);
+    return user.role;
   }
 
   /**
