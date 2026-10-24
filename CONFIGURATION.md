@@ -192,6 +192,11 @@ Use `docker compose up -d` for MongoDB. Your `MONGODB_URI` must use port 27019
 and the same credentials as `MONGO_INITDB_ROOT_USERNAME` and
 `MONGO_INITDB_ROOT_PASSWORD`.
 
+The MongoDB port is published on `127.0.0.1` only (`127.0.0.1:27019:27017`), so
+the database is reachable from the host but not from the network. To connect
+from another machine, use an SSH tunnel or VPN rather than publishing the port
+on `0.0.0.0`.
+
 If ports change, update `FRONTEND_URL`, `NEXTAUTH_URL`, `BACKEND_URL`, and
 `NEXT_PUBLIC_API_URL` so they continue to point to the correct service.
 
